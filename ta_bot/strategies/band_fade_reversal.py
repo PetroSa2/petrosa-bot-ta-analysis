@@ -55,8 +55,8 @@ class BandFadeReversalStrategy(BaseStrategy):
                     "upper_band": upper_band,
                     "middle_band": middle_band,
                     "close": close,
-                    "rsi": rsi_value
-                }
+                    "rsi": rsi_value,
+                },
             )
 
         return None

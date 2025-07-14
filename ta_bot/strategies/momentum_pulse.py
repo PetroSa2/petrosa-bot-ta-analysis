@@ -20,9 +20,7 @@ class MomentumPulseStrategy(BaseStrategy):
         - Price above EMA21 and EMA50
     """
 
-    def analyze(
-        self, df: pd.DataFrame, indicators: Dict[str, Any]
-    ) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Signal]:
         """Analyze for momentum pulse signals."""
         if len(df) < 2:
             return None
@@ -88,6 +86,6 @@ class MomentumPulseStrategy(BaseStrategy):
                 "macd_hist": current["macd_hist"],
                 "macd_signal": current.get("macd_signal", 0),
                 "rsi": current["rsi"],
-                "volume": current.get("volume", 0)
-            }
+                "volume": current.get("volume", 0),
+            },
         )

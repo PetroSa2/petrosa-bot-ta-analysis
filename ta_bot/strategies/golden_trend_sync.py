@@ -58,8 +58,8 @@ class GoldenTrendSyncStrategy(BaseStrategy):
                 metadata={
                     "ema21": current_ema21,
                     "ema50": current_ema50,
-                    "pullback_distance": abs(close - current_ema21) / current_ema21
-                }
+                    "pullback_distance": abs(close - current_ema21) / current_ema21,
+                },
             )
 
         return None

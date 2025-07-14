@@ -62,8 +62,8 @@ class DivergenceTrapStrategy(BaseStrategy):
                         "rsi_current": current_rsi,
                         "rsi_previous": previous_rsi,
                         "divergence_strength": abs(rsi_change),
-                        "price_change": price_change
-                    }
+                        "price_change": price_change,
+                    },
                 )
 
         return None
