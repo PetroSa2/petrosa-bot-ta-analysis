@@ -5,7 +5,7 @@ metadata:
   namespace: petrosa-apps
   labels:
     app: petrosa-ta-bot
-    version: v1.0.0
+    version: VERSION_PLACEHOLDER
 spec:
   replicas: 3
   selector:
@@ -15,7 +15,7 @@ spec:
     metadata:
       labels:
         app: petrosa-ta-bot
-        version: v1.0.0
+        version: VERSION_PLACEHOLDER
     spec:
       containers:
       - name: ta-bot
@@ -28,33 +28,33 @@ spec:
         - name: NATS_URL
           valueFrom:
             configMapKeyRef:
-              name: ta-bot-config
-              key: nats_url
-        - name: API_ENDPOINT
+              name: petrosa-global-config
+              key: NATS_URL
+        - name: TA_BOT_API_ENDPOINT
           valueFrom:
             configMapKeyRef:
-              name: ta-bot-config
-              key: api_endpoint
-        - name: LOG_LEVEL
+              name: petrosa-common-config
+              key: TA_BOT_API_ENDPOINT
+        - name: TA_BOT_LOG_LEVEL
           valueFrom:
             configMapKeyRef:
-              name: ta-bot-config
-              key: log_level
-        - name: ENVIRONMENT
+              name: petrosa-common-config
+              key: TA_BOT_LOG_LEVEL
+        - name: TA_BOT_ENVIRONMENT
           valueFrom:
             configMapKeyRef:
-              name: ta-bot-config
-              key: environment
-        - name: SUPPORTED_SYMBOLS
+              name: petrosa-common-config
+              key: TA_BOT_ENVIRONMENT
+        - name: TA_BOT_SUPPORTED_SYMBOLS
           valueFrom:
             configMapKeyRef:
-              name: ta-bot-config
-              key: supported_symbols
-        - name: SUPPORTED_TIMEFRAMES
+              name: petrosa-common-config
+              key: TA_BOT_SUPPORTED_SYMBOLS
+        - name: TA_BOT_SUPPORTED_TIMEFRAMES
           valueFrom:
             configMapKeyRef:
-              name: ta-bot-config
-              key: supported_timeframes
+              name: petrosa-common-config
+              key: TA_BOT_SUPPORTED_TIMEFRAMES
         resources:
           requests:
             memory: "256Mi"
