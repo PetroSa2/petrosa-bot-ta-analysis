@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petrosa-ta-bot
+  namespace: petrosa-apps
+  labels:
+    app: petrosa-ta-bot
+    version: v1.0.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: petrosa-ta-bot
+  template:
+    metadata:
+      labels:
+        app: petrosa-ta-bot
+        version: v1.0.0
+    spec:
+      containers:
+      - name: ta-bot
+        image: petrosa/ta-bot:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: NATS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: nats_url
+        - name: API_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: api_endpoint
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: log_level
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: environment
+        - name: SUPPORTED_SYMBOLS
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: supported_symbols
+        - name: SUPPORTED_TIMEFRAMES
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: supported_timeframes
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30 

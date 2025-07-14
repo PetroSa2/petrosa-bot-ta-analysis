@@ -1,0 +1,254 @@
+# Cursor AI Rules for Petrosa TA Bot
+
+## Repository Context
+This is a Kubernetes-based Technical Analysis bot for crypto trading with comprehensive CI/CD pipeline and local development capabilities.
+
+## Key Files to Reference
+- `ta_bot/README.md` - Complete TA bot documentation and usage guide
+- `Makefile` - Complete command reference for all development tasks
+- `k8s/` - Kubernetes manifests for production deployment
+- `k8s/kubeconfig.yaml` - Remote MicroK8s cluster configuration
+- `scripts/` - Automation scripts for setup, testing, and deployment
+
+## Prerequisites & Installation
+- **Python 3.11+**: Required for development and runtime
+- **Docker**: Required for containerization and local testing
+- **kubectl**: Required for Kubernetes deployment (remote cluster)
+- **Make**: Required for using the Makefile commands
+
+**Note**: This project uses a **remote MicroK8s cluster** - no local Kubernetes installation required.
+
+## Quick Start Commands
+```bash
+# Complete setup
+make setup
+
+# Run local pipeline
+make pipeline
+
+# Deploy to Kubernetes
+make deploy
+
+# Check deployment status
+make k8s-status
+```
+
+## Common Issues & Solutions
+
+### 1. Python Environment Issues
+```bash
+# Check Python version
+python3 --version
+
+# Recreate virtual environment
+rm -rf .venv
+make setup
+```
+
+### 2. Docker Build Issues
+```bash
+# Clean Docker cache
+make docker-clean
+
+# Rebuild image
+make build
+```
+
+### 3. Kubernetes Connection Issues
+```bash
+# Set kubeconfig for remote cluster
+export KUBECONFIG=k8s/kubeconfig.yaml
+
+# Check cluster connection
+kubectl --kubeconfig=k8s/kubeconfig.yaml cluster-info
+
+# Check namespace
+kubectl --kubeconfig=k8s/kubeconfig.yaml get namespace petrosa-apps
+
+# View deployment status
+make k8s-status
+
+# Note: This is a remote MicroK8s cluster - no local installation needed
+```
+
+### 4. NumPy Compatibility Issues
+```bash
+# Fix NumPy 2.x compatibility issues
+pip install 'numpy<2.0.0'
+
+# Reinstall dependencies
+pip install -r requirements.txt
+```
+
+## Development Workflow
+
+### 1. Initial Setup
+```bash
+# Complete environment setup
+make setup
+
+# Install development dependencies
+make install-dev
+```
+
+### 2. Code Quality Checks
+```bash
+# Run all linting
+make lint
+
+# Format code
+make format
+
+# Run tests
+make test
+
+# Security scan
+make security
+```
+
+### 3. Docker Operations
+```bash
+# Build image
+make build
+
+# Test container
+make container
+
+# Run in Docker
+make run-docker
+```
+
+### 4. Kubernetes Deployment
+```bash
+# Set kubeconfig for remote cluster
+export KUBECONFIG=k8s/kubeconfig.yaml
+
+# Deploy to remote cluster
+make deploy
+
+# Check status
+make k8s-status
+
+# View logs
+make k8s-logs
+
+# Clean up
+make k8s-clean
+```
+
+## Kubernetes Configuration
+
+### Remote Cluster Setup
+- **Cluster Type**: Remote MicroK8s (no local installation required)
+- **Connection**: Use `k8s/kubeconfig.yaml` for cluster access
+- **Server**: Remote MicroK8s cluster at `https://192.168.194.253:16443`
+
+### Namespace
+- **Name**: `petrosa-apps`
+- **Labels**: `app=petrosa-ta-bot`
+
+### Components
+- **Deployment**: 3 replicas with health checks
+- **Service**: ClusterIP on port 80
+- **Ingress**: SSL-enabled with Let's Encrypt
+- **HPA**: Auto-scaling based on CPU/memory
+
+## Environment Variables
+
+### Required for Production
+- `NATS_URL`: NATS server URL
+- `API_ENDPOINT`: REST API endpoint for signals
+- `LOG_LEVEL`: Logging level (default: INFO)
+- `ENVIRONMENT`: Environment name (default: production)
+
+## TA Bot Architecture
+
+### Core Components
+- **Signal Engine**: Coordinates all trading strategies
+- **Strategies**: 5 technical analysis strategies implemented
+- **NATS Listener**: Subscribes to candle updates
+- **REST Publisher**: Sends signals to external API
+
+### Trading Strategies
+1. **Momentum Pulse**: MACD histogram crossovers
+2. **Band Fade Reversal**: Bollinger Band mean reversion
+3. **Golden Trend Sync**: EMA pullback entries
+4. **Range Break Pop**: Volatility breakouts
+5. **Divergence Trap**: Hidden bullish divergence
+
+## Signal Format
+```json
+{
+  "symbol": "BTCUSDT",
+  "period": "15m",
+  "signal": "BUY",
+  "confidence": 0.74,
+  "strategy": "momentum_pulse",
+  "metadata": {
+    "rsi": 58.3,
+    "macd_hist": 0.0012,
+    "adx": 27
+  }
+}
+```
+
+## Troubleshooting Scripts
+
+### Complete Diagnostics
+```bash
+# Run all checks
+./scripts/local-pipeline.sh all
+
+# Quick fixes
+make setup
+make test
+```
+
+### Specific Component Checks
+```bash
+# Check Python environment
+./scripts/local-pipeline.sh setup
+
+# Check dependencies
+./scripts/local-pipeline.sh lint
+
+# Check Docker
+./scripts/local-pipeline.sh build
+
+# Check Kubernetes
+./scripts/local-pipeline.sh deploy
+```
+
+## Local Pipeline
+
+### Complete Pipeline
+```bash
+# Run all stages
+./scripts/local-pipeline.sh all
+
+# Run specific stages
+./scripts/local-pipeline.sh lint test
+./scripts/local-pipeline.sh build container
+./scripts/local-pipeline.sh deploy
+```
+
+### Pipeline Stages
+1. **Setup**: Environment and dependencies
+2. **Lint**: Code quality checks (flake8, black, ruff, mypy)
+3. **Test**: Unit tests with coverage
+4. **Security**: Vulnerability scanning with Trivy
+5. **Build**: Docker image building
+6. **Container**: Container testing
+7. **Deploy**: Kubernetes deployment
+
+## Always Reference
+- Check `ta_bot/README.md` for TA bot documentation
+- Use `Makefile` for all common commands
+- Use `scripts/` directory for automation and troubleshooting
+- Use `k8s/kubeconfig.yaml` for remote MicroK8s cluster connection
+- This is a production-ready TA bot with comprehensive CI/CD
+- **Remote MicroK8s cluster** - no local Kubernetes installation required
+- Kubernetes deployment uses namespace `petrosa-apps`
+- Health checks are critical for Kubernetes probes
+- Security scanning is integrated into the pipeline
+- **NumPy compatibility**: Use `numpy<2.0.0` for pandas-ta compatibility 
