@@ -15,11 +15,11 @@ class Config:
     nats_url: str = os.getenv("NATS_URL", "nats://localhost:4222")
 
     # API Configuration
-    api_endpoint: str = os.getenv("API_ENDPOINT", "http://localhost:8080/signals")
+    api_endpoint: str = os.getenv("TA_BOT_API_ENDPOINT", "http://localhost:8080/signals")
 
     # Optional settings with defaults
-    log_level: str = "INFO"
-    environment: str = "production"
+    log_level: str = os.getenv("TA_BOT_LOG_LEVEL", "INFO")
+    environment: str = os.getenv("TA_BOT_ENVIRONMENT", "production")
     health_check_interval: int = 30
     max_retries: int = 3
     timeout: int = 30
