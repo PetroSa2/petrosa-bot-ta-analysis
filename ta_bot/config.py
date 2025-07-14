@@ -3,7 +3,7 @@ Configuration module for the TA Bot.
 """
 
 import os
-from dataclasses import dataclass, Field
+from dataclasses import dataclass, field
 from typing import List
 
 
@@ -25,8 +25,8 @@ class Config:
     timeout: int = 30
 
     # Strategy settings
-    enabled_strategies: List[str] = Field(
-        default=[
+    enabled_strategies: List[str] = field(
+        default_factory=lambda: [
             "momentum_pulse",
             "band_fade_reversal",
             "golden_trend_sync",
@@ -36,8 +36,8 @@ class Config:
     )
 
     # Technical analysis settings
-    candle_periods: List[str] = Field(default=["1m", "5m", "15m", "1h", "4h"])
-    symbols: List[str] = Field(default=["BTCUSDT", "ETHUSDT", "ADAUSDT"])
+    candle_periods: List[str] = field(default_factory=lambda: ["1m", "5m", "15m", "1h", "4h"])
+    symbols: List[str] = field(default_factory=lambda: ["BTCUSDT", "ETHUSDT", "ADAUSDT"])
 
     # Confidence thresholds
     min_confidence: float = 0.6
@@ -45,4 +45,4 @@ class Config:
 
     # Risk management
     max_positions: int = 10
-    position_sizes: List[int] = Field(default=[100, 200, 500, 1000])
+    position_sizes: List[int] = field(default_factory=lambda: [100, 200, 500, 1000])

@@ -26,7 +26,7 @@ class NATSListener:
         self.signal_engine = signal_engine
         self.publisher = publisher
         self.nc = NATS()
-        self.subscriptions = []
+        self.subscriptions: List[Any] = []
 
     async def start(self):
         """Start the NATS listener."""

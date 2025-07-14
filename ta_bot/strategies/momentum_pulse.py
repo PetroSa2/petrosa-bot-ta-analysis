@@ -20,7 +20,7 @@ class MomentumPulseStrategy(BaseStrategy):
         - Price above EMA21 and EMA50
     """
 
-    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any], symbol: str = "UNKNOWN", period: str = "15m") -> Optional[Signal]:
         """Analyze for momentum pulse signals."""
         if len(df) < 2:
             return None
@@ -77,8 +77,8 @@ class MomentumPulseStrategy(BaseStrategy):
         }
 
         return Signal(
-            symbol=metadata.get("symbol", "UNKNOWN"),
-            period=metadata.get("period", "15m"),
+            symbol=symbol,
+            period=period,
             signal=SignalType.BUY,
             strategy="momentum_pulse",
             confidence=0.74,
