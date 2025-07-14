@@ -2,7 +2,6 @@
 Health check endpoints for the TA Bot.
 """
 
-
 import logging
 from typing import Dict, Any
 

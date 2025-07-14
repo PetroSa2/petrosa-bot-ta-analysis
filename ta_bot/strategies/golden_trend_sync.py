@@ -63,7 +63,9 @@ class GoldenTrendSyncStrategy(BaseStrategy):
                     "ema21": current_ema21,
                     "ema50": current_ema50,
                     "close": close,
-                    "pullback_percent": abs(close - current_ema21) / current_ema21 * 100,
+                    "pullback_percent": abs(close - current_ema21)
+                    / current_ema21
+                    * 100,
                 },
             )
 

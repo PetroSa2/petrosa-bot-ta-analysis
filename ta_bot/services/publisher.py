@@ -48,9 +48,7 @@ class SignalPublisher:
                 headers={"Content-Type": "application/json"},
             ) as response:
                 if response.status == 200:
-                    logger.info(
-                        f"Successfully published {len(signals)} signals to API"
-                    )
+                    logger.info(f"Successfully published {len(signals)} signals to API")
                 else:
                     logger.error(
                         f"Failed to publish signals: {response.status} - "
