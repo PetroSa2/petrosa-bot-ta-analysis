@@ -5,7 +5,7 @@ REST publisher service for sending trading signals to external API.
 import asyncio
 import json
 import logging
-from typing import Dict, List
+from typing import List
 
 import aiohttp
 import structlog

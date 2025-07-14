@@ -1,23 +1,22 @@
 """
-Band Fade Reversal Strategy
-Detects mean reversion signals when price closes outside Bollinger Bands then back inside.
+Band Fade Reversal strategy for technical analysis.
 """
 
-from typing import Dict, Any, Optional
 import pandas as pd
-from ta_bot.models.signal import SignalType
+from typing import Dict, Any, Optional
+
 from ta_bot.strategies.base_strategy import BaseStrategy
+from ta_bot.core.indicators import Indicators
+from ta_bot.models.signal import Signal, SignalType
 
 
 class BandFadeReversalStrategy(BaseStrategy):
-    """
-    Band Fade Reversal Strategy
+    """Band Fade Reversal strategy implementation."""
 
-    Trigger: Price closes outside upper BB(20, 2), then closes back inside
-    Confirmations:
-        - RSI(14) > 70
-        - ADX(14) < 20
-    """
+    def __init__(self):
+        """Initialize the strategy."""
+        super().__init__()
+        self.indicators = Indicators()
 
     def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
         """Analyze candles for Band Fade Reversal signals."""

@@ -5,8 +5,6 @@ Base strategy class for technical analysis strategies.
 import pandas as pd
 from typing import Dict, Any, Optional
 
-from ta_bot.core.indicators import Indicators
-
 
 class BaseStrategy:
     """Base class for all trading strategies."""

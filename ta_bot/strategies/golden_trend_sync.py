@@ -1,30 +1,26 @@
 """
-Golden Trend Sync Strategy
-Detects pullback entry signals when price pulls back to EMA21 with trend confirmations.
+Golden Trend Sync strategy for technical analysis.
 """
 
-from typing import Dict, Any, Optional
 import pandas as pd
-from ta_bot.models.signal import SignalType
+from typing import Dict, Any, Optional
+
 from ta_bot.strategies.base_strategy import BaseStrategy
+from ta_bot.core.indicators import Indicators
+from ta_bot.models.signal import Signal, SignalType
 
 
 class GoldenTrendSyncStrategy(BaseStrategy):
-    """
-    Golden Trend Sync Strategy
+    """Golden Trend Sync strategy implementation."""
 
-    Trigger: Price pulls back to EMA21
-    Confirmations:
-        - EMA21 > EMA50 > EMA200
-        - RSI between 45–55
-        - MACD Histogram positive
-    """
+    def __init__(self):
+        """Initialize the strategy."""
+        super().__init__()
+        self.indicators = Indicators()
 
-    def analyze(
-        self, df: pd.DataFrame, indicators: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """Analyze for golden trend sync signals."""
-        if len(df) < 2:
+    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+        """Analyze candles for Golden Trend Sync signals."""
+        if len(df) < 20:
             return None
 
         # Get current values
@@ -63,9 +59,7 @@ class GoldenTrendSyncStrategy(BaseStrategy):
                     "ema21": current_ema21,
                     "ema50": current_ema50,
                     "close": close,
-                    "pullback_percent": abs(close - current_ema21)
-                    / current_ema21
-                    * 100,
+                    "pullback_percent": abs(close - current_ema21) / current_ema21 * 100,
                 },
             )
 
@@ -77,10 +71,9 @@ class GoldenTrendSyncStrategy(BaseStrategy):
             return 0
 
         current_volume = df["volume"].iloc[-1]
-        last_3_volumes = df["volume"].iloc[-4:-1]  # Last 3 candles excluding current
+        recent_volumes = df["volume"].iloc[-4:-1]
 
-        # Count how many candles have higher volume than current
-        higher_volume_count = (last_3_volumes > current_volume).sum()
+        # Count how many recent candles have higher volume
+        higher_volume_count = sum(1 for vol in recent_volumes if vol > current_volume)
 
-        # Return rank (1 = highest, 4 = lowest)
-        return higher_volume_count + 1
+        return higher_volume_count
