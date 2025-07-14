@@ -34,8 +34,6 @@ class RangeBreakPopStrategy(BaseStrategy):
         # Get current values
         current = df.iloc[-1]
         close = current["close"]
-        high = current["high"]
-        low = current["low"]
         volume = current["volume"]
 
         # Calculate indicators

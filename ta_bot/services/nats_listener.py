@@ -2,7 +2,6 @@
 NATS listener service for receiving candle data and processing signals.
 """
 
-import asyncio
 import json
 import logging
 from typing import Dict, Any, List, Subscription
