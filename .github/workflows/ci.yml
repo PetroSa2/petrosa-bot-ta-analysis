@@ -8,7 +8,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  DOCKER_IMAGE: petrosa/ta-bot
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/ta-bot
 
 jobs:
   lint-test:
