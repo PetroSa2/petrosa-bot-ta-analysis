@@ -19,8 +19,10 @@ env:
   REGISTRY: docker.io
 
 jobs:
+  # PR CHECKS - Only run on pull requests
   lint-and-test:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     
     steps:
     - name: Checkout code
@@ -99,6 +101,7 @@ jobs:
 
   security-scan:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     
     steps:
     - name: Checkout code
@@ -115,7 +118,7 @@ jobs:
   create-release:
     needs: [lint-and-test, security-scan]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: write
       packages: write
@@ -216,9 +219,9 @@ jobs:
         git tag --sort=-version:refname | head -10
 
   build-and-push:
-    needs: [lint-and-test, security-scan, create-release]
+    needs: [create-release]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
@@ -319,7 +322,7 @@ jobs:
   deploy:
     needs: [build-and-push, create-release]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
     
     steps:
@@ -514,7 +517,7 @@ jobs:
   notify:
     needs: [build-and-push, deploy, create-release]
     runs-on: ubuntu-latest
-    if: always()
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
     - name: Notify deployment status
@@ -544,7 +547,7 @@ jobs:
   cleanup:
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    if: always()
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
     - name: Clean up old images
