@@ -91,12 +91,11 @@ jobs:
           echo "⚠️  Could not determine coverage percentage, skipping threshold check"
         fi
     
-    # Codecov upload removed - requires CODECOV_TOKEN secret
-    # - name: Upload coverage reports to Codecov
-    #   uses: codecov/codecov-action@v5
-    #   with:
-    #     token: ${{ secrets.CODECOV_TOKEN }}
-    #     slug: PetroSa2/petrosa-bot-ta-analysis
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: PetroSa2/petrosa-bot-ta-analysis
 
   security-scan:
     runs-on: ubuntu-latest
@@ -111,7 +110,7 @@ jobs:
         scan-type: 'fs'
         scan-ref: '.'
         format: 'table'
-        exit-code: '0'
+        exit-code: '1'
 
   create-release:
     needs: [lint-and-test, security-scan]
