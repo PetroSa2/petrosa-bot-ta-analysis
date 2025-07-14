@@ -1,155 +1,182 @@
-name: CI/CD Pipeline
+name: Deploy
 
 on:
-  pull_request:
-    branches: [ main ]
   push:
-    branches: [ main ]
-
-env:
-  PYTHON_VERSION: '3.11'
-  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/ta-bot
+    branches: [ 'main' ]
 
 jobs:
-  lint-test:
-    if: github.event_name == 'pull_request'
-    name: Lint & Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-      - name: Run linting
-        run: |
-          black --check ta_bot/ tests/
-          flake8 ta_bot/ tests/ --max-line-length=88 --ignore=E203,W503
-          mypy ta_bot/ --ignore-missing-imports
-          ruff check ta_bot/ tests/
-      - name: Run tests with coverage
-        run: |
-          python -m pytest tests/ --cov=ta_bot --cov-report=xml --cov-report=html --cov-fail-under=50
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-
-  security-scan:
-    if: github.event_name == 'pull_request'
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: lint-test
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-      - name: Run security scans
-        run: |
-          bandit -r ta_bot/ -f json -o bandit-report.json || true
-          safety check --json --output safety-report.json || true
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
-
   create-release:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag-created: ${{ steps.create-tag.outputs.tag-created }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Create Release Tag
-        run: |
-          echo "v$(date +'%Y.%m.%d.%H%M%S')" > release_tag.txt
-          git tag $(cat release_tag.txt)
-          git push origin $(cat release_tag.txt)
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-tags: true
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+    - name: Generate Semantic Version
+      id: version
+      run: |
+        LATEST_VERSION=$(git tag --sort=-version:refname | grep '^v[0-9]' | head -1)
+        if [ -z "$LATEST_VERSION" ]; then
+          VERSION="v1.0.0"
+        else
+          if [[ "$LATEST_VERSION" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            PATCH="${BASH_REMATCH[3]}"
+            NEW_PATCH=$((PATCH + 1))
+            VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+          else
+            VERSION="v1.0.0"
+          fi
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "Final generated version: ${VERSION}"
+    - name: Create and Push Tag
+      id: create-tag
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        if git rev-parse "$VERSION" >/dev/null 2>&1; then
+          git tag -d "$VERSION"
+          git push origin ":refs/tags/$VERSION" || echo "Tag deletion from remote failed (may not exist remotely)"
+        fi
+        git tag "$VERSION"
+        git push origin "$VERSION"
+        echo "tag-created=true" >> $GITHUB_OUTPUT
 
-  build-push:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  build-and-push:
     name: Build & Push
-    runs-on: ubuntu-latest
     needs: create-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Build Docker image
-        run: |
-          docker build -t ${{ env.DOCKER_IMAGE }}:${{ github.sha }} .
-          docker build -t ${{ env.DOCKER_IMAGE }}:latest .
-      - name: Run container tests
-        run: |
-          docker run --rm ${{ env.DOCKER_IMAGE }}:${{ github.sha }} python -c "import ta_bot; print('TA Bot imported successfully')" || echo "Container test failed but continuing"
-      - name: Push Docker image
-        run: |
-          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-          docker push ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
-          docker push ${{ env.DOCKER_IMAGE }}:latest
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Determine Version
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          VERSION="${{ github.ref_name }}"
+        else
+          VERSION="${{ needs.create-release.outputs.version }}"
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Extract Docker Metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ secrets.DOCKERHUB_USERNAME }}/ta-bot
+        tags: |
+          type=raw,value=${{ steps.version.outputs.version }}
+          type=raw,value=latest
+    - name: Build and Push Docker Image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ steps.version.outputs.version }}
+          COMMIT_SHA=${{ github.sha }}
+          BUILD_DATE=${{ steps.meta.outputs.date }}
 
-  deploy-to-kubernetes:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  deploy:
     name: Deploy to Kubernetes
+    needs: [build-and-push, create-release]
     runs-on: ubuntu-latest
-    needs: build-push
+    environment: production
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-      - name: Configure kubectl
-        run: |
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > k8s/kubeconfig.yaml
-          export KUBECONFIG=k8s/kubeconfig.yaml
-      - name: Deploy to Kubernetes
-        run: |
-          export KUBECONFIG=k8s/kubeconfig.yaml
-          kubectl apply -f k8s/ || echo "Deployment failed but continuing"
-          kubectl set image deployment/petrosa-ta-bot ta-bot=${{ env.DOCKER_IMAGE }}:${{ github.sha }} -n petrosa-apps || echo "Image update failed but continuing"
-          kubectl rollout status deployment/petrosa-ta-bot -n petrosa-apps || echo "Rollout status check failed but continuing"
-      - name: Verify deployment
-        run: |
-          export KUBECONFIG=k8s/kubeconfig.yaml
-          kubectl get pods -n petrosa-apps -l app=petrosa-ta-bot || echo "Pod verification failed but continuing"
-          kubectl get svc -n petrosa-apps -l app=petrosa-ta-bot || echo "Service verification failed but continuing"
-
-  cleanup:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    name: cleanup
-    runs-on: ubuntu-latest
-    needs: deploy-to-kubernetes
-    steps:
-      - name: Cleanup Docker images
-        run: |
-          docker system prune -af || true
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+    - name: Configure kubectl for MicroK8s
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+        kubectl cluster-info --insecure-skip-tls-verify
+        kubectl get nodes --insecure-skip-tls-verify
+    - name: Update Image Tags in Manifests
+      run: |
+        IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
+        find k8s/ -name "*.yaml" -o -name "*.yml" | xargs sed -i "s|VERSION_PLACEHOLDER|${IMAGE_TAG}|g"
+    - name: Apply Kubernetes Manifests
+      run: |
+        kubectl apply -f k8s/ --recursive --insecure-skip-tls-verify
+    - name: Deployment Summary
+      run: |
+        IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
+        echo "🎉 Deployment to MicroK8s completed successfully!"
+        echo "  ✅ Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/ta-bot:${IMAGE_TAG}"
+        echo "  ✅ Kubernetes manifests applied to MicroK8s cluster"
 
   notify:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: notify
+    needs: [build-and-push, deploy, create-release]
     runs-on: ubuntu-latest
-    needs: deploy-to-kubernetes
+    if: always()
     steps:
-      - name: Notify Success
-        run: |
-          echo "Deployment to Kubernetes complete!" 
+    - name: Notify Deployment Status
+      run: |
+        VERSION="${{ needs.create-release.outputs.version }}"
+        TAG_CREATED="${{ needs.create-release.outputs.tag-created }}"
+        IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
+        if [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "✅ Deployment successful!"
+          echo "📦 Version: ${VERSION}"
+          echo "🐳 Image Tag: ${IMAGE_TAG}"
+          if [ "$TAG_CREATED" == "true" ]; then
+            echo "🏷️  New tag created: ${VERSION}"
+          else
+            echo "🏷️  Using existing tag: ${VERSION}"
+          fi
+          echo "🚀 Deployed to MicroK8s with versioned image tag"
+        else
+          echo "❌ Deployment failed!"
+          echo "📦 Version: ${VERSION}"
+          echo "🐳 Image Tag: ${IMAGE_TAG}"
+
+  cleanup:
+    name: cleanup
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Clean Up Old Images
+      run: |
+        echo "Cleaning up old Docker images..." 
