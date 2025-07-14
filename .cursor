@@ -1,0 +1,9 @@
+# HELP: CI/CD Pipeline Fixing Process
+#
+# 1. Run the local pipeline and all tests (e.g., `./scripts/local-pipeline.sh all` or `make test`).
+# 2. Fix any errors locally until all checks pass.
+# 3. Only commit and push changes when the local pipeline is green.
+# 4. Check the GitHub Actions (GHA) CI/CD pipeline status after pushing.
+# 5. If the GHA pipeline fails, repeat: fix errors locally, commit, and push until the pipeline passes.
+# 6. Do NOT stop until the CI/CD pipeline on GitHub Actions is green.
+# 7. No need to merge to main; just ensure the PR pipeline is green. 
