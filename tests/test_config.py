@@ -109,12 +109,8 @@ class TestConfig:
             max_confidence=0.9,
             max_positions=5,
         )
-        assert (
-            config.enabled_strategies == custom_strategies
-        )
-        assert (
-            config.candle_periods == custom_periods
-        )
+        assert config.enabled_strategies == custom_strategies
+        assert config.candle_periods == custom_periods
         assert config.symbols == custom_symbols
         assert config.position_sizes == custom_sizes
         assert config.log_level == "DEBUG"
