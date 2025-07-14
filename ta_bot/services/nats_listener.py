@@ -5,7 +5,7 @@ NATS listener service for receiving candle data and processing signals.
 import asyncio
 import json
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Subscription
 import pandas as pd
 from nats.aio.client import Client as NATS
 
@@ -29,24 +29,34 @@ class NATSListener:
         self.subscriptions = []
 
     async def start(self):
-        """Start listening for NATS messages."""
+        """Start the NATS listener."""
         try:
             # Connect to NATS
+            self.nc = NATS()
             await self.nc.connect(self.nats_url)
             logger.info(f"Connected to NATS at {self.nats_url}")
-
-            # Subscribe to candle topics
-            await self._subscribe_to_candles()
-
-            # Keep the listener running
-            while True:
-                await asyncio.sleep(1)
-
+            
+            # Initialize signal engine and publisher
+            self.signal_engine = SignalEngine()
+            self.publisher = SignalPublisher(self.api_endpoint)
+            await self.publisher.start()
+            
+            # Subscribe to candle updates
+            subscriptions: List[Subscription] = []
+            
+            for symbol in self.symbols:
+                for period in self.periods:
+                    subject = f"candles.{symbol}.{period}"
+                    sub = await self.nc.subscribe(subject, cb=self._handle_candle_update)
+                    subscriptions.append(sub)
+                    logger.info(f"Subscribed to {subject}")
+            
+            self.subscriptions = subscriptions
+            logger.info("NATS listener started successfully")
+            
         except Exception as e:
-            logger.error(f"Error in NATS listener: {e}")
+            logger.error(f"Error starting NATS listener: {e}")
             raise
-        finally:
-            await self._cleanup()
 
     async def _subscribe_to_candles(self):
         """Subscribe to candle update topics."""

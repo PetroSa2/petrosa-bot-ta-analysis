@@ -3,7 +3,7 @@ Configuration module for the TA Bot.
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, Field
 from typing import List
 
 
@@ -17,28 +17,30 @@ class Config:
     # API Configuration
     api_endpoint: str = os.getenv("API_ENDPOINT", "http://localhost:8080/signals")
 
-    # Trading Configuration
-    supported_symbols: List[str] = None
-    supported_timeframes: List[str] = None
-
-    # Technical Analysis Configuration
-    rsi_period: int = 14
-    macd_fast: int = 12
-    macd_slow: int = 26
-    macd_signal: int = 9
-    adx_period: int = 14
-    bb_period: int = 20
-    bb_std: float = 2.0
-    ema_periods: List[int] = None
-    atr_period: int = 14
-
-    def __post_init__(self):
-        """Initialize default values after dataclass creation."""
-        if self.supported_symbols is None:
-            self.supported_symbols = ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
-
-        if self.supported_timeframes is None:
-            self.supported_timeframes = ["15m", "1h"]
-
-        if self.ema_periods is None:
-            self.ema_periods = [21, 50, 200]
+    # Optional settings with defaults
+    log_level: str = "INFO"
+    environment: str = "production"
+    health_check_interval: int = 30
+    max_retries: int = 3
+    timeout: int = 30
+    
+    # Strategy settings
+    enabled_strategies: List[str] = Field(default_factory=lambda: [
+        "momentum_pulse",
+        "band_fade_reversal", 
+        "golden_trend_sync",
+        "range_break_pop",
+        "divergence_trap"
+    ])
+    
+    # Technical analysis settings
+    candle_periods: List[str] = Field(default_factory=lambda: ["1m", "5m", "15m", "1h", "4h"])
+    symbols: List[str] = Field(default_factory=lambda: ["BTCUSDT", "ETHUSDT", "ADAUSDT"])
+    
+    # Confidence thresholds
+    min_confidence: float = 0.6
+    max_confidence: float = 0.95
+    
+    # Risk management
+    max_positions: int = 10
+    position_sizes: List[int] = Field(default_factory=lambda: [100, 200, 500, 1000])

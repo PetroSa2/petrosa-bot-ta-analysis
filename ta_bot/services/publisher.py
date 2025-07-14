@@ -31,52 +31,64 @@ class SignalPublisher:
 
     async def publish_signals(self, signals: List[Signal]):
         """Publish signals to the external API."""
-        if not signals:
+        if not self.session:
+            logger.warning("Publisher session not started")
+            return
+
+        for signal in signals:
+            try:
+                # Convert signal to JSON
+                signal_data = {
+                    "symbol": signal.symbol,
+                    "period": signal.period,
+                    "signal": signal.signal_type.value,
+                    "confidence": signal.confidence,
+                    "strategy": signal.strategy,
+                    "metadata": signal.metadata
+                }
+
+                async with self.session.post(
+                    self.api_endpoint,
+                    json=signal_data,
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as response:
+                    if response.status == 200:
+                        logger.info(f"Signal published successfully: {signal.symbol}")
+                    else:
+                        logger.error(f"Failed to publish signal: {response.status}")
+                        
+            except Exception as e:
+                logger.error(f"Error publishing signal: {e}")
+
+    async def publish_batch(self, signals: List[Signal]):
+        """Publish multiple signals in a batch."""
+        if not self.session:
+            logger.warning("Publisher session not started")
             return
 
         try:
             # Convert signals to JSON
-            signal_data = [signal.to_dict() for signal in signals]
+            signals_data = []
+            for signal in signals:
+                signal_data = {
+                    "symbol": signal.symbol,
+                    "period": signal.period,
+                    "signal": signal.signal_type.value,
+                    "confidence": signal.confidence,
+                    "strategy": signal.strategy,
+                    "metadata": signal.metadata
+                }
+                signals_data.append(signal_data)
 
-            # Send to API
             async with self.session.post(
-                f"{self.api_endpoint}/signals",
-                json=signal_data,
-                headers={"Content-Type": "application/json"},
+                self.api_endpoint,
+                json={"signals": signals_data},
+                timeout=aiohttp.ClientTimeout(total=30)
             ) as response:
                 if response.status == 200:
-                    logger.info(f"Successfully published {len(signals)} signals to API")
+                    logger.info(f"Batch published successfully: {len(signals)} signals")
                 else:
-                    logger.error(
-                        f"Failed to publish signals: {response.status} - "
-                        f"{await response.text()}"
-                    )
-
+                    logger.error(f"Failed to publish batch: {response.status}")
+                    
         except Exception as e:
-            logger.error(f"Error publishing signals: {e}")
-
-    async def publish_signal(self, signal: Signal):
-        """Publish a single signal to the external API."""
-        try:
-            # Convert signal to JSON
-            signal_data = signal.to_dict()
-
-            # Send to API
-            async with self.session.post(
-                f"{self.api_endpoint}/signal",
-                json=signal_data,
-                headers={"Content-Type": "application/json"},
-            ) as response:
-                if response.status == 200:
-                    logger.info(
-                        f"Successfully published signal {signal.symbol} "
-                        f"{signal.signal_type.value}"
-                    )
-                else:
-                    logger.error(
-                        f"Failed to publish signal: {response.status} - "
-                        f"{await response.text()}"
-                    )
-
-        except Exception as e:
-            logger.error(f"Error publishing signal: {e}")
+            logger.error(f"Error publishing batch: {e}")

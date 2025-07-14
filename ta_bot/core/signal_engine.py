@@ -33,44 +33,19 @@ class SignalEngine:
         }
         self.indicators = Indicators()
 
-    def analyze_candles(
-        self, df: pd.DataFrame, symbol: str, period: str
-    ) -> List[Signal]:
-        """Analyze candles using all strategies and return valid signals."""
-        signals = []
-
-        try:
-            # Ensure we have enough data for analysis
-            if len(df) < 50:
-                logger.warning(
-                    f"Insufficient data for {symbol} {period}: {len(df)} candles"
-                )
-                return signals
-
-            # Calculate all indicators once
-            indicators_data = self._calculate_indicators(df)
-
-            # Run each strategy
-            for strategy_name, strategy in self.strategies.items():
-                try:
-                    signal = self._run_strategy(
-                        strategy, strategy_name, df, symbol, period, indicators_data
-                    )
-                    if signal:
-                        signals.append(signal)
-                        logger.info(
-                            f"Signal generated: {strategy_name} for {symbol} {period}"
-                        )
-
-                except Exception as e:
-                    logger.error(f"Error running strategy {strategy_name}: {e}")
-                    continue
-
-            return signals
-
-        except Exception as e:
-            logger.error(f"Error in signal analysis for {symbol} {period}: {e}")
-            return signals
+    def analyze_candles(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> List[Signal]:
+        """Analyze candles using all strategies and return signals."""
+        signals: List[Signal] = []
+        
+        for strategy in self.strategies:
+            try:
+                signal = strategy.analyze(df, metadata)
+                if signal:
+                    signals.append(signal)
+            except Exception as e:
+                logger.error(f"Error in strategy {strategy.__class__.__name__}: {e}")
+                
+        return signals
 
     def _calculate_indicators(self, df: pd.DataFrame) -> Dict[str, Any]:
         """Calculate all technical indicators for the dataframe."""

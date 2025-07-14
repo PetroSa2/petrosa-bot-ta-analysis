@@ -5,27 +5,28 @@ Base strategy class for technical analysis strategies.
 import pandas as pd
 from typing import Dict, Any, Optional
 
+from ta_bot.models.signal import Signal
+
 
 class BaseStrategy:
     """Base class for all trading strategies."""
 
     def __init__(self):
         """Initialize the strategy."""
-        self.name = self.__class__.__name__
-
-    def analyze(
-        self, df: pd.DataFrame, indicators: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Analyze the dataframe and return signal data if conditions are met.
-
-        Returns:
-            Dict with keys:
-                - signal_type: SignalType (BUY/SELL)
-                - metadata: Dict with indicator values and analysis data
-            None if no signal is generated
-        """
         pass
+
+    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+        """
+        Analyze candles and return a trading signal.
+        
+        Args:
+            df: DataFrame with OHLCV data
+            metadata: Additional metadata (symbol, period, etc.)
+            
+        Returns:
+            Signal object if conditions are met, None otherwise
+        """
+        raise NotImplementedError("Subclasses must implement analyze method")
 
     def _get_current_values(
         self, indicators: Dict[str, Any], df: pd.DataFrame
