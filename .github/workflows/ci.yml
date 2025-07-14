@@ -170,6 +170,7 @@ jobs:
           echo "❌ Deployment failed!"
           echo "📦 Version: ${VERSION}"
           echo "🐳 Image Tag: ${IMAGE_TAG}"
+        fi
 
   cleanup:
     name: cleanup
