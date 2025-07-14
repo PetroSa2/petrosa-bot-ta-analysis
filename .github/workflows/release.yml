@@ -368,8 +368,9 @@ jobs:
         
         # Update the image tag in Kubernetes manifests
         # Replace VERSION_PLACEHOLDER with the actual version tag
+        # Replace DOCKERHUB_USERNAME_PLACEHOLDER with the actual Docker Hub username
         find k8s/ -name "*.yaml" -o -name "*.yml" | xargs sed -i "s|VERSION_PLACEHOLDER|${IMAGE_TAG}|g"
-        find k8s/ -name "*.yaml" -o -name "*.yml" | xargs sed -i "s|DOCKERHUB_USERNAME|${{ secrets.DOCKERHUB_USERNAME }}|g"
+        find k8s/ -name "*.yaml" -o -name "*.yml" | xargs sed -i "s|DOCKERHUB_USERNAME_PLACEHOLDER|${{ secrets.DOCKERHUB_USERNAME }}|g"
         
         echo "Updated manifests with image: ${FULL_IMAGE_NAME}"
         

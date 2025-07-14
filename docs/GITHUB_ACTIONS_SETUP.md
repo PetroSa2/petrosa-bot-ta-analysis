@@ -69,7 +69,7 @@ cat k8s/kubeconfig.yaml | base64 -w 0
 - Falls back to local build if Docker Hub credentials missing
 
 ### 5. Deploy Job (Main Branch Only)
-- Updates Kubernetes manifests with versioned image tags
+- Updates Kubernetes manifests with versioned image tags and Docker Hub username
 - Deploys to MicroK8s cluster
 - Verifies deployment status
 
@@ -172,6 +172,11 @@ docker pull your-username/petrosa-ta-bot:latest
 - `PYTHON_VERSION`: Python version to use (3.11)
 - `REGISTRY`: Docker registry (docker.io)
 - `IMAGE_NAME`: Docker image name
+
+### Kubernetes Manifest Placeholders
+The pipeline automatically replaces placeholders in Kubernetes manifests:
+- `VERSION_PLACEHOLDER` → Actual version tag (e.g., v1.0.1)
+- `DOCKERHUB_USERNAME_PLACEHOLDER` → Docker Hub username from secrets
 
 ### Triggers
 - **Push to main/develop**: Runs full pipeline
