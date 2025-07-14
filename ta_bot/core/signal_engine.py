@@ -34,18 +34,21 @@ class SignalEngine:
         self.indicators = Indicators()
 
     def analyze_candles(
-        self, df: pd.DataFrame, metadata: Dict[str, Any]
+        self, df: pd.DataFrame, symbol: str, period: str
     ) -> List[Signal]:
         """Analyze candles using all strategies and return signals."""
         signals: List[Signal] = []
 
-        for strategy in self.strategies:
-            try:
-                signal = strategy.analyze(df, metadata)
-                if signal:
-                    signals.append(signal)
-            except Exception as e:
-                logger.error(f"Error in strategy {strategy.__class__.__name__}: {e}")
+        # Calculate indicators
+        indicators = self._calculate_indicators(df)
+
+        # Run each strategy
+        for strategy_name, strategy in self.strategies.items():
+            signal = self._run_strategy(
+                strategy, strategy_name, df, symbol, period, indicators
+            )
+            if signal:
+                signals.append(signal)
 
         return signals
 

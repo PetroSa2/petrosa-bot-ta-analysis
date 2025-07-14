@@ -3,7 +3,11 @@ Technical indicators wrapper using pandas-ta.
 """
 
 import pandas as pd
+import pandas_ta as ta
 from typing import Tuple
+
+# Ensure pandas DataFrame has ta attribute
+pd.DataFrame.ta = ta
 
 
 class Indicators:
@@ -12,14 +16,19 @@ class Indicators:
     @staticmethod
     def rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
         """Calculate RSI indicator."""
-        return df.ta.rsi(length=period)
+        result = df.ta.rsi(close=df["close"], length=period)
+        return result if result is not None else pd.Series(dtype=float)
 
     @staticmethod
     def macd(
         df: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9
     ) -> Tuple[pd.Series, pd.Series, pd.Series]:
         """Calculate MACD indicator."""
-        macd_result = df.ta.macd(fast=fast, slow=slow, signal=signal)
+        macd_result = df.ta.macd(close=df["close"], fast=fast, slow=slow, signal=signal)
+        if macd_result is None or macd_result.empty:
+            # Return empty series for insufficient data
+            empty_series = pd.Series(dtype=float)
+            return empty_series, empty_series, empty_series
         return (
             macd_result["MACD_12_26_9"],
             macd_result["MACDs_12_26_9"],
@@ -29,7 +38,9 @@ class Indicators:
     @staticmethod
     def adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
         """Calculate ADX indicator."""
-        adx_result = df.ta.adx(length=period)
+        adx_result = df.ta.adx(high=df["high"], low=df["low"], close=df["close"], length=period)
+        if adx_result is None or adx_result.empty:
+            return pd.Series(dtype=float)
         return adx_result["ADX_14"]
 
     @staticmethod
@@ -37,24 +48,29 @@ class Indicators:
         df: pd.DataFrame, period: int = 20, std: float = 2.0
     ) -> Tuple[pd.Series, pd.Series, pd.Series]:
         """Calculate Bollinger Bands."""
-        bb_result = df.ta.bbands(length=period, std=std)
+        bb_result = df.ta.bbands(close=df["close"], length=period, std=std)
+        if bb_result is None or bb_result.empty:
+            empty_series = pd.Series(dtype=float)
+            return empty_series, empty_series, empty_series
         return bb_result["BBL_20_2.0"], bb_result["BBM_20_2.0"], bb_result["BBU_20_2.0"]
 
     @staticmethod
     def ema(df: pd.DataFrame, period: int) -> pd.Series:
         """Calculate EMA indicator."""
-        return df.ta.ema(length=period)
+        result = df.ta.ema(close=df["close"], length=period)
+        return result if result is not None else pd.Series(dtype=float)
 
     @staticmethod
     def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
         """Calculate Average True Range."""
-        return df.ta.atr(length=period)
+        result = df.ta.atr(high=df["high"], low=df["low"], close=df["close"], length=period)
+        return result if result is not None else pd.Series(dtype=float)
 
     @staticmethod
     def vwap(df: pd.DataFrame) -> pd.Series:
         """Calculate VWAP indicator."""
         try:
-            return df.ta.vwap()
+            return df.ta.vwap(high=df["high"], low=df["low"], close=df["close"], volume=df["volume"])
         except AttributeError:
             # Fallback for non-datetime index
             typical_price = (df["high"] + df["low"] + df["close"]) / 3
