@@ -10,9 +10,9 @@ import pandas as pd
 from nats.aio.client import Client as NATS
 from nats.aio.errors import ErrConnectionClosed, ErrTimeout
 
-from core.signal_engine import SignalEngine
-from services.publisher import SignalPublisher
-from models.signal import Signal
+from ta_bot.core.signal_engine import SignalEngine
+from ta_bot.services.publisher import SignalPublisher
+from ta_bot.models.signal import Signal
 
 logger = logging.getLogger(__name__)
 

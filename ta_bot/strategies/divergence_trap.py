@@ -5,8 +5,8 @@ Detects hidden bullish divergence signals when RSI shows hidden bullish divergen
 
 from typing import Dict, Any, Optional
 import pandas as pd
-from models.signal import SignalType
-from strategies.base_strategy import BaseStrategy
+from ta_bot.models.signal import SignalType
+from ta_bot.strategies.base_strategy import BaseStrategy
 
 
 class DivergenceTrapStrategy(BaseStrategy):

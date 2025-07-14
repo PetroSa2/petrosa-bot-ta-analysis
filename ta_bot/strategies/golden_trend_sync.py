@@ -5,8 +5,8 @@ Detects pullback entry signals when price pulls back to EMA21 with trend confirm
 
 from typing import Dict, Any, Optional
 import pandas as pd
-from models.signal import SignalType
-from strategies.base_strategy import BaseStrategy
+from ta_bot.models.signal import SignalType
+from ta_bot.strategies.base_strategy import BaseStrategy
 
 
 class GoldenTrendSyncStrategy(BaseStrategy):
