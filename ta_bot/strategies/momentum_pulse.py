@@ -20,7 +20,13 @@ class MomentumPulseStrategy(BaseStrategy):
         - Price above EMA21 and EMA50
     """
 
-    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any], symbol: str = "UNKNOWN", period: str = "15m") -> Optional[Signal]:
+    def analyze(
+        self,
+        df: pd.DataFrame,
+        indicators: Dict[str, Any],
+        symbol: str = "UNKNOWN",
+        period: str = "15m"
+    ) -> Optional[Signal]:
         """Analyze for momentum pulse signals."""
         if len(df) < 2:
             return None
@@ -64,16 +70,12 @@ class MomentumPulseStrategy(BaseStrategy):
         if not all_confirmations:
             return None
 
-        # Prepare metadata
-        metadata = {
-            "rsi": current["rsi"],
+        # Prepare metadata for signal
+        signal_metadata = {
             "macd_hist": current["macd_hist"],
-            "adx": current["adx"],
-            "ema21": current["ema21"],
-            "ema50": current["ema50"],
-            "ema200": current.get("ema200", 0),
-            "close": current["close"],
-            "confirmations": dict(confirmations),
+            "macd_signal": current.get("macd_signal", 0),
+            "rsi": current["rsi"],
+            "volume": current.get("volume", 0),
         }
 
         return Signal(
@@ -82,10 +84,5 @@ class MomentumPulseStrategy(BaseStrategy):
             signal=SignalType.BUY,
             strategy="momentum_pulse",
             confidence=0.74,
-            metadata={
-                "macd_hist": current["macd_hist"],
-                "macd_signal": current.get("macd_signal", 0),
-                "rsi": current["rsi"],
-                "volume": current.get("volume", 0),
-            },
+            metadata=signal_metadata,
         )

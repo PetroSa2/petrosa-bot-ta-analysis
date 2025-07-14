@@ -241,6 +241,70 @@ make test
 6. **Container**: Container testing
 7. **Deploy**: Kubernetes deployment
 
+## GitHub CLI Commands
+
+### File Output Pattern
+When running GitHub CLI (`gh`) commands, always dump output to a temporary file and then read it:
+```bash
+# Example pattern
+gh api repos/owner/repo/contents/path > /tmp/gh_output.json
+cat /tmp/gh_output.json
+
+# For commands that need processing
+gh repo list --json name,url > /tmp/repos.json
+jq -r '.[].name' /tmp/repos.json
+
+# Clean up after use
+rm /tmp/gh_output.json
+```
+
+### Common GitHub CLI Patterns
+```bash
+# Get repository info
+gh api repos/owner/repo > /tmp/repo_info.json
+
+# List issues
+gh issue list --repo owner/repo --json number,title,state > /tmp/issues.json
+
+# Get workflow runs
+gh run list --repo owner/repo --json id,status,conclusion > /tmp/runs.json
+
+# Read and process the output
+cat /tmp/repo_info.json | jq '.name'
+```
+
+## GitHub CLI Commands
+
+### File Output Pattern
+When running GitHub CLI (`gh`) commands, always dump output to a temporary file and then read it:
+```bash
+# Example pattern
+gh api repos/owner/repo/contents/path > /tmp/gh_output.json
+cat /tmp/gh_output.json
+
+# For commands that need processing
+gh repo list --json name,url > /tmp/repos.json
+jq -r '.[].name' /tmp/repos.json
+
+# Clean up after use
+rm /tmp/gh_output.json
+```
+
+### Common GitHub CLI Patterns
+```bash
+# Get repository info
+gh api repos/owner/repo > /tmp/repo_info.json
+
+# List issues
+gh issue list --repo owner/repo --json number,title,state > /tmp/issues.json
+
+# Get workflow runs
+gh run list --repo owner/repo --json id,status,conclusion > /tmp/runs.json
+
+# Read and process the output
+cat /tmp/repo_info.json | jq '.name'
+```
+
 ## Always Reference
 - Check `ta_bot/README.md` for TA bot documentation
 - Use `Makefile` for all common commands
@@ -251,4 +315,6 @@ make test
 - Kubernetes deployment uses namespace `petrosa-apps`
 - Health checks are critical for Kubernetes probes
 - Security scanning is integrated into the pipeline
-- **NumPy compatibility**: Use `numpy<2.0.0` for pandas-ta compatibility 
+- **NumPy compatibility**: Use `numpy<2.0.0` for pandas-ta compatibility
+- **GitHub CLI**: Always dump output to `/tmp` files and read from them
+- **GitHub CLI**: Always dump output to `/tmp` files and read from them 
