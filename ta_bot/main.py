@@ -8,11 +8,11 @@ import asyncio
 import logging
 from typing import Dict, Any
 
-from core.signal_engine import SignalEngine
-from services.nats_listener import NATSListener
-from services.publisher import SignalPublisher
-from config import Config
-from health import start_health_server
+from ta_bot.core.signal_engine import SignalEngine
+from ta_bot.services.nats_listener import NATSListener
+from ta_bot.services.publisher import SignalPublisher
+from ta_bot.config import Config
+from ta_bot.health import start_health_server
 
 # Configure logging
 logging.basicConfig(
