@@ -38,7 +38,9 @@ class Indicators:
     @staticmethod
     def adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
         """Calculate ADX indicator."""
-        adx_result = df.ta.adx(high=df["high"], low=df["low"], close=df["close"], length=period)
+        adx_result = df.ta.adx(
+            high=df["high"], low=df["low"], close=df["close"], length=period
+        )
         if adx_result is None or adx_result.empty:
             return pd.Series(dtype=float)
         return adx_result["ADX_14"]
@@ -63,14 +65,18 @@ class Indicators:
     @staticmethod
     def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
         """Calculate Average True Range."""
-        result = df.ta.atr(high=df["high"], low=df["low"], close=df["close"], length=period)
+        result = df.ta.atr(
+            high=df["high"], low=df["low"], close=df["close"], length=period
+        )
         return result if result is not None else pd.Series(dtype=float)
 
     @staticmethod
     def vwap(df: pd.DataFrame) -> pd.Series:
         """Calculate VWAP indicator."""
         try:
-            return df.ta.vwap(high=df["high"], low=df["low"], close=df["close"], volume=df["volume"])
+            return df.ta.vwap(
+                high=df["high"], low=df["low"], close=df["close"], volume=df["volume"]
+            )
         except AttributeError:
             # Fallback for non-datetime index
             typical_price = (df["high"] + df["low"] + df["close"]) / 3
