@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 async def start_health_server(nats_url: str, api_endpoint: str, port: int = 8000):
     """Start a simple health server."""
     logger.info(f"Starting health server on port {port}")
-    
+
     # For now, just return a mock runner
     # In a real implementation, this would start a FastAPI server
     return MockHealthRunner()
@@ -20,14 +20,14 @@ async def start_health_server(nats_url: str, api_endpoint: str, port: int = 8000
 
 class MockHealthRunner:
     """Mock health server runner for testing."""
-    
+
     def __init__(self):
         self.running = True
-    
+
     async def start(self):
         """Start the health server."""
         logger.info("Mock health server started")
-    
+
     async def stop(self):
         """Stop the health server."""
         self.running = False
@@ -42,8 +42,8 @@ def get_health_status() -> Dict[str, Any]:
         "components": {
             "signal_engine": "running",
             "nats_listener": "connected",
-            "publisher": "ready"
-        }
+            "publisher": "ready",
+        },
     }
 
 
@@ -54,14 +54,11 @@ def get_readiness_status() -> Dict[str, Any]:
         "checks": {
             "nats_connection": "ok",
             "api_endpoint": "ok",
-            "signal_engine": "ok"
-        }
+            "signal_engine": "ok",
+        },
     }
 
 
 def get_liveness_status() -> Dict[str, Any]:
     """Get liveness status."""
-    return {
-        "status": "alive",
-        "uptime": "0s"
-    } 
+    return {"status": "alive", "uptime": "0s"}
