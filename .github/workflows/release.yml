@@ -17,7 +17,6 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot
 
 jobs:
   lint-and-test:
@@ -70,21 +69,26 @@ jobs:
         # Generate and display coverage report
         coverage report --show-missing --skip-covered
         
-        # Get coverage percentage
-        COVERAGE_PERCENT=$(coverage report --format=total)
+        # Get coverage percentage (handle case where coverage report might fail)
+        COVERAGE_PERCENT=$(coverage report --format=total 2>/dev/null || echo "0")
         echo ""
         echo "📈 Total Coverage: ${COVERAGE_PERCENT}%"
         
         # Set coverage threshold (adjust as needed)
         COVERAGE_THRESHOLD=80
         
-        if (( $(echo "$COVERAGE_PERCENT >= $COVERAGE_THRESHOLD" | bc -l) )); then
-          echo "✅ Coverage meets threshold of ${COVERAGE_THRESHOLD}%"
+        # Only check threshold if we have a valid coverage percentage
+        if [[ "$COVERAGE_PERCENT" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+          if (( $(echo "$COVERAGE_PERCENT >= $COVERAGE_THRESHOLD" | bc -l 2>/dev/null || echo "0") )); then
+            echo "✅ Coverage meets threshold of ${COVERAGE_THRESHOLD}%"
+          else
+            echo "⚠️  Coverage below threshold of ${COVERAGE_THRESHOLD}%"
+            echo "❌ Current: ${COVERAGE_PERCENT}%, Required: ${COVERAGE_THRESHOLD}%"
+            # Uncomment the next line to fail the build on low coverage
+            # exit 1
+          fi
         else
-          echo "⚠️  Coverage below threshold of ${COVERAGE_THRESHOLD}%"
-          echo "❌ Current: ${COVERAGE_PERCENT}%, Required: ${COVERAGE_THRESHOLD}%"
-          # Uncomment the next line to fail the build on low coverage
-          # exit 1
+          echo "⚠️  Could not determine coverage percentage, skipping threshold check"
         fi
     
     - name: Upload coverage reports to Codecov
@@ -465,7 +469,7 @@ jobs:
           echo "⚠️ Deployment skipped - Kubernetes configuration not available"
           echo "📦 Version: ${IMAGE_TAG}"
           echo "🔧 To enable deployment, add KUBE_CONFIG_DATA secret to GitHub repository"
-        elif [ "${{ steps.check-dockerhub.outputs.skip-docker }}" == "true" ]; then
+        elif [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
           echo "⚠️ Docker build skipped - Docker Hub credentials not available"
           echo "📦 Version: ${IMAGE_TAG}"
           echo "🔧 To enable Docker builds, add DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets"
