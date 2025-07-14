@@ -18,11 +18,11 @@ class BaseStrategy:
     def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
         """
         Analyze candles and return a trading signal.
-        
+
         Args:
             df: DataFrame with OHLCV data
             metadata: Additional metadata (symbol, period, etc.)
-            
+
         Returns:
             Signal object if conditions are met, None otherwise
         """

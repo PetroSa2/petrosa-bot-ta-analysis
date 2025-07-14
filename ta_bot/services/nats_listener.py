@@ -35,25 +35,27 @@ class NATSListener:
             self.nc = NATS()
             await self.nc.connect(self.nats_url)
             logger.info(f"Connected to NATS at {self.nats_url}")
-            
+
             # Initialize signal engine and publisher
             self.signal_engine = SignalEngine()
             self.publisher = SignalPublisher(self.api_endpoint)
             await self.publisher.start()
-            
+
             # Subscribe to candle updates
             subscriptions: List[Subscription] = []
-            
+
             for symbol in self.symbols:
                 for period in self.periods:
                     subject = f"candles.{symbol}.{period}"
-                    sub = await self.nc.subscribe(subject, cb=self._handle_candle_update)
+                    sub = await self.nc.subscribe(
+                        subject, cb=self._handle_candle_update
+                    )
                     subscriptions.append(sub)
                     logger.info(f"Subscribed to {subject}")
-            
+
             self.subscriptions = subscriptions
             logger.info("NATS listener started successfully")
-            
+
         except Exception as e:
             logger.error(f"Error starting NATS listener: {e}")
             raise

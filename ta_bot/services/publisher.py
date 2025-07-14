@@ -44,19 +44,19 @@ class SignalPublisher:
                     "signal": signal.signal_type.value,
                     "confidence": signal.confidence,
                     "strategy": signal.strategy,
-                    "metadata": signal.metadata
+                    "metadata": signal.metadata,
                 }
 
                 async with self.session.post(
                     self.api_endpoint,
                     json=signal_data,
-                    timeout=aiohttp.ClientTimeout(total=10)
+                    timeout=aiohttp.ClientTimeout(total=10),
                 ) as response:
                     if response.status == 200:
                         logger.info(f"Signal published successfully: {signal.symbol}")
                     else:
                         logger.error(f"Failed to publish signal: {response.status}")
-                        
+
             except Exception as e:
                 logger.error(f"Error publishing signal: {e}")
 
@@ -76,19 +76,19 @@ class SignalPublisher:
                     "signal": signal.signal_type.value,
                     "confidence": signal.confidence,
                     "strategy": signal.strategy,
-                    "metadata": signal.metadata
+                    "metadata": signal.metadata,
                 }
                 signals_data.append(signal_data)
 
             async with self.session.post(
                 self.api_endpoint,
                 json={"signals": signals_data},
-                timeout=aiohttp.ClientTimeout(total=30)
+                timeout=aiohttp.ClientTimeout(total=30),
             ) as response:
                 if response.status == 200:
                     logger.info(f"Batch published successfully: {len(signals)} signals")
                 else:
                     logger.error(f"Failed to publish batch: {response.status}")
-                    
+
         except Exception as e:
             logger.error(f"Error publishing batch: {e}")

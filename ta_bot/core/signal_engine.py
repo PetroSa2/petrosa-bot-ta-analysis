@@ -33,10 +33,12 @@ class SignalEngine:
         }
         self.indicators = Indicators()
 
-    def analyze_candles(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> List[Signal]:
+    def analyze_candles(
+        self, df: pd.DataFrame, metadata: Dict[str, Any]
+    ) -> List[Signal]:
         """Analyze candles using all strategies and return signals."""
         signals: List[Signal] = []
-        
+
         for strategy in self.strategies:
             try:
                 signal = strategy.analyze(df, metadata)
@@ -44,7 +46,7 @@ class SignalEngine:
                     signals.append(signal)
             except Exception as e:
                 logger.error(f"Error in strategy {strategy.__class__.__name__}: {e}")
-                
+
         return signals
 
     def _calculate_indicators(self, df: pd.DataFrame) -> Dict[str, Any]:

@@ -94,6 +94,6 @@ class RangeBreakPopStrategy(BaseStrategy):
                 "recent_high": float(recent_high),
                 "atr_falling": atr_falling,
                 "rsi_neutral": rsi_ok,
-                "volume_breakout": volume_ok
-            }
+                "volume_breakout": volume_ok,
+            },
         )
