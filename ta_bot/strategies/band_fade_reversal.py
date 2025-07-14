@@ -39,6 +39,10 @@ class BandFadeReversalStrategy(BaseStrategy):
         upper_band = bb_upper.iloc[-1]
         middle_band = bb_middle.iloc[-1]
 
+        # Calculate RSI for additional context
+        rsi = self.indicators.rsi(df)
+        rsi_value = rsi.iloc[-1] if rsi is not None else 50.0
+
         # Signal conditions
         near_upper = close >= upper_band * 0.98  # Within 2% of upper band
         bearish_candle = close < (high + low) / 2  # Close below midpoint

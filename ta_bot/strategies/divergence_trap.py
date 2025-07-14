@@ -47,6 +47,7 @@ class DivergenceTrapStrategy(BaseStrategy):
         if price_lower_low and rsi_higher_low:
             # Calculate divergence strength
             rsi_change = (current_rsi - previous_rsi) / previous_rsi
+            price_change = ((current_low - previous_low) / previous_low) * 100
 
             # Strong divergence if RSI change is significant
             strong_divergence = abs(rsi_change) > 0.1  # 10% RSI change
