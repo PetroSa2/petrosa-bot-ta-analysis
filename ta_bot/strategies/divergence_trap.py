@@ -77,6 +77,6 @@ class DivergenceTrapStrategy(BaseStrategy):
         # Calculate simple trend percentage
         start_price = df["close"].iloc[-10]
         end_price = df["close"].iloc[-1]
-        
+
         trend_percent = ((end_price - start_price) / start_price) * 100
         return trend_percent
