@@ -25,7 +25,7 @@ class MomentumPulseStrategy(BaseStrategy):
         df: pd.DataFrame,
         indicators: Dict[str, Any],
         symbol: str = "UNKNOWN",
-        period: str = "15m"
+        period: str = "15m",
     ) -> Optional[Signal]:
         """Analyze for momentum pulse signals."""
         if len(df) < 2:

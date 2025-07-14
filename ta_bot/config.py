@@ -36,8 +36,12 @@ class Config:
     )
 
     # Technical analysis settings
-    candle_periods: List[str] = field(default_factory=lambda: ["1m", "5m", "15m", "1h", "4h"])
-    symbols: List[str] = field(default_factory=lambda: ["BTCUSDT", "ETHUSDT", "ADAUSDT"])
+    candle_periods: List[str] = field(
+        default_factory=lambda: ["1m", "5m", "15m", "1h", "4h"]
+    )
+    symbols: List[str] = field(
+        default_factory=lambda: ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
+    )
 
     # Confidence thresholds
     min_confidence: float = 0.6
