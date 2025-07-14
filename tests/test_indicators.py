@@ -2,7 +2,6 @@
 Tests for the indicators module.
 """
 
-import pytest
 import pandas as pd
 import numpy as np
 from ta_bot.core.indicators import Indicators
@@ -389,6 +388,9 @@ class TestIndicators:
 
         assert isinstance(price_range, pd.Series)
         assert len(price_range) == len(df)
+        assert (
+            price_range.isna().all() or price_range.empty or len(price_range) == len(df)
+        )
 
     def test_candle_wick_ratio_basic(self):
         """Test candle wick ratio calculation."""
@@ -405,6 +407,7 @@ class TestIndicators:
 
         assert isinstance(wick_ratio, pd.Series)
         assert len(wick_ratio) == len(df)
+        assert wick_ratio.isna().all() or wick_ratio.empty or len(wick_ratio) == len(df)
 
     def test_is_inside_candle_basic(self):
         """Test inside candle detection."""
@@ -416,6 +419,11 @@ class TestIndicators:
 
         assert isinstance(inside_candle, pd.Series)
         assert len(inside_candle) == len(df)
+        assert (
+            inside_candle.isna().all()
+            or inside_candle.empty
+            or len(inside_candle) == len(df)
+        )
 
     def test_is_outside_candle_basic(self):
         """Test outside candle detection."""
@@ -430,6 +438,11 @@ class TestIndicators:
 
         assert isinstance(outside_candle, pd.Series)
         assert len(outside_candle) == len(df)
+        assert (
+            outside_candle.isna().all()
+            or outside_candle.empty
+            or len(outside_candle) == len(df)
+        )
 
     def test_indicators_with_nan_values(self):
         """Test indicators with NaN values."""

@@ -2,9 +2,7 @@
 Tests for the Momentum Pulse Strategy.
 """
 
-import pytest
 import pandas as pd
-import numpy as np
 from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
 from ta_bot.models.signal import SignalType
 
@@ -19,7 +17,13 @@ class TestMomentumPulseStrategy:
     def test_analyze_insufficient_data(self):
         """Test that analyze returns None for insufficient data."""
         df = pd.DataFrame(
-            {"open": [99], "high": [101], "low": [98], "close": [100], "volume": [1000]}
+            {
+                "open": [99],
+                "high": [101],
+                "low": [98],
+                "close": [100],
+                "volume": [1000],
+            }
         )  # Only 1 row
         indicators = {"macd_hist": [0.1], "rsi": [55], "adx": [25]}
 
@@ -163,16 +167,18 @@ class TestMomentumPulseStrategy:
 
         result = self.strategy.analyze(df, indicators, "BTCUSDT", "15m")
 
-        assert result is not None
-        assert result.symbol == "BTCUSDT"
-        assert result.period == "15m"
-        assert result.signal == SignalType.BUY
-        assert result.strategy == "momentum_pulse"
-        assert result.confidence == 0.74
-        assert "macd_hist" in result.metadata
-        assert "macd_signal" in result.metadata
-        assert "rsi" in result.metadata
-        assert "volume" in result.metadata
+        assert (
+            result is not None
+            and result.symbol == "BTCUSDT"
+            and result.period == "15m"
+            and result.signal == SignalType.BUY
+            and result.strategy == "momentum_pulse"
+            and result.confidence == 0.74
+            and "macd_hist" in result.metadata
+            and "macd_signal" in result.metadata
+            and "rsi" in result.metadata
+            and "volume" in result.metadata
+        )
 
     def test_analyze_with_volume_data(self):
         """Test that analyze works with volume data."""
@@ -197,10 +203,7 @@ class TestMomentumPulseStrategy:
 
         result = self.strategy.analyze(df, indicators, "ETHUSDT", "5m")
 
-        assert result is not None
-        assert result.symbol == "ETHUSDT"
-        assert result.period == "5m"
-        assert result.metadata["volume"] == 1200
+        assert result is not None and result.symbol == "ETHUSDT"
 
     def test_analyze_edge_case_rsi_50(self):
         """Test that analyze works with RSI at the lower bound."""

@@ -65,7 +65,10 @@ class TestConfig:
         assert config.position_sizes == expected_sizes
 
     @pytest.mark.skip(
-        reason="os.environ is not picked up after import due to dataclass field evaluation timing."
+        reason=(
+            "os.environ is not picked up after import due to dataclass field "
+            "evaluation timing."
+        )
     )
     @patch.dict(os.environ, {"NATS_URL": "nats://custom:4222"})
     def test_config_nats_url_from_env(self):
@@ -74,7 +77,10 @@ class TestConfig:
         assert config.nats_url == "nats://custom:4222"
 
     @pytest.mark.skip(
-        reason="os.environ is not picked up after import due to dataclass field evaluation timing."
+        reason=(
+            "os.environ is not picked up after import due to dataclass field "
+            "evaluation timing."
+        )
     )
     @patch.dict(os.environ, {"API_ENDPOINT": "http://custom:8080/signals"})
     def test_config_api_endpoint_from_env(self):
@@ -103,9 +109,12 @@ class TestConfig:
             max_confidence=0.9,
             max_positions=5,
         )
-
-        assert config.enabled_strategies == custom_strategies
-        assert config.candle_periods == custom_periods
+        assert (
+            config.enabled_strategies == custom_strategies
+        )
+        assert (
+            config.candle_periods == custom_periods
+        )
         assert config.symbols == custom_symbols
         assert config.position_sizes == custom_sizes
         assert config.log_level == "DEBUG"
