@@ -6,7 +6,7 @@ import aiohttp
 import asyncio
 import logging
 from typing import Dict, Any, List
-from models.signal import Signal
+from ta_bot.models.signal import Signal
 
 logger = logging.getLogger(__name__)
 

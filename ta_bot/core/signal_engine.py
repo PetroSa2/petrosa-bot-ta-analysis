@@ -7,14 +7,14 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 
-from models.signal import Signal, SignalType
-from core.confidence import ConfidenceCalculator
-from core.indicators import Indicators
-from strategies.momentum_pulse import MomentumPulseStrategy
-from strategies.band_fade_reversal import BandFadeReversalStrategy
-from strategies.golden_trend_sync import GoldenTrendSyncStrategy
-from strategies.range_break_pop import RangeBreakPopStrategy
-from strategies.divergence_trap import DivergenceTrapStrategy
+from ta_bot.models.signal import Signal, SignalType
+from ta_bot.core.confidence import ConfidenceCalculator
+from ta_bot.core.indicators import Indicators
+from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
+from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy
+from ta_bot.strategies.golden_trend_sync import GoldenTrendSyncStrategy
+from ta_bot.strategies.range_break_pop import RangeBreakPopStrategy
+from ta_bot.strategies.divergence_trap import DivergenceTrapStrategy
 
 logger = logging.getLogger(__name__)
 

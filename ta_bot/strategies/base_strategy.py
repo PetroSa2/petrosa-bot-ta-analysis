@@ -5,7 +5,7 @@ Base strategy class that all trading strategies inherit from.
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 import pandas as pd
-from models.signal import SignalType
+from ta_bot.models.signal import SignalType
 
 
 class BaseStrategy(ABC):

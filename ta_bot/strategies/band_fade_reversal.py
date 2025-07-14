@@ -5,8 +5,8 @@ Detects mean reversion signals when price closes outside Bollinger Bands then ba
 
 from typing import Dict, Any, Optional
 import pandas as pd
-from models.signal import SignalType
-from strategies.base_strategy import BaseStrategy
+from ta_bot.models.signal import SignalType
+from ta_bot.strategies.base_strategy import BaseStrategy
 
 
 class BandFadeReversalStrategy(BaseStrategy):

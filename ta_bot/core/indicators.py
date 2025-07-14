@@ -47,7 +47,13 @@ class Indicators:
     @staticmethod
     def vwap(df: pd.DataFrame) -> pd.Series:
         """Calculate VWAP indicator."""
-        return df.ta.vwap()
+        try:
+            return df.ta.vwap()
+        except AttributeError:
+            # Fallback for non-datetime index
+            typical_price = (df['high'] + df['low'] + df['close']) / 3
+            vwap = (typical_price * df['volume']).cumsum() / df['volume'].cumsum()
+            return vwap
     
     @staticmethod
     def volume_sma(df: pd.DataFrame, period: int = 20) -> pd.Series:
