@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  PYTHON_VERSION: '3.11'
+  DOCKER_IMAGE: petrosa/ta-bot
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    
+    - name: Run tests
+      run: |
+        python -m pytest tests/ --cov=ta_bot
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build and push Docker image
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        docker build -t ${{ env.DOCKER_IMAGE }}:$VERSION .
+        docker build -t ${{ env.DOCKER_IMAGE }}:latest .
+        echo "Built version: $VERSION"
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: Deploy release
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > k8s/kubeconfig.yaml
+        export KUBECONFIG=k8s/kubeconfig.yaml
+        
+        # Apply Kubernetes manifests
+        kubectl apply -f k8s/
+        
+        # Update deployment with new version
+        kubectl set image deployment/petrosa-ta-bot ta-bot=${{ env.DOCKER_IMAGE }}:$VERSION -n petrosa-apps
+        
+        # Wait for rollout
+        kubectl rollout status deployment/petrosa-ta-bot -n petrosa-apps
+        
+        # Verify deployment
+        kubectl get pods -n petrosa-apps -l app=petrosa-ta-bot
+        kubectl get svc -n petrosa-apps -l app=petrosa-ta-bot
+    
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          ## Petrosa TA Bot Release ${{ github.ref }}
+          
+          ### Changes
+          - Technical Analysis Bot with 5 strategies
+          - Kubernetes deployment ready
+          - Comprehensive testing and security scanning
+          
+          ### Deployment
+          - Deployed to production Kubernetes cluster
+          - Health checks enabled
+          - Auto-scaling configured
+        draft: false
+        prerelease: false 

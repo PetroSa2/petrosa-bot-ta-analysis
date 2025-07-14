@@ -1,0 +1,170 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  DOCKER_IMAGE: petrosa/ta-bot
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    
+    - name: Run linting
+      run: |
+        black --check ta_bot/ tests/
+        flake8 ta_bot/ tests/
+        mypy ta_bot/
+        ruff check ta_bot/ tests/
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    
+    - name: Run tests with coverage
+      run: |
+        python -m pytest tests/ --cov=ta_bot --cov-report=xml --cov-report=html
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  security:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    
+    - name: Run security scans
+      run: |
+        bandit -r ta_bot/
+        safety check
+    
+    - name: Install Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  build:
+    runs-on: ubuntu-latest
+    needs: security
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ env.DOCKER_IMAGE }}:${{ github.sha }} .
+        docker build -t ${{ env.DOCKER_IMAGE }}:latest .
+    
+    - name: Run container tests
+      run: |
+        docker run --rm ${{ env.DOCKER_IMAGE }}:${{ github.sha }} python -c "import ta_bot; print('TA Bot imported successfully')"
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > k8s/kubeconfig.yaml
+        export KUBECONFIG=k8s/kubeconfig.yaml
+    
+    - name: Deploy to staging
+      run: |
+        export KUBECONFIG=k8s/kubeconfig.yaml
+        kubectl apply -f k8s/
+        kubectl set image deployment/petrosa-ta-bot ta-bot=${{ env.DOCKER_IMAGE }}:${{ github.sha }} -n petrosa-apps
+        kubectl rollout status deployment/petrosa-ta-bot -n petrosa-apps
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > k8s/kubeconfig.yaml
+        export KUBECONFIG=k8s/kubeconfig.yaml
+    
+    - name: Deploy to production
+      run: |
+        export KUBECONFIG=k8s/kubeconfig.yaml
+        kubectl apply -f k8s/
+        kubectl set image deployment/petrosa-ta-bot ta-bot=${{ env.DOCKER_IMAGE }}:${{ github.sha }} -n petrosa-apps
+        kubectl rollout status deployment/petrosa-ta-bot -n petrosa-apps
+    
+    - name: Verify deployment
+      run: |
+        export KUBECONFIG=k8s/kubeconfig.yaml
+        kubectl get pods -n petrosa-apps -l app=petrosa-ta-bot
+        kubectl get svc -n petrosa-apps -l app=petrosa-ta-bot 
