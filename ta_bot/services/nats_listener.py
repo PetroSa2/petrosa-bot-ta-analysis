@@ -5,14 +5,13 @@ NATS listener service for receiving candle data and processing signals.
 import asyncio
 import json
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
 import pandas as pd
 from nats.aio.client import Client as NATS
-from nats.aio.errors import ErrConnectionClosed, ErrTimeout
+from nats.aio.subscription import Subscription
 
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.services.publisher import SignalPublisher
-from ta_bot.models.signal import Signal
 
 logger = logging.getLogger(__name__)
 

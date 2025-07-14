@@ -112,21 +112,32 @@ class DivergenceTrapStrategy(BaseStrategy):
             return False
 
         # Check for hidden bullish divergence
-        # Price should be making higher lows while RSI makes lower lows
-        if len(price_lows) >= 2 and len(rsi_lows) >= 2:
-            # Get the two most recent lows
-            price_low1, price_val1 = price_lows[-2]
-            price_low2, price_val2 = price_lows[-1]
-            rsi_low1, rsi_val1 = rsi_lows[-2]
-            rsi_low2, rsi_val2 = rsi_lows[-1]
+        # Price makes lower low, but RSI makes higher low
+        price_lower_low = current_low < previous_low
+        rsi_higher_low = current_rsi > previous_rsi
 
-            # Price higher low, RSI lower low
-            price_higher_low = price_val2 > price_val1
-            rsi_lower_low = rsi_val2 < rsi_val1
+        if price_lower_low and rsi_higher_low:
+            # Calculate divergence strength
+            price_change = (current_low - previous_low) / previous_low
+            rsi_change = (current_rsi - previous_rsi) / previous_rsi
 
-            return price_higher_low and rsi_lower_low
+            # Strong divergence if RSI change is significant
+            strong_divergence = abs(rsi_change) > 0.1  # 10% RSI change
 
-        return False
+            if strong_divergence:
+                return Signal(
+                    symbol=metadata.get("symbol", "UNKNOWN"),
+                    period=metadata.get("period", "15m"),
+                    signal_type=SignalType.BUY,
+                    strategy="divergence_trap",
+                    confidence=0.7,
+                    metadata={
+                        "rsi": current_rsi,
+                        "price_low": current_low,
+                        "divergence_strength": abs(rsi_change),
+                        "trend_percent": metadata.get("trend_percent", 0),
+                    },
+                )
 
     def _calculate_trend_percent(self, df: pd.DataFrame) -> float:
         """Calculate trend percentage over the last 7 days (assuming 1h candles)."""

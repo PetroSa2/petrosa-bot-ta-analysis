@@ -6,7 +6,7 @@ Main entry point for the TA bot microservice.
 
 import asyncio
 import logging
-from typing import Dict, Any
+
 
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.services.nats_listener import NATSListener
@@ -35,7 +35,7 @@ async def main():
         logger.info("Starting TA Bot...")
 
         # Start health server
-        health_runner = await start_health_server(
+        await start_health_server(
             nats_url=config.nats_url, api_endpoint=config.api_endpoint, port=8000
         )
 

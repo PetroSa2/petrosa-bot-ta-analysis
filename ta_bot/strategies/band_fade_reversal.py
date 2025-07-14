@@ -19,70 +19,45 @@ class BandFadeReversalStrategy(BaseStrategy):
         - ADX(14) < 20
     """
 
-    def analyze(
-        self, df: pd.DataFrame, indicators: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """Analyze for band fade reversal signals."""
-        if len(df) < 3:
+    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+        """Analyze candles for Band Fade Reversal signals."""
+        if len(df) < 20:
             return None
 
-        current = self._get_current_values(indicators, df)
-        previous = self._get_previous_values(indicators, df)
+        # Get latest candle
+        current = df.iloc[-1]
+        high = current["high"]
+        low = current["low"]
+        close = current["close"]
 
-        # Check if we have all required indicators
-        required_indicators = ["bb_upper", "rsi", "adx", "close", "atr"]
-        if not all(indicator in current for indicator in required_indicators):
+        # Calculate Bollinger Bands
+        bb_upper, bb_middle, bb_lower = self.indicators.bollinger_bands(df)
+
+        if bb_upper is None or bb_middle is None or bb_lower is None:
             return None
 
-        # Check if we have enough data for previous analysis
-        if len(df) < 3:
-            return None
+        # Check if price is near upper band
+        upper_band = bb_upper.iloc[-1]
+        middle_band = bb_middle.iloc[-1]
 
-        # Get values from 2 candles ago
-        two_ago_close = float(df["close"].iloc[-3])
-        two_ago_bb_upper = float(indicators["bb_upper"].iloc[-3])
+        # Signal conditions
+        near_upper = close >= upper_band * 0.98  # Within 2% of upper band
+        bearish_candle = close < (high + low) / 2  # Close below midpoint
+        volume_spike = metadata.get("volume_ratio", 0) > 1.5
 
-        # Trigger: Price closes outside upper BB, then closes back inside
-        # First: price was outside upper BB 2 candles ago
-        was_outside = two_ago_close > two_ago_bb_upper
+        if near_upper and bearish_candle and volume_spike:
+            return Signal(
+                symbol=metadata.get("symbol", "UNKNOWN"),
+                period=metadata.get("period", "15m"),
+                signal_type=SignalType.SELL,
+                strategy="band_fade_reversal",
+                confidence=0.65,
+                metadata={
+                    "bb_upper": upper_band,
+                    "bb_middle": middle_band,
+                    "close": close,
+                    "volume_ratio": metadata.get("volume_ratio", 0),
+                },
+            )
 
-        # Second: current price is back inside upper BB
-        is_inside = current["close"] <= current["bb_upper"]
-
-        bb_fade_trigger = was_outside and is_inside
-
-        if not bb_fade_trigger:
-            return None
-
-        # Confirmations
-        confirmations = []
-
-        # RSI > 70
-        rsi_ok = current["rsi"] > 70
-        confirmations.append(("rsi_overbought", rsi_ok))
-
-        # ADX < 20
-        adx_ok = current["adx"] < 20
-        confirmations.append(("adx_weak_trend", adx_ok))
-
-        # Check if all confirmations are met
-        all_confirmations = all(confirmation[1] for confirmation in confirmations)
-
-        if not all_confirmations:
-            return None
-
-        # Calculate wick ratio for confidence
-        wick_ratio = current.get("wick_ratio", 0)
-
-        # Prepare metadata
-        metadata = {
-            "rsi": current["rsi"],
-            "adx": current["adx"],
-            "bb_upper": current["bb_upper"],
-            "close": current["close"],
-            "atr": current["atr"],
-            "wick_ratio": wick_ratio,
-            "confirmations": dict(confirmations),
-        }
-
-        return {"signal_type": SignalType.SELL, "metadata": metadata}
+        return None

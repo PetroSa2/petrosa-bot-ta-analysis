@@ -2,7 +2,7 @@
 Confidence calculation module for trading signals.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import pandas as pd
 
 

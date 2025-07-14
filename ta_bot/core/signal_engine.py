@@ -4,7 +4,7 @@ Signal engine that coordinates all trading strategies.
 
 import pandas as pd
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from ta_bot.models.signal import Signal, SignalType

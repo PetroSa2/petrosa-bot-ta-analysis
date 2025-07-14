@@ -3,9 +3,6 @@ Technical indicators wrapper using pandas-ta.
 """
 
 import pandas as pd
-import pandas_ta as ta
-from typing import Tuple, Optional
-import numpy as np
 
 
 class Indicators:

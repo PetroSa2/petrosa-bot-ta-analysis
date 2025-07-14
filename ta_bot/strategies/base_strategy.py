@@ -1,21 +1,20 @@
 """
-Base strategy class that all trading strategies inherit from.
+Base strategy class for technical analysis strategies.
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
 import pandas as pd
-from ta_bot.models.signal import SignalType
+from typing import Dict, Any, Optional
+
+from ta_bot.core.indicators import Indicators
 
 
-class BaseStrategy(ABC):
+class BaseStrategy:
     """Base class for all trading strategies."""
 
     def __init__(self):
         """Initialize the strategy."""
         self.name = self.__class__.__name__
 
-    @abstractmethod
     def analyze(
         self, df: pd.DataFrame, indicators: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:

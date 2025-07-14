@@ -27,71 +27,47 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         if len(df) < 2:
             return None
 
-        current = self._get_current_values(indicators, df)
-        previous = self._get_previous_values(indicators, df)
-
-        # Check if we have all required indicators
-        required_indicators = [
-            "ema21",
-            "ema50",
-            "ema200",
-            "rsi",
-            "macd_hist",
-            "close",
-            "vwap",
-        ]
-        if not all(indicator in current for indicator in required_indicators):
-            return None
-
-        # Trigger: Price pulls back to EMA21
-        # Check if price is near EMA21 (within 0.5% of EMA21)
-        ema21 = current["ema21"]
+        # Get current values
+        current = df.iloc[-1]
         close = current["close"]
-        ema21_tolerance = ema21 * 0.005  # 0.5% tolerance
+        high = current["high"]
+        low = current["low"]
 
-        price_near_ema21 = abs(close - ema21) <= ema21_tolerance
+        # Calculate EMAs
+        ema21 = self.indicators.ema(df, 21)
+        ema50 = self.indicators.ema(df, 50)
 
-        if not price_near_ema21:
+        if ema21 is None or ema50 is None:
             return None
 
-        # Confirmations
-        confirmations = []
+        current_ema21 = ema21.iloc[-1]
+        current_ema50 = ema50.iloc[-1]
 
-        # EMA21 > EMA50 > EMA200
-        ema_trend_ok = current["ema21"] > current["ema50"] > current["ema200"]
-        confirmations.append(("ema_trend_aligned", ema_trend_ok))
+        # Check for golden cross (EMA21 > EMA50)
+        golden_cross = current_ema21 > current_ema50
 
-        # RSI between 45-55
-        rsi_ok = self._check_between(current["rsi"], 45, 55)
-        confirmations.append(("rsi_neutral", rsi_ok))
+        # Check for pullback to EMA21
+        pullback_to_ema21 = abs(close - current_ema21) / current_ema21 < 0.02
 
-        # MACD Histogram positive
-        macd_positive = current["macd_hist"] > 0
-        confirmations.append(("macd_positive", macd_positive))
+        # Check for bullish candle
+        bullish_candle = close > (high + low) / 2
 
-        # Check if all confirmations are met
-        all_confirmations = all(confirmation[1] for confirmation in confirmations)
+        if golden_cross and pullback_to_ema21 and bullish_candle:
+            return Signal(
+                symbol=metadata.get("symbol", "UNKNOWN"),
+                period=metadata.get("period", "15m"),
+                signal_type=SignalType.BUY,
+                strategy="golden_trend_sync",
+                confidence=0.7,
+                metadata={
+                    "ema21": current_ema21,
+                    "ema50": current_ema50,
+                    "close": close,
+                    "pullback_percent": abs(close - current_ema21) / current_ema21 * 100,
+                },
+            )
 
-        if not all_confirmations:
-            return None
-
-        # Calculate volume rank for confidence
-        volume_rank = self._calculate_volume_rank(df)
-
-        # Prepare metadata
-        metadata = {
-            "rsi": current["rsi"],
-            "macd_hist": current["macd_hist"],
-            "ema21": current["ema21"],
-            "ema50": current["ema50"],
-            "ema200": current["ema200"],
-            "close": current["close"],
-            "vwap": current["vwap"],
-            "volume_rank": volume_rank,
-            "confirmations": dict(confirmations),
-        }
-
-        return {"signal_type": SignalType.BUY, "metadata": metadata}
+        return None
 
     def _calculate_volume_rank(self, df: pd.DataFrame) -> int:
         """Calculate volume rank of current candle compared to last 3 candles."""

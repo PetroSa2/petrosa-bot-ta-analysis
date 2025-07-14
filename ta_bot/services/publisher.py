@@ -2,75 +2,86 @@
 REST publisher service for sending trading signals to external API.
 """
 
-import aiohttp
 import asyncio
+import json
 import logging
-from typing import Dict, Any, List
+from typing import Dict, List
+
+import aiohttp
+import structlog
+
 from ta_bot.models.signal import Signal
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class SignalPublisher:
-    """Publishes trading signals to external API endpoint."""
+    """Publish trading signals to external API."""
 
     def __init__(self, api_endpoint: str):
-        """Initialize the publisher with API endpoint."""
+        """Initialize the signal publisher."""
         self.api_endpoint = api_endpoint
         self.session = None
 
-    async def __aenter__(self):
-        """Async context manager entry."""
+    async def start(self):
+        """Start the publisher session."""
         self.session = aiohttp.ClientSession()
-        return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Async context manager exit."""
+    async def stop(self):
+        """Stop the publisher session."""
         if self.session:
             await self.session.close()
 
-    async def publish_signal(self, signal: Signal) -> bool:
-        """Publish a single signal to the API."""
+    async def publish_signals(self, signals: List[Signal]):
+        """Publish signals to the external API."""
+        if not signals:
+            return
+
         try:
-            if not self.session:
-                self.session = aiohttp.ClientSession()
+            # Convert signals to JSON
+            signal_data = [signal.to_dict() for signal in signals]
 
-            signal_data = signal.to_dict()
-
+            # Send to API
             async with self.session.post(
-                self.api_endpoint,
+                f"{self.api_endpoint}/signals",
                 json=signal_data,
                 headers={"Content-Type": "application/json"},
-                timeout=aiohttp.ClientTimeout(total=10),
             ) as response:
                 if response.status == 200:
                     logger.info(
-                        f"Signal published successfully: {signal.strategy} for {signal.symbol}"
+                        f"Successfully published {len(signals)} signals to API"
                     )
-                    return True
                 else:
-                    logger.error(f"Failed to publish signal. Status: {response.status}")
-                    return False
+                    logger.error(
+                        f"Failed to publish signals: {response.status} - "
+                        f"{await response.text()}"
+                    )
 
-        except asyncio.TimeoutError:
-            logger.error(f"Timeout publishing signal to {self.api_endpoint}")
-            return False
+        except Exception as e:
+            logger.error(f"Error publishing signals: {e}")
+
+    async def publish_signal(self, signal: Signal):
+        """Publish a single signal to the external API."""
+        try:
+            # Convert signal to JSON
+            signal_data = signal.to_dict()
+
+            # Send to API
+            async with self.session.post(
+                f"{self.api_endpoint}/signal",
+                json=signal_data,
+                headers={"Content-Type": "application/json"},
+            ) as response:
+                if response.status == 200:
+                    logger.info(
+                        f"Successfully published signal {signal.symbol} "
+                        f"{signal.signal_type.value}"
+                    )
+                else:
+                    logger.error(
+                        f"Failed to publish signal: {response.status} - "
+                        f"{await response.text()}"
+                    )
+
         except Exception as e:
             logger.error(f"Error publishing signal: {e}")
-            return False
-
-    async def publish_signals(self, signals: List[Signal]) -> Dict[str, int]:
-        """Publish multiple signals and return success/failure counts."""
-        if not signals:
-            return {"success": 0, "failure": 0}
-
-        results = await asyncio.gather(
-            *[self.publish_signal(signal) for signal in signals], return_exceptions=True
-        )
-
-        success_count = sum(1 for result in results if result is True)
-        failure_count = len(results) - success_count
-
-        logger.info(f"Published {success_count} signals, {failure_count} failures")
-
-        return {"success": success_count, "failure": failure_count}
