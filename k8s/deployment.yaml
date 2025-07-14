@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: ta-bot
-        image: petrosa-ta-bot:VERSION_PLACEHOLDER
+        image: DOCKERHUB_USERNAME/petrosa-ta-bot:VERSION_PLACEHOLDER
         imagePullPolicy: Always
         ports:
         - containerPort: 8000

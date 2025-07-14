@@ -1,166 +1,219 @@
-# GitHub Actions Setup for TA Bot
+# GitHub Actions Setup Guide
 
-This document explains how to set up automatic versioning and deployment for the TA Bot using GitHub Actions.
+This guide explains how to set up the GitHub Actions CI/CD pipeline for the TA Bot service.
 
 ## Overview
 
-The GitHub Actions workflow provides:
-- **Automatic version incrementing** based on git tags
-- **Multi-architecture Docker builds** (linux/amd64, linux/arm64)
-- **Security scanning** with Trivy
-- **Comprehensive testing** with coverage reporting
-- **Kubernetes deployment** to MicroK8s cluster
-- **Version tagging** and release management
+The pipeline includes:
+- **Linting and Testing**: Code quality checks and unit tests
+- **Security Scanning**: Vulnerability scanning with Trivy
+- **Automatic Versioning**: Semantic version management
+- **Docker Builds**: Multi-architecture Docker image builds
+- **Kubernetes Deployment**: Automatic deployment to MicroK8s cluster
 
-## Required Secrets
+## Required GitHub Secrets
 
-Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
+The pipeline requires the following secrets to be configured in your GitHub repository:
 
-### Docker Hub
-- `DOCKERHUB_USERNAME`: Your Docker Hub username
-- `DOCKERHUB_TOKEN`: Your Docker Hub access token
+### 1. Docker Hub Credentials
+- **DOCKERHUB_USERNAME**: Your Docker Hub username
+- **DOCKERHUB_TOKEN**: Your Docker Hub access token
 
-### Kubernetes
-- `KUBE_CONFIG_DATA`: Base64-encoded kubeconfig for MicroK8s cluster
-  ```bash
-  # Generate this from your kubeconfig.yaml
-  cat k8s/kubeconfig.yaml | base64 -w 0
-  ```
+**To create a Docker Hub token:**
+1. Log in to Docker Hub
+2. Go to Account Settings → Security
+3. Click "New Access Token"
+4. Give it a name (e.g., "GitHub Actions")
+5. Copy the token and add it to GitHub secrets
 
-### Code Coverage (Optional)
-- `CODECOV_TOKEN`: Codecov token for coverage reporting
+### 2. Kubernetes Configuration
+- **KUBE_CONFIG_DATA**: Base64-encoded kubeconfig for your MicroK8s cluster
 
-## Workflow Features
-
-### 1. Automatic Versioning
-- Uses semantic versioning (v1.0.0, v1.0.1, etc.)
-- Automatically increments patch version on each deployment
-- Creates and pushes git tags
-- Updates Docker image tags and Kubernetes manifests
-
-### 2. Pipeline Stages
-1. **Lint and Test**: Code quality checks and unit tests
-2. **Security Scan**: Vulnerability scanning with Trivy
-3. **Create Release**: Generate version and create git tag
-4. **Build and Push**: Multi-arch Docker image build
-5. **Deploy**: Kubernetes deployment to MicroK8s
-6. **Notify**: Deployment status notifications
-
-### 3. Version Management
-- Version is automatically incremented from latest git tag
-- If no tags exist, starts at v1.0.0
-- Version is embedded in Docker image and health endpoint
-- Kubernetes manifests are updated with versioned image tags
-
-## Usage
-
-### Automatic Deployment
-- Push to `main` branch triggers automatic deployment
-- Push to `develop` branch runs tests but doesn't deploy
-- Create git tags manually for specific releases
-
-### Manual Deployment
+**To create the kubeconfig:**
 ```bash
-# Create a specific version tag
-git tag v1.2.3
-git push origin v1.2.3
+# Encode your kubeconfig file
+cat k8s/kubeconfig.yaml | base64 -w 0
 ```
 
-### Monitoring Deployment
+### 3. Optional Secrets
+- **CODECOV_TOKEN**: For code coverage reporting (optional)
+
+## Setting Up GitHub Secrets
+
+1. Go to your GitHub repository
+2. Click **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Add each secret with the exact names listed above
+
+## Pipeline Workflow
+
+### 1. Lint and Test Job
+- Runs on every push and pull request
+- Performs code quality checks (flake8, mypy, ruff)
+- Runs unit tests with coverage reporting
+- Uploads coverage to Codecov (if token provided)
+
+### 2. Security Scan Job
+- Runs Trivy vulnerability scanner
+- Checks for security vulnerabilities in dependencies
+- Fails the pipeline if critical vulnerabilities are found
+
+### 3. Create Release Job (Main Branch Only)
+- Generates semantic version based on git tags
+- Creates and pushes new version tags
+- Handles automatic version incrementing
+
+### 4. Build and Push Job (Main Branch Only)
+- Builds multi-architecture Docker images
+- Pushes to Docker Hub (if credentials available)
+- Falls back to local build if Docker Hub credentials missing
+
+### 5. Deploy Job (Main Branch Only)
+- Updates Kubernetes manifests with versioned image tags
+- Deploys to MicroK8s cluster
+- Verifies deployment status
+
+## Troubleshooting Common Issues
+
+### 1. Docker Hub Authentication Failures
+
+**Error**: `unauthorized: authentication required`
+
+**Solution**:
+1. Verify `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are set correctly
+2. Ensure the Docker Hub token has the correct permissions
+3. Check that the token hasn't expired
+
+**Fallback**: The pipeline will build a local image if Docker Hub credentials are missing
+
+### 2. Kubernetes Connection Failures
+
+**Error**: `Unable to connect to the server`
+
+**Solution**:
+1. Verify `KUBE_CONFIG_DATA` is properly base64-encoded
+2. Check that the kubeconfig points to the correct cluster
+3. Ensure the cluster is accessible from GitHub Actions
+
+**Fallback**: The pipeline will skip deployment if Kubernetes configuration is missing
+
+### 3. Image Pull Failures
+
+**Error**: `Failed to pull image`
+
+**Solution**:
+1. Check that the Docker image exists in Docker Hub
+2. Verify the image tag is correct
+3. Ensure the cluster has access to Docker Hub
+
+### 4. Version Generation Issues
+
+**Error**: `No previous version found`
+
+**Solution**:
+1. Check that git tags are properly formatted (v1.0.0, v1.0.1, etc.)
+2. Ensure the repository has proper git history
+3. Verify that the GitHub token has sufficient permissions
+
+### 5. Coverage Upload Failures
+
+**Error**: `Codecov upload failed`
+
+**Solution**:
+1. Add `CODECOV_TOKEN` secret (optional)
+2. The pipeline will continue even if Codecov upload fails
+
+## Manual Deployment
+
+If the automated deployment fails, you can deploy manually:
+
 ```bash
+# Set up kubectl
+export KUBECONFIG=k8s/kubeconfig.yaml
+
+# Apply manifests
+kubectl apply -f k8s/
+
 # Check deployment status
-kubectl get all -l app=petrosa-ta-bot -n petrosa-apps
-
-# View logs
-kubectl logs -l app=petrosa-ta-bot -n petrosa-apps
-
-# Check version
-curl http://your-domain/health
+kubectl get pods -n petrosa-apps -l app=petrosa-ta-bot
 ```
 
-## Configuration
+## Monitoring Deployments
 
-### Image Name
-Update the image name in `.github/workflows/release.yml`:
-```yaml
-env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot
-```
+### Check Pipeline Status
+1. Go to your GitHub repository
+2. Click **Actions** tab
+3. View the latest workflow run
 
-### Kubernetes Namespace
-The workflow deploys to `petrosa-apps` namespace. Update if needed:
-```yaml
-kubectl apply -f k8s/ --recursive --insecure-skip-tls-verify
-```
-
-### Coverage Threshold
-Adjust the coverage threshold in the workflow:
-```yaml
-COVERAGE_THRESHOLD=80
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Docker Hub Authentication**
-   - Ensure `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are set
-   - Token must have write permissions
-
-2. **Kubernetes Connection**
-   - Verify `KUBE_CONFIG_DATA` is correctly base64-encoded
-   - Check MicroK8s cluster is accessible
-
-3. **Version Conflicts**
-   - Delete conflicting tags: `git tag -d v1.0.1`
-   - Push deletion: `git push origin :refs/tags/v1.0.1`
-
-4. **Build Failures**
-   - Check Docker Hub rate limits
-   - Verify Dockerfile syntax
-   - Review build logs for dependency issues
-
-### Debug Commands
+### Check Deployment Status
 ```bash
-# Check git tags
-git tag --sort=-version:refname
-
-# Verify kubeconfig
-kubectl cluster-info --insecure-skip-tls-verify
+# Check pods
+kubectl get pods -n petrosa-apps -l app=petrosa-ta-bot
 
 # Check deployment
 kubectl get deployment petrosa-ta-bot -n petrosa-apps
+
+# View logs
+kubectl logs -l app=petrosa-ta-bot -n petrosa-apps --tail=100
 ```
+
+### Check Docker Images
+```bash
+# List local images
+docker images | grep petrosa-ta-bot
+
+# Pull from Docker Hub (if available)
+docker pull your-username/petrosa-ta-bot:latest
+```
+
+## Pipeline Configuration
+
+### Environment Variables
+- `PYTHON_VERSION`: Python version to use (3.11)
+- `REGISTRY`: Docker registry (docker.io)
+- `IMAGE_NAME`: Docker image name
+
+### Triggers
+- **Push to main/develop**: Runs full pipeline
+- **Pull requests**: Runs lint and test only
+- **Tags**: Runs full pipeline with tag version
+
+### Conditional Steps
+- Docker build/push: Only if Docker Hub credentials available
+- Kubernetes deployment: Only if kubeconfig available
+- Codecov upload: Only if token provided
 
 ## Security Considerations
 
-1. **Secrets Management**
-   - Never commit secrets to the repository
-   - Use GitHub Secrets for sensitive data
-   - Rotate tokens regularly
+1. **Secrets Management**: All sensitive data is stored as GitHub secrets
+2. **Base64 Encoding**: Kubernetes config is base64-encoded for security
+3. **Token Permissions**: Use minimal required permissions for tokens
+4. **Image Scanning**: Trivy scans for vulnerabilities automatically
 
-2. **Image Security**
-   - Trivy scans for vulnerabilities
-   - Multi-stage builds reduce attack surface
-   - Non-root user in container
+## Best Practices
 
-3. **Network Security**
-   - Ingress with SSL termination
-   - Internal service communication
-   - Proper RBAC configuration
-
-## Next Steps
-
-1. **Set up secrets** in GitHub repository
-2. **Test the workflow** with a small change
-3. **Monitor deployments** and logs
-4. **Configure notifications** (Slack, email, etc.)
-5. **Set up monitoring** for the deployed application
+1. **Version Management**: Use semantic versioning (v1.0.0, v1.0.1, etc.)
+2. **Testing**: Ensure all tests pass before merging to main
+3. **Monitoring**: Check deployment logs after each deployment
+4. **Rollback**: Keep previous image versions for quick rollback
+5. **Documentation**: Update this guide as pipeline evolves
 
 ## Support
 
-For issues with the GitHub Actions workflow:
-1. Check the Actions tab in GitHub
-2. Review workflow logs for specific errors
-3. Verify secrets and permissions
-4. Test locally with the local pipeline script 
+If you encounter issues:
+
+1. Check the GitHub Actions logs for detailed error messages
+2. Verify all required secrets are configured
+3. Test the deployment manually if automated deployment fails
+4. Check the troubleshooting section above for common solutions
+
+## Quick Setup Checklist
+
+- [ ] Add `DOCKERHUB_USERNAME` secret
+- [ ] Add `DOCKERHUB_TOKEN` secret  
+- [ ] Add `KUBE_CONFIG_DATA` secret
+- [ ] Add `CODECOV_TOKEN` secret (optional)
+- [ ] Verify kubeconfig points to correct cluster
+- [ ] Test pipeline with a small change
+- [ ] Monitor first deployment
+- [ ] Verify application is running correctly 

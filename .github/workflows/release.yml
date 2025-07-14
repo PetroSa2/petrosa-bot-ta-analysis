@@ -258,8 +258,21 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
+    - name: Check Docker Hub credentials
+      id: check-dockerhub
+      run: |
+        if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+          echo "⚠️ Docker Hub credentials not configured"
+          echo "Skipping Docker build and push"
+          echo "skip-docker=true" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Docker Hub credentials available"
+          echo "skip-docker=false" >> $GITHUB_OUTPUT
+        fi
+    
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
+      if: steps.check-dockerhub.outputs.skip-docker == 'false'
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -267,6 +280,7 @@ jobs:
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
+      if: steps.check-dockerhub.outputs.skip-docker == 'false'
       with:
         images: ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot
         tags: |
@@ -276,6 +290,7 @@ jobs:
     - name: Build and push Docker image
       id: build
       uses: docker/build-push-action@v5
+      if: steps.check-dockerhub.outputs.skip-docker == 'false'
       with:
         context: .
         platforms: linux/amd64,linux/arm64
@@ -288,6 +303,14 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           COMMIT_SHA=${{ github.sha }}
           BUILD_DATE=${{ steps.meta.outputs.date }}
+    
+    - name: Build local image (fallback)
+      id: build-local
+      if: steps.check-dockerhub.outputs.skip-docker == 'true'
+      run: |
+        echo "Building local image as Docker Hub credentials not available"
+        docker build -t petrosa-ta-bot:${{ steps.version.outputs.version }} .
+        echo "✅ Built local image: petrosa-ta-bot:${{ steps.version.outputs.version }}"
 
   deploy:
     needs: [build-and-push, create-release]
@@ -304,7 +327,20 @@ jobs:
       with:
         version: 'v1.28.0'
     
+    - name: Check Kubernetes configuration
+      id: check-k8s
+      run: |
+        if [ -z "${{ secrets.KUBE_CONFIG_DATA }}" ]; then
+          echo "⚠️ Kubernetes configuration not available"
+          echo "Skipping deployment"
+          echo "skip-deploy=true" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Kubernetes configuration available"
+          echo "skip-deploy=false" >> $GITHUB_OUTPUT
+        fi
+    
     - name: Configure kubectl for MicroK8s
+      if: steps.check-k8s.outputs.skip-deploy == 'false'
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
@@ -315,17 +351,27 @@ jobs:
         kubectl get nodes --insecure-skip-tls-verify
     
     - name: Update image tags in manifests
+      if: steps.check-k8s.outputs.skip-deploy == 'false'
       run: |
         # Use the version generated in the build step
         IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
         
         echo "Using image tag: ${IMAGE_TAG}"
         
+        # Check if Docker Hub credentials are available
+        if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+          FULL_IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${IMAGE_TAG}"
+        else
+          echo "⚠️ Docker Hub username not available, using local image"
+          FULL_IMAGE_NAME="petrosa-ta-bot:${IMAGE_TAG}"
+        fi
+        
         # Update the image tag in Kubernetes manifests
         # Replace VERSION_PLACEHOLDER with the actual version tag
-        find k8s/ -name "*.yaml" -o -name "*.yml" | xargs sed -i "s|VERSION_PLACEHOLDER|${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${IMAGE_TAG}|g"
+        find k8s/ -name "*.yaml" -o -name "*.yml" | xargs sed -i "s|VERSION_PLACEHOLDER|${IMAGE_TAG}|g"
+        find k8s/ -name "*.yaml" -o -name "*.yml" | xargs sed -i "s|DOCKERHUB_USERNAME|${{ secrets.DOCKERHUB_USERNAME }}|g"
         
-        echo "Updated manifests with image: ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${IMAGE_TAG}"
+        echo "Updated manifests with image: ${FULL_IMAGE_NAME}"
         
         # Verify the changes
         echo "Verifying image tag updates:"
@@ -341,6 +387,7 @@ jobs:
         fi
     
     - name: Apply Kubernetes manifests
+      if: steps.check-k8s.outputs.skip-deploy == 'false'
       run: |
         echo "🚀 Deploying to MicroK8s cluster..."
         
@@ -369,6 +416,7 @@ jobs:
         fi
     
     - name: Verify deployment
+      if: steps.check-k8s.outputs.skip-deploy == 'false'
       run: |
         echo "✅ Verifying deployment on MicroK8s..."
         
@@ -412,41 +460,51 @@ jobs:
         # Get the version that was deployed
         IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
         
-        echo "🎉 Deployment to MicroK8s completed successfully!"
-        echo ""
-        echo "📋 What was deployed:"
-        echo "  ✅ Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${IMAGE_TAG}"
-        echo "  ✅ Kubernetes manifests applied to MicroK8s cluster"
-        echo "  ✅ TA Bot Deployment with 3 replicas"
-        echo "  ✅ Signal Engine Service"
-        echo "  ✅ Ingress with SSL"
-        echo "  ✅ HPA for auto-scaling"
-        echo "  ✅ Secrets verified/created"
-        echo ""
-        echo "🏷️ Version Information:"
-        echo "  📦 Image Tag: ${IMAGE_TAG}"
-        echo "  🔄 Image Pull Policy: Always (ensures latest version)"
-        echo "  📅 Deployed at: $(date -u)"
-        echo ""
-        echo "📊 Monitor your deployment:"
-        echo "  kubectl get all -l app=petrosa-ta-bot -n petrosa-apps"
-        echo "  kubectl get deployments -n petrosa-apps"
-        echo "  kubectl logs -l app=petrosa-ta-bot --tail=100 -n petrosa-apps"
-        echo ""
-        echo "🔧 Monitor TA Bot specifically:"
-        echo "  kubectl get deployment petrosa-ta-bot -n petrosa-apps"
-        echo "  kubectl logs -l app=petrosa-ta-bot --tail=100 -n petrosa-apps"
-        echo "  kubectl describe deployment petrosa-ta-bot -n petrosa-apps"
-        echo ""
-        echo "⚠️ Next steps:"
-        echo "  1. Verify secrets are properly set in your MicroK8s cluster"
-        echo "  2. Monitor deployment executions and logs"
-        echo "  3. Check that the image can pull successfully"
-        echo "  4. Verify HPA auto-scaling behavior"
-        echo "  5. Monitor signal generation and NATS connectivity"
-        echo ""
-        echo "🔍 Verify deployed image version:"
-        echo "  kubectl get deployment -n petrosa-apps -o jsonpath='{.items[*].spec.template.spec.containers[*].image}'"
+        if [ "${{ steps.check-k8s.outputs.skip-deploy }}" == "true" ]; then
+          echo "⚠️ Deployment skipped - Kubernetes configuration not available"
+          echo "📦 Version: ${IMAGE_TAG}"
+          echo "🔧 To enable deployment, add KUBE_CONFIG_DATA secret to GitHub repository"
+        elif [ "${{ steps.check-dockerhub.outputs.skip-docker }}" == "true" ]; then
+          echo "⚠️ Docker build skipped - Docker Hub credentials not available"
+          echo "📦 Version: ${IMAGE_TAG}"
+          echo "🔧 To enable Docker builds, add DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets"
+        else
+          echo "🎉 Deployment to MicroK8s completed successfully!"
+          echo ""
+          echo "📋 What was deployed:"
+          echo "  ✅ Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${IMAGE_TAG}"
+          echo "  ✅ Kubernetes manifests applied to MicroK8s cluster"
+          echo "  ✅ TA Bot Deployment with 3 replicas"
+          echo "  ✅ Signal Engine Service"
+          echo "  ✅ Ingress with SSL"
+          echo "  ✅ HPA for auto-scaling"
+          echo "  ✅ Secrets verified/created"
+          echo ""
+          echo "🏷️ Version Information:"
+          echo "  📦 Image Tag: ${IMAGE_TAG}"
+          echo "  🔄 Image Pull Policy: Always (ensures latest version)"
+          echo "  📅 Deployed at: $(date -u)"
+          echo ""
+          echo "📊 Monitor your deployment:"
+          echo "  kubectl get all -l app=petrosa-ta-bot -n petrosa-apps"
+          echo "  kubectl get deployments -n petrosa-apps"
+          echo "  kubectl logs -l app=petrosa-ta-bot --tail=100 -n petrosa-apps"
+          echo ""
+          echo "🔧 Monitor TA Bot specifically:"
+          echo "  kubectl get deployment petrosa-ta-bot -n petrosa-apps"
+          echo "  kubectl logs -l app=petrosa-ta-bot --tail=100 -n petrosa-apps"
+          echo "  kubectl describe deployment petrosa-ta-bot -n petrosa-apps"
+          echo ""
+          echo "⚠️ Next steps:"
+          echo "  1. Verify secrets are properly set in your MicroK8s cluster"
+          echo "  2. Monitor deployment executions and logs"
+          echo "  3. Check that the image can pull successfully"
+          echo "  4. Verify HPA auto-scaling behavior"
+          echo "  5. Monitor signal generation and NATS connectivity"
+          echo ""
+          echo "🔍 Verify deployed image version:"
+          echo "  kubectl get deployment -n petrosa-apps -o jsonpath='{.items[*].spec.template.spec.containers[*].image}'"
+        fi
 
   notify:
     needs: [build-and-push, deploy, create-release]
