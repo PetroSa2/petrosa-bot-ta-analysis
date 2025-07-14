@@ -50,6 +50,8 @@ logs/
 
 # Kubernetes
 k8s/deployment-local.yaml
+*kubeconfig.yaml
+
 
 # Security
 .trivy/
