@@ -52,17 +52,14 @@ class GoldenTrendSyncStrategy(BaseStrategy):
             return Signal(
                 symbol=metadata.get("symbol", "UNKNOWN"),
                 period=metadata.get("period", "15m"),
-                signal_type=SignalType.BUY,
+                signal=SignalType.BUY,
                 strategy="golden_trend_sync",
-                confidence=0.7,
+                confidence=0.72,
                 metadata={
                     "ema21": current_ema21,
                     "ema50": current_ema50,
-                    "close": close,
-                    "pullback_percent": abs(close - current_ema21)
-                    / current_ema21
-                    * 100,
-                },
+                    "pullback_distance": abs(close - current_ema21) / current_ema21
+                }
             )
 
         return None

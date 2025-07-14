@@ -4,9 +4,10 @@ NATS listener service for receiving candle data and processing signals.
 
 import json
 import logging
-from typing import Dict, Any, List, Subscription
+from typing import Dict, Any, List
 import pandas as pd
 from nats.aio.client import Client as NATS
+from nats.aio.subscription import Subscription
 
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.services.publisher import SignalPublisher
@@ -31,14 +32,8 @@ class NATSListener:
         """Start the NATS listener."""
         try:
             # Connect to NATS
-            self.nc = NATS()
             await self.nc.connect(self.nats_url)
             logger.info(f"Connected to NATS at {self.nats_url}")
-
-            # Initialize signal engine and publisher
-            self.signal_engine = SignalEngine()
-            self.publisher = SignalPublisher(self.api_endpoint)
-            await self.publisher.start()
 
             # Subscribe to candle updates
             subscriptions: List[Subscription] = []
@@ -47,7 +42,7 @@ class NATSListener:
                 for period in self.periods:
                     subject = f"candles.{symbol}.{period}"
                     sub = await self.nc.subscribe(
-                        subject, cb=self._handle_candle_update
+                        subject, cb=self._handle_candle_message
                     )
                     subscriptions.append(sub)
                     logger.info(f"Subscribed to {subject}")

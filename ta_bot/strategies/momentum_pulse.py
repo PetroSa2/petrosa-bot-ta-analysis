@@ -5,7 +5,7 @@ Detects trend entry signals based on MACD histogram crossovers.
 
 from typing import Dict, Any, Optional
 import pandas as pd
-from ta_bot.models.signal import SignalType
+from ta_bot.models.signal import SignalType, Signal
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 
@@ -22,7 +22,7 @@ class MomentumPulseStrategy(BaseStrategy):
 
     def analyze(
         self, df: pd.DataFrame, indicators: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Signal]:
         """Analyze for momentum pulse signals."""
         if len(df) < 2:
             return None
@@ -78,4 +78,16 @@ class MomentumPulseStrategy(BaseStrategy):
             "confirmations": dict(confirmations),
         }
 
-        return {"signal_type": SignalType.BUY, "metadata": metadata}
+        return Signal(
+            symbol=metadata.get("symbol", "UNKNOWN"),
+            period=metadata.get("period", "15m"),
+            signal=SignalType.BUY,
+            strategy="momentum_pulse",
+            confidence=0.74,
+            metadata={
+                "macd_hist": current["macd_hist"],
+                "macd_signal": current.get("macd_signal", 0),
+                "rsi": current["rsi"],
+                "volume": current.get("volume", 0)
+            }
+        )

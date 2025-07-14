@@ -48,15 +48,15 @@ class BandFadeReversalStrategy(BaseStrategy):
             return Signal(
                 symbol=metadata.get("symbol", "UNKNOWN"),
                 period=metadata.get("period", "15m"),
-                signal_type=SignalType.SELL,
+                signal=SignalType.SELL,
                 strategy="band_fade_reversal",
-                confidence=0.65,
+                confidence=0.68,
                 metadata={
-                    "bb_upper": upper_band,
-                    "bb_middle": middle_band,
+                    "upper_band": upper_band,
+                    "middle_band": middle_band,
                     "close": close,
-                    "volume_ratio": metadata.get("volume_ratio", 0),
-                },
+                    "rsi": rsi_value
+                }
             )
 
         return None

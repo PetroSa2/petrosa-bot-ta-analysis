@@ -25,28 +25,22 @@ class Config:
     timeout: int = 30
 
     # Strategy settings
-    enabled_strategies: List[str] = Field(
-        default_factory=lambda: [
-            "momentum_pulse",
-            "band_fade_reversal",
-            "golden_trend_sync",
-            "range_break_pop",
-            "divergence_trap",
-        ]
-    )
-
+    enabled_strategies: List[str] = Field(default=[
+        "momentum_pulse",
+        "band_fade_reversal", 
+        "golden_trend_sync",
+        "range_break_pop",
+        "divergence_trap"
+    ])
+    
     # Technical analysis settings
-    candle_periods: List[str] = Field(
-        default_factory=lambda: ["1m", "5m", "15m", "1h", "4h"]
-    )
-    symbols: List[str] = Field(
-        default_factory=lambda: ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
-    )
-
+    candle_periods: List[str] = Field(default=["1m", "5m", "15m", "1h", "4h"])
+    symbols: List[str] = Field(default=["BTCUSDT", "ETHUSDT", "ADAUSDT"])
+    
     # Confidence thresholds
     min_confidence: float = 0.6
     max_confidence: float = 0.95
-
+    
     # Risk management
     max_positions: int = 10
-    position_sizes: List[int] = Field(default_factory=lambda: [100, 200, 500, 1000])
+    position_sizes: List[int] = Field(default=[100, 200, 500, 1000])

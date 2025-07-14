@@ -55,15 +55,15 @@ class DivergenceTrapStrategy(BaseStrategy):
                 return Signal(
                     symbol=metadata.get("symbol", "UNKNOWN"),
                     period=metadata.get("period", "15m"),
-                    signal_type=SignalType.BUY,
+                    signal=SignalType.BUY,
                     strategy="divergence_trap",
-                    confidence=0.7,
+                    confidence=0.78,
                     metadata={
-                        "rsi": current_rsi,
-                        "price_low": current_low,
+                        "rsi_current": current_rsi,
+                        "rsi_previous": previous_rsi,
                         "divergence_strength": abs(rsi_change),
-                        "trend_percent": metadata.get("trend_percent", 0),
-                    },
+                        "price_change": price_change
+                    }
                 )
 
         return None

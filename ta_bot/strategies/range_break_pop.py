@@ -81,7 +81,7 @@ class RangeBreakPopStrategy(BaseStrategy):
         return Signal(
             symbol=metadata.get("symbol", "UNKNOWN"),
             period=metadata.get("period", "15m"),
-            signal_type=SignalType.BUY,
+            signal=SignalType.BUY,
             strategy="range_break_pop",
             confidence=0.75,
             metadata={
