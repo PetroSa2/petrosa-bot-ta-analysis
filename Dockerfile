@@ -1,5 +1,15 @@
 FROM python:3.11-slim
 
+# Build arguments for versioning
+ARG VERSION=1.0.0
+ARG COMMIT_SHA=unknown
+ARG BUILD_DATE=unknown
+
+# Set environment variables
+ENV VERSION=${VERSION}
+ENV COMMIT_SHA=${COMMIT_SHA}
+ENV BUILD_DATE=${BUILD_DATE}
+
 # Set working directory
 WORKDIR /app
 

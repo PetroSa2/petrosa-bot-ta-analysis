@@ -3,6 +3,7 @@ Health check endpoints for the TA Bot.
 """
 
 import logging
+import os
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,11 @@ def get_health_status() -> Dict[str, Any]:
     """Get health status."""
     return {
         "status": "healthy",
-        "version": "1.0.0",
+        "version": os.getenv("VERSION", "1.0.0"),
+        "build_info": {
+            "commit_sha": os.getenv("COMMIT_SHA", "unknown"),
+            "build_date": os.getenv("BUILD_DATE", "unknown"),
+        },
         "components": {
             "signal_engine": "running",
             "nats_listener": "connected",
