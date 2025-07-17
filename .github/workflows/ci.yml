@@ -93,7 +93,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ secrets.DOCKERHUB_USERNAME }}/ta-bot
+        images: ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot
         tags: |
           type=raw,value=${{ steps.version.outputs.version }}
           type=raw,value=latest
@@ -143,7 +143,7 @@ jobs:
       run: |
         IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
         echo "🎉 Deployment to MicroK8s completed successfully!"
-        echo "  ✅ Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/ta-bot:${IMAGE_TAG}"
+        echo "  ✅ Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${IMAGE_TAG}"
         echo "  ✅ Kubernetes manifests applied to MicroK8s cluster"
 
   notify:
