@@ -5,7 +5,7 @@ metadata:
   namespace: petrosa-apps
   labels:
     app: petrosa-ta-bot
-    version: local-20250717-171839-475fb93
+    version: VERSION_PLACEHOLDER
 spec:
   replicas: 3
   selector:
@@ -15,11 +15,11 @@ spec:
     metadata:
       labels:
         app: petrosa-ta-bot
-        version: local-20250717-171839-475fb93
+        version: VERSION_PLACEHOLDER
     spec:
       containers:
       - name: ta-bot
-        image: yurisa2/petrosa-ta-bot:local-20250717-171839-475fb93
+        image: yurisa2/petrosa-ta-bot:VERSION_PLACEHOLDER
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
