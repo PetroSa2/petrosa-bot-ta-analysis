@@ -59,8 +59,8 @@ run_stage() {
             print_success "Security scans completed"
             ;;
         "build")
-            print_status "Building Docker image..."
-            docker build -t petrosa/ta-bot:latest .
+            print_status "Building Docker image with version..."
+            ./scripts/version-manager.sh build local
             print_success "Docker build completed"
             ;;
         "container")
@@ -69,9 +69,8 @@ run_stage() {
             print_success "Container test completed"
             ;;
         "deploy")
-            print_status "Deploying to Kubernetes..."
-            export KUBECONFIG=k8s/kubeconfig.yaml
-            kubectl apply -f k8s/
+            print_status "Deploying to Kubernetes with version..."
+            ./scripts/version-manager.sh deploy local
             print_success "Deployment completed"
             ;;
         *)
