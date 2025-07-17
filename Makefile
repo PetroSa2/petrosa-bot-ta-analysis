@@ -18,20 +18,13 @@ help:
 	@echo "  test           Run tests with coverage"
 	@echo "  security       Run security scan with Trivy"
 	@echo ""
-	@echo "Version Management:"
-	@echo "  version        Generate patch version"
-	@echo "  version-local  Generate local development version"
-	@echo ""
 	@echo "Docker:"
-	@echo "  build          Build Docker image with local version"
-	@echo "  build-patch    Build Docker image with patch version"
+	@echo "  build          Build Docker image"
 	@echo "  container      Test Docker container"
 	@echo "  docker-clean   Clean up Docker images"
 	@echo ""
 	@echo "Deployment:"
-	@echo "  deploy         Deploy to Kubernetes with local version"
-	@echo "  deploy-patch   Deploy to Kubernetes with patch version"
-	@echo "  deploy-full    Run full deployment pipeline with versioning"
+	@echo "  deploy         Deploy to Kubernetes cluster"
 	@echo "  pipeline       Run complete local CI/CD pipeline"
 	@echo ""
 	@echo "Utilities:"
@@ -74,27 +67,11 @@ security:
 	@chmod +x scripts/local-pipeline.sh
 	@./scripts/local-pipeline.sh security
 
-# Version Management
-version:
-	@echo "🏷️  Generating version..."
-	@chmod +x scripts/version-manager.sh
-	@./scripts/version-manager.sh generate patch
-
-version-local:
-	@echo "🏷️  Generating local version..."
-	@chmod +x scripts/version-manager.sh
-	@./scripts/version-manager.sh generate local
-
 # Docker
 build:
-	@echo "🐳 Building Docker image with version..."
-	@chmod +x scripts/version-manager.sh
-	@./scripts/version-manager.sh build local
-
-build-patch:
-	@echo "🐳 Building Docker image with patch version..."
-	@chmod +x scripts/version-manager.sh
-	@./scripts/version-manager.sh build patch
+	@echo "🐳 Building Docker image..."
+	@chmod +x scripts/local-pipeline.sh
+	@./scripts/local-pipeline.sh build
 
 container:
 	@echo "📦 Testing Docker container..."
@@ -110,19 +87,9 @@ docker-clean:
 
 # Deployment
 deploy:
-	@echo "☸️  Deploying to Kubernetes with version..."
-	@chmod +x scripts/version-manager.sh
-	@./scripts/version-manager.sh deploy local
-
-deploy-patch:
-	@echo "☸️  Deploying to Kubernetes with patch version..."
-	@chmod +x scripts/version-manager.sh
-	@./scripts/version-manager.sh deploy patch
-
-deploy-full:
-	@echo "🚀 Running full deployment pipeline..."
-	@chmod +x scripts/version-manager.sh
-	@./scripts/version-manager.sh full patch false
+	@echo "☸️  Deploying to Kubernetes..."
+	@chmod +x scripts/local-pipeline.sh
+	@./scripts/local-pipeline.sh deploy
 
 pipeline:
 	@echo "🔄 Running complete local CI/CD pipeline..."
