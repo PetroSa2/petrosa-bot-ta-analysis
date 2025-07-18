@@ -141,7 +141,7 @@ make k8s-clean
 - **BEFORE making any changes**: Check `docs/REPOSITORY_SETUP_GUIDE.md` and `docs/QUICK_REFERENCE.md`
 - **WHEN suggesting kubectl commands**: Always include `--kubeconfig=k8s/kubeconfig.yaml`
 - **WHEN dealing with credentials**: ONLY use existing secret `petrosa-sensitive-credentials`
-- **WHEN dealing with configuration**: ONLY use existing configmap `petrosa-common-config`
+- **WHEN dealing with configuration**: Use `petrosa-common-config` for general settings and `ta-bot-config` for TA bot specific settings
 - **WHEN running GitHub CLI**: ALWAYS use file-based approach: `gh command > /tmp/file.json && cat /tmp/file.json`
 - **WHEN fixing CI/CD issues**: Continue until GitHub Actions pipeline passes
 - **WHEN writing Python code**: Follow PEP 8, use type hints, add proper error handling

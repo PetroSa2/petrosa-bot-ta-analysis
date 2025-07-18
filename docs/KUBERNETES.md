@@ -83,13 +83,13 @@ spec:
         - name: NATS_URL
           valueFrom:
             configMapKeyRef:
-              name: petrosa-global-config
+              name: petrosa-common-config
               key: NATS_URL
-        - name: TA_BOT_API_ENDPOINT
+        - name: API_ENDPOINT
           valueFrom:
             configMapKeyRef:
-              name: petrosa-common-config
-              key: TA_BOT_API_ENDPOINT
+              name: ta-bot-config
+              key: api_endpoint
         resources:
           requests:
             memory: "256Mi"
