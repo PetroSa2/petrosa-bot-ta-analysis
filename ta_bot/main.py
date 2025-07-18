@@ -34,10 +34,13 @@ async def main():
 
         logger.info("Starting TA Bot...")
 
-        # Start health server
-        await start_health_server(
+        # Start health server in background
+        health_server = await start_health_server(
             nats_url=config.nats_url, api_endpoint=config.api_endpoint, port=8000
         )
+        
+        # Start the health server in a separate task
+        health_task = asyncio.create_task(health_server.start())
 
         # Start listening for NATS messages if enabled
         if config.nats_enabled:
