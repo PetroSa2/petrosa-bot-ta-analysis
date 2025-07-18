@@ -192,9 +192,11 @@ trivy image petrosa/ta-bot:latest
 ## 📈 Monitoring
 
 ### Health Checks
-- `/health` - Detailed health status
-- `/ready` - Readiness probe
-- `/live` - Liveness probe
+- `/health` - Detailed health status (planned)
+- `/ready` - Readiness probe (planned)
+- `/live` - Liveness probe (planned)
+
+**Note**: Health endpoints are currently implemented as mock functions in `ta_bot/health.py`. Full HTTP server implementation is planned for future releases.
 
 ### Metrics
 - Signal generation rate
