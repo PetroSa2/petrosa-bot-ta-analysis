@@ -13,6 +13,7 @@ class Config:
 
     # NATS Configuration
     nats_url: str = os.getenv("NATS_URL", "nats://localhost:4222")
+    nats_enabled: bool = os.getenv("NATS_ENABLED", "true").lower() == "true"
 
     # API Configuration
     api_endpoint: str = os.getenv("TA_BOT_API_ENDPOINT", "http://localhost:8080/signals")

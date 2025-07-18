@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: ta-bot
-        image: yurisa2/petrosa-ta-bot:VERSION_PLACEHOLDER
+        image: yurisa2/petrosa-ta-bot:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -95,6 +95,11 @@ spec:
             configMapKeyRef:
               name: ta-bot-config
               key: atr_period
+        - name: NATS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: NATS_ENABLED
         resources:
           requests:
             memory: "256Mi"
