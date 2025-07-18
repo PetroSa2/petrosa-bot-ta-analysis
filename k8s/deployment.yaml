@@ -5,7 +5,7 @@ metadata:
   namespace: petrosa-apps
   labels:
     app: petrosa-ta-bot
-    version: VERSION_PLACEHOLDER
+    version: latest
 spec:
   replicas: 3
   selector:
@@ -15,11 +15,11 @@ spec:
     metadata:
       labels:
         app: petrosa-ta-bot
-        version: VERSION_PLACEHOLDER
+        version: latest
     spec:
       containers:
       - name: ta-bot
-        image: yurisa2/petrosa-ta-bot:VERSION_PLACEHOLDER
+        image: yurisa2/petrosa-ta-bot:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -28,33 +28,33 @@ spec:
         - name: NATS_URL
           valueFrom:
             configMapKeyRef:
-              name: petrosa-global-config
+              name: petrosa-common-config
               key: NATS_URL
-        - name: TA_BOT_API_ENDPOINT
+        - name: API_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: api_endpoint
+        - name: LOG_LEVEL
           valueFrom:
             configMapKeyRef:
               name: petrosa-common-config
-              key: TA_BOT_API_ENDPOINT
-        - name: TA_BOT_LOG_LEVEL
+              key: LOG_LEVEL
+        - name: ENVIRONMENT
           valueFrom:
             configMapKeyRef:
               name: petrosa-common-config
-              key: TA_BOT_LOG_LEVEL
-        - name: TA_BOT_ENVIRONMENT
+              key: environment
+        - name: SUPPORTED_SYMBOLS
           valueFrom:
             configMapKeyRef:
-              name: petrosa-common-config
-              key: TA_BOT_ENVIRONMENT
-        - name: TA_BOT_SUPPORTED_SYMBOLS
+              name: ta-bot-config
+              key: supported_symbols
+        - name: SUPPORTED_TIMEFRAMES
           valueFrom:
             configMapKeyRef:
-              name: petrosa-common-config
-              key: TA_BOT_SUPPORTED_SYMBOLS
-        - name: TA_BOT_SUPPORTED_TIMEFRAMES
-          valueFrom:
-            configMapKeyRef:
-              name: petrosa-common-config
-              key: TA_BOT_SUPPORTED_TIMEFRAMES
+              name: ta-bot-config
+              key: supported_timeframes
         resources:
           requests:
             memory: "256Mi"
