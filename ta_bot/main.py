@@ -39,8 +39,15 @@ async def main():
             nats_url=config.nats_url, api_endpoint=config.api_endpoint, port=8000
         )
 
-        # Start listening for NATS messages
-        await nats_listener.start()
+        # Start listening for NATS messages if enabled
+        if config.nats_enabled:
+            logger.info("NATS is enabled, starting NATS listener...")
+            await nats_listener.start()
+        else:
+            logger.info("NATS is disabled, skipping NATS listener startup")
+            # Keep the application running for health checks
+            while True:
+                await asyncio.sleep(30)
 
     except Exception as e:
         logger.error(f"Failed to start TA Bot: {e}")
