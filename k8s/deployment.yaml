@@ -15,11 +15,11 @@ spec:
     metadata:
       labels:
         app: petrosa-ta-bot
-        version: latest
+        version: VERSION_PLACEHOLDER
     spec:
       containers:
       - name: ta-bot
-        image: yurisa2/petrosa-ta-bot:latest
+        image: yurisa2/petrosa-ta-bot:VERSION_PLACEHOLDER
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -55,6 +55,46 @@ spec:
             configMapKeyRef:
               name: ta-bot-config
               key: supported_timeframes
+        - name: RSI_PERIOD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: rsi_period
+        - name: MACD_FAST
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: macd_fast
+        - name: MACD_SLOW
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: macd_slow
+        - name: MACD_SIGNAL
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: macd_signal
+        - name: ADX_PERIOD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: adx_period
+        - name: BB_PERIOD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: bb_period
+        - name: BB_STD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: bb_std
+        - name: ATR_PERIOD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: atr_period
         resources:
           requests:
             memory: "256Mi"
