@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: petrosa-ta-bot-allow-egress
+  namespace: petrosa-apps
+  labels:
+    app: petrosa-ta-bot
+spec:
+  podSelector:
+    matchLabels:
+      app: petrosa-ta-bot
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS resolution
+  - ports:
+    - port: 53
+      protocol: UDP
+    to: []
+  # Allow HTTP/HTTPS for API calls
+  - ports:
+    - port: 80
+      protocol: TCP
+    - port: 443
+      protocol: TCP
+    to: []
+  # Allow NATS connection
+  - ports:
+    - port: 4222
+      protocol: TCP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          name: nats
+  # Allow health check endpoints
+  - ports:
+    - port: 8000
+      protocol: TCP
+    to: [] 
