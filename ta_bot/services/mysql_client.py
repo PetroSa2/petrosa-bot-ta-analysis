@@ -16,28 +16,47 @@ class MySQLClient:
     """MySQL client for database operations."""
 
     def __init__(self, host: str = None, port: int = 3306, user: str = None, 
-                 password: str = None, database: str = None):
+                 password: str = None, database: str = None, uri: str = None):
         """Initialize MySQL client."""
-        self.host = host or os.getenv("MYSQL_HOST", "mysql-server")
-        self.port = port or int(os.getenv("MYSQL_PORT", "3306"))
-        self.user = user or os.getenv("MYSQL_USER", "petrosa")
-        self.password = password or os.getenv("MYSQL_PASSWORD", "petrosa")
-        self.database = database or os.getenv("MYSQL_DATABASE", "petrosa")
+        if uri:
+            self.uri = uri
+            self.host = None
+            self.port = None
+            self.user = None
+            self.password = None
+            self.database = None
+        else:
+            self.uri = None
+            self.host = host or os.getenv("MYSQL_HOST", "mysql-server")
+            self.port = port or int(os.getenv("MYSQL_PORT", "3306"))
+            self.user = user or os.getenv("MYSQL_USER", "petrosa")
+            self.password = password or os.getenv("MYSQL_PASSWORD", "petrosa")
+            self.database = database or os.getenv("MYSQL_DATABASE", "petrosa")
         self.connection = None
 
     async def connect(self):
         """Connect to MySQL database."""
         try:
-            self.connection = pymysql.connect(
-                host=self.host,
-                port=self.port,
-                user=self.user,
-                password=self.password,
-                database=self.database,
-                cursorclass=DictCursor,
-                autocommit=True
-            )
-            logger.info(f"Connected to MySQL at {self.host}:{self.port}/{self.database}")
+            if self.uri:
+                # Use URI connection
+                self.connection = pymysql.connect(
+                    uri=self.uri,
+                    cursorclass=DictCursor,
+                    autocommit=True
+                )
+                logger.info(f"Connected to MySQL using URI")
+            else:
+                # Use individual parameters
+                self.connection = pymysql.connect(
+                    host=self.host,
+                    port=self.port,
+                    user=self.user,
+                    password=self.password,
+                    database=self.database,
+                    cursorclass=DictCursor,
+                    autocommit=True
+                )
+                logger.info(f"Connected to MySQL at {self.host}:{self.port}/{self.database}")
         except Exception as e:
             logger.error(f"Failed to connect to MySQL: {e}")
             raise
