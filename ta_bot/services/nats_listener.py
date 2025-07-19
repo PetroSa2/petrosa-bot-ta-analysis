@@ -51,8 +51,8 @@ class NATSListener:
 
             for symbol in self.supported_symbols:
                 for timeframe in self.supported_timeframes:
-                    # Use the production subject prefix for candle data
-                    subject = f"{self.nats_subject_prefix_production}.{symbol}.{timeframe}"
+                    # Use the production subject prefix for candle data with klines
+                    subject = f"{self.nats_subject_prefix_production}.klines.{symbol}.{timeframe}"
                     sub = await self.nc.subscribe(
                         subject, cb=self._handle_candle_message
                     )

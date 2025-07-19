@@ -40,7 +40,7 @@ class Config:
 
     # Technical analysis settings
     candle_periods: List[str] = field(
-        default_factory=lambda: os.getenv("SUPPORTED_TIMEFRAMES", "15m,1h").split(",")
+        default_factory=lambda: os.getenv("SUPPORTED_TIMEFRAMES", "5m").split(",")
     )
     symbols: List[str] = field(
         default_factory=lambda: os.getenv("SUPPORTED_SYMBOLS", "BTCUSDT,ETHUSDT,ADAUSDT").split(",")
