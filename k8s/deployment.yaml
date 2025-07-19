@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: ta-bot
-        image: yurisa2/petrosa-ta-bot:v1.0.18
+        image: yurisa2/petrosa-ta-bot:v1.0.19
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -121,30 +121,18 @@ spec:
               name: ta-bot-config
               key: supported_timeframes
         - name: MYSQL_HOST
-          valueFrom:
-            configMapKeyRef:
-              name: petrosa-common-config
-              key: MYSQL_HOST
+          value: "mysql-server"
         - name: MYSQL_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: petrosa-common-config
-              key: MYSQL_PORT
+          value: "3306"
         - name: MYSQL_USER
-          valueFrom:
-            configMapKeyRef:
-              name: petrosa-common-config
-              key: MYSQL_USER
-        - name: MYSQL_PASSWORD
+          value: "petrosa"
+        - name: MYSQL_URI
           valueFrom:
             secretKeyRef:
               name: petrosa-sensitive-credentials
-              key: MYSQL_PASSWORD
+              key: MYSQL_URI
         - name: MYSQL_DATABASE
-          valueFrom:
-            configMapKeyRef:
-              name: petrosa-common-config
-              key: MYSQL_DATABASE
+          value: "petrosa"
         resources:
           requests:
             memory: "256Mi"
