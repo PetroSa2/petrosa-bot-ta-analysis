@@ -55,12 +55,15 @@ async def main():
         # Start listening for NATS messages if enabled
         if config.nats_enabled:
             logger.info("NATS is enabled, starting NATS listener...")
-            await nats_listener.start()
+            # Start NATS listener in a separate task
+            nats_task = asyncio.create_task(nats_listener.start())
+            
+            # Wait for both health server and NATS listener
+            await asyncio.gather(health_task, nats_task)
         else:
             logger.info("NATS is disabled, skipping NATS listener startup")
             # Keep the application running for health checks
-            while True:
-                await asyncio.sleep(30)
+            await health_task
 
     except Exception as e:
         logger.error(f"Failed to start TA Bot: {e}")
