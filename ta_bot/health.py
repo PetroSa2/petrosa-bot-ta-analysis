@@ -110,7 +110,13 @@ class HealthServerRunner:
     async def start(self):
         """Start the health server."""
         logger.info("Health server started")
-        await self.server.serve()
+        try:
+            await self.server.serve()
+        except asyncio.CancelledError:
+            logger.info("Health server shutdown requested")
+        except Exception as e:
+            logger.error(f"Health server error: {e}")
+            raise
 
     async def stop(self):
         """Stop the health server."""
