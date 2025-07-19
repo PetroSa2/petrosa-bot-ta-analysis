@@ -28,8 +28,18 @@ async def main():
         config = Config()
         signal_engine = SignalEngine()
         publisher = SignalPublisher(config.api_endpoint)
+        # Parse supported symbols and timeframes
+        supported_symbols = [s.strip() for s in config.symbols]
+        supported_timeframes = [t.strip() for t in config.candle_periods]
+        
         nats_listener = NATSListener(
-            nats_url=config.nats_url, signal_engine=signal_engine, publisher=publisher
+            nats_url=config.nats_url, 
+            signal_engine=signal_engine, 
+            publisher=publisher,
+            nats_subject_prefix=config.nats_subject_prefix,
+            nats_subject_prefix_production=config.nats_subject_prefix_production,
+            supported_symbols=supported_symbols,
+            supported_timeframes=supported_timeframes
         )
 
         logger.info("Starting TA Bot...")

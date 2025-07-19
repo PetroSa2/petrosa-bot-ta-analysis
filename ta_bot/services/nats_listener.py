@@ -19,12 +19,23 @@ class NATSListener:
     """NATS message listener for candle data."""
 
     def __init__(
-        self, nats_url: str, signal_engine: SignalEngine, publisher: SignalPublisher
+        self, 
+        nats_url: str, 
+        signal_engine: SignalEngine, 
+        publisher: SignalPublisher,
+        nats_subject_prefix: str = "binance.extraction",
+        nats_subject_prefix_production: str = "binance.extraction.production",
+        supported_symbols: List[str] = None,
+        supported_timeframes: List[str] = None
     ):
         """Initialize the NATS listener."""
         self.nats_url = nats_url
         self.signal_engine = signal_engine
         self.publisher = publisher
+        self.nats_subject_prefix = nats_subject_prefix
+        self.nats_subject_prefix_production = nats_subject_prefix_production
+        self.supported_symbols = supported_symbols or ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
+        self.supported_timeframes = supported_timeframes or ["15m", "1h"]
         self.nc = NATS()
         self.subscriptions: List[Any] = []
 
@@ -35,12 +46,13 @@ class NATSListener:
             await self.nc.connect(self.nats_url)
             logger.info(f"Connected to NATS at {self.nats_url}")
 
-            # Subscribe to candle updates
+            # Subscribe to candle updates using production subject prefix
             subscriptions: List[Subscription] = []
 
-            for symbol in self.symbols:
-                for period in self.periods:
-                    subject = f"candles.{symbol}.{period}"
+            for symbol in self.supported_symbols:
+                for timeframe in self.supported_timeframes:
+                    # Use the production subject prefix for candle data
+                    subject = f"{self.nats_subject_prefix_production}.{symbol}.{timeframe}"
                     sub = await self.nc.subscribe(
                         subject, cb=self._handle_candle_message
                     )
@@ -48,48 +60,42 @@ class NATSListener:
                     logger.info(f"Subscribed to {subject}")
 
             self.subscriptions = subscriptions
-            logger.info("NATS listener started successfully")
+            logger.info(f"NATS listener started successfully with {len(subscriptions)} subscriptions")
 
         except Exception as e:
             logger.error(f"Error starting NATS listener: {e}")
             raise
 
-    async def _subscribe_to_candles(self):
-        """Subscribe to candle update topics."""
-        # Subscribe to candle updates for different symbols and timeframes
-        topics = [
-            "candles.BTCUSDT.15m",
-            "candles.BTCUSDT.1h",
-            "candles.ETHUSDT.15m",
-            "candles.ETHUSDT.1h",
-            "candles.ADAUSDT.15m",
-            "candles.ADAUSDT.1h",
-        ]
-
-        for topic in topics:
-            subscription = await self.nc.subscribe(
-                topic, cb=self._handle_candle_message
-            )
-            self.subscriptions.append(subscription)
-            logger.info(f"Subscribed to {topic}")
-
     async def _handle_candle_message(self, msg):
         """Handle incoming candle message."""
         try:
+            # Log every message received with subject and data length
+            subject = msg.subject
+            data_length = len(msg.data)
+            logger.info(f"Received NATS message - Subject: {subject}, Data length: {data_length} bytes")
+            
+            # Log the raw message data for debugging
+            raw_data = msg.data.decode()
+            logger.info(f"Raw message data: {raw_data[:200]}..." if len(raw_data) > 200 else f"Raw message data: {raw_data}")
+
             # Parse message data
-            data = json.loads(msg.data.decode())
+            data = json.loads(raw_data)
 
             # Extract message information
             symbol = data.get("symbol")
-            period = data.get("period")
+            period = data.get("period") or data.get("timeframe")
             candles = data.get("candles", [])
+            
+            # Handle different message formats
+            if not candles and "data" in data:
+                candles = data.get("data", [])
 
-            if not symbol or not period or not candles:
-                logger.warning(f"Invalid candle message format: {data}")
+            if not symbol or not period:
+                logger.warning(f"Invalid message format - missing symbol or period: {data}")
                 return
 
             logger.info(
-                f"Received candle update for {symbol} {period}: {len(candles)} candles"
+                f"Processing candle update for {symbol} {period}: {len(candles)} candles"
             )
 
             # Convert candles to DataFrame
@@ -112,8 +118,10 @@ class NATSListener:
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse NATS message: {e}")
+            logger.error(f"Raw message: {msg.data.decode()}")
         except Exception as e:
             logger.error(f"Error processing candle message: {e}")
+            logger.error(f"Subject: {msg.subject}, Data: {msg.data.decode()[:200]}...")
 
     def _candles_to_dataframe(self, candles: List[Dict[str, Any]]) -> pd.DataFrame:
         """Convert candle data to pandas DataFrame."""
@@ -124,21 +132,25 @@ class NATSListener:
             # Extract OHLCV data
             data = []
             for candle in candles:
-                data.append(
-                    {
-                        "timestamp": candle.get("timestamp"),
-                        "open": float(candle.get("open", 0)),
-                        "high": float(candle.get("high", 0)),
-                        "low": float(candle.get("low", 0)),
-                        "close": float(candle.get("close", 0)),
-                        "volume": float(candle.get("volume", 0)),
-                    }
-                )
+                # Handle different candle formats
+                if isinstance(candle, dict):
+                    data.append(
+                        {
+                            "timestamp": candle.get("timestamp") or candle.get("time"),
+                            "open": float(candle.get("open", 0)),
+                            "high": float(candle.get("high", 0)),
+                            "low": float(candle.get("low", 0)),
+                            "close": float(candle.get("close", 0)),
+                            "volume": float(candle.get("volume", 0)),
+                        }
+                    )
+                else:
+                    logger.warning(f"Unexpected candle format: {candle}")
 
             df = pd.DataFrame(data)
 
             # Sort by timestamp if available
-            if "timestamp" in df.columns:
+            if "timestamp" in df.columns and not df.empty:
                 df = df.sort_values("timestamp")
 
             return df
