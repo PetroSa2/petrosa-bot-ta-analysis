@@ -14,6 +14,8 @@ class Config:
     # NATS Configuration
     nats_url: str = os.getenv("NATS_URL", "nats://localhost:4222")
     nats_enabled: bool = os.getenv("NATS_ENABLED", "true").lower() == "true"
+    nats_subject_prefix: str = os.getenv("NATS_SUBJECT_PREFIX", "binance.extraction")
+    nats_subject_prefix_production: str = os.getenv("NATS_SUBJECT_PREFIX_PRODUCTION", "binance.extraction.production")
 
     # API Configuration
     api_endpoint: str = os.getenv("TA_BOT_API_ENDPOINT", "http://localhost:8080/signals")
@@ -38,10 +40,10 @@ class Config:
 
     # Technical analysis settings
     candle_periods: List[str] = field(
-        default_factory=lambda: ["1m", "5m", "15m", "1h", "4h"]
+        default_factory=lambda: os.getenv("SUPPORTED_TIMEFRAMES", "15m,1h").split(",")
     )
     symbols: List[str] = field(
-        default_factory=lambda: ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
+        default_factory=lambda: os.getenv("SUPPORTED_SYMBOLS", "BTCUSDT,ETHUSDT,ADAUSDT").split(",")
     )
 
     # Confidence thresholds

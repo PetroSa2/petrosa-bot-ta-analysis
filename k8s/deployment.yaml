@@ -100,6 +100,26 @@ spec:
             configMapKeyRef:
               name: petrosa-common-config
               key: NATS_ENABLED
+        - name: NATS_SUBJECT_PREFIX
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: NATS_SUBJECT_PREFIX
+        - name: NATS_SUBJECT_PREFIX_PRODUCTION
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: NATS_SUBJECT_PREFIX_PRODUCTION
+        - name: SUPPORTED_SYMBOLS
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: supported_symbols
+        - name: SUPPORTED_TIMEFRAMES
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: supported_timeframes
         resources:
           requests:
             memory: "256Mi"
