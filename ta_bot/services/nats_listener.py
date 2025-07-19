@@ -8,9 +8,11 @@ from typing import Dict, Any, List
 import pandas as pd
 from nats.aio.client import Client as NATS
 from nats.aio.subscription import Subscription
+import asyncio
 
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.services.publisher import SignalPublisher
+from ta_bot.services.leader_election import LeaderElection
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,7 @@ class NATSListener:
         self.supported_timeframes = supported_timeframes or ["15m", "1h"]
         self.nc = NATS()
         self.subscriptions: List[Any] = []
+        self.leader_election = None
 
     async def start(self):
         """Start the NATS listener."""
@@ -46,6 +49,10 @@ class NATSListener:
             await self.nc.connect(self.nats_url)
             logger.info(f"Connected to NATS at {self.nats_url}")
 
+            # Initialize leader election
+            self.leader_election = LeaderElection(self.nc)
+            asyncio.create_task(self.leader_election.start_election())
+
             # Subscribe to candle updates using production subject prefix
             subscriptions: List[Subscription] = []
 
@@ -53,8 +60,9 @@ class NATSListener:
                 for timeframe in self.supported_timeframes:
                     # Use the production subject prefix for candle data with klines
                     subject = f"{self.nats_subject_prefix_production}.klines.{symbol}.{timeframe}"
+                    # Use queue group to ensure only one replica processes each message
                     sub = await self.nc.subscribe(
-                        subject, cb=self._handle_candle_message
+                        subject, cb=self._handle_candle_message, queue="ta-bot-workers"
                     )
                     subscriptions.append(sub)
                     logger.info(f"Subscribed to {subject}")
@@ -69,6 +77,11 @@ class NATSListener:
     async def _handle_candle_message(self, msg):
         """Handle incoming candle message."""
         try:
+            # Only process messages if this replica is the leader
+            if not self.leader_election or not self.leader_election.is_current_leader():
+                logger.debug(f"Skipping message processing - not the leader")
+                return
+
             # Log every message received with subject and data length
             subject = msg.subject
             data_length = len(msg.data)
