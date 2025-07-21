@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: ta-bot
-        image: yurisa2/petrosa-ta-bot:v1.0.19
+        image: yurisa2/petrosa-ta-bot:VERSION_PLACEHOLDER
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
