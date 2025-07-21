@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 import pymysql
 from pymysql.cursors import DictCursor
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -18,45 +19,49 @@ class MySQLClient:
     def __init__(self, host: str = None, port: int = 3306, user: str = None, 
                  password: str = None, database: str = None, uri: str = None):
         """Initialize MySQL client."""
-        if uri:
-            self.uri = uri
-            self.host = None
-            self.port = None
-            self.user = None
-            self.password = None
-            self.database = None
+        # Try to get URI from environment first
+        mysql_uri = os.getenv("MYSQL_URI")
+        
+        if mysql_uri:
+            # Parse the URI
+            parsed_uri = urlparse(mysql_uri.replace('mysql+pymysql://', 'mysql://'))
+            self.host = parsed_uri.hostname
+            self.port = parsed_uri.port or 3306
+            self.user = parsed_uri.username
+            self.password = parsed_uri.password
+            self.database = parsed_uri.path.lstrip('/')
+            logger.info(f"Parsed MySQL URI: {self.host}:{self.port}/{self.database}")
+        elif uri:
+            # Use provided URI
+            parsed_uri = urlparse(uri.replace('mysql+pymysql://', 'mysql://'))
+            self.host = parsed_uri.hostname
+            self.port = parsed_uri.port or 3306
+            self.user = parsed_uri.username
+            self.password = parsed_uri.password
+            self.database = parsed_uri.path.lstrip('/')
         else:
-            self.uri = None
+            # Use individual parameters
             self.host = host or os.getenv("MYSQL_HOST", "mysql-server")
             self.port = port or int(os.getenv("MYSQL_PORT", "3306"))
             self.user = user or os.getenv("MYSQL_USER", "petrosa")
             self.password = password or os.getenv("MYSQL_PASSWORD", "petrosa")
             self.database = database or os.getenv("MYSQL_DATABASE", "petrosa")
+        
         self.connection = None
 
     async def connect(self):
         """Connect to MySQL database."""
         try:
-            if self.uri:
-                # Use URI connection
-                self.connection = pymysql.connect(
-                    uri=self.uri,
-                    cursorclass=DictCursor,
-                    autocommit=True
-                )
-                logger.info(f"Connected to MySQL using URI")
-            else:
-                # Use individual parameters
-                self.connection = pymysql.connect(
-                    host=self.host,
-                    port=self.port,
-                    user=self.user,
-                    password=self.password,
-                    database=self.database,
-                    cursorclass=DictCursor,
-                    autocommit=True
-                )
-                logger.info(f"Connected to MySQL at {self.host}:{self.port}/{self.database}")
+            self.connection = pymysql.connect(
+                host=self.host,
+                port=self.port,
+                user=self.user,
+                password=self.password,
+                database=self.database,
+                cursorclass=DictCursor,
+                autocommit=True
+            )
+            logger.info(f"Connected to MySQL at {self.host}:{self.port}/{self.database}")
         except Exception as e:
             logger.error(f"Failed to connect to MySQL: {e}")
             raise
