@@ -70,6 +70,13 @@ class MySQLClient:
     async def connect(self):
         """Connect to MySQL database."""
         try:
+            logger.info(f"Attempting to connect to MySQL with parameters:")
+            logger.info(f"  Host: {self.host}")
+            logger.info(f"  Port: {self.port}")
+            logger.info(f"  User: {self.user}")
+            logger.info(f"  Database: {self.database}")
+            logger.info(f"  Password: {'***' if self.password else 'None'}")
+            
             self.connection = pymysql.connect(
                 host=self.host,
                 port=self.port,
