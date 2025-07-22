@@ -63,7 +63,14 @@ class MySQLClient:
             self.host = parsed_uri.hostname
             self.port = parsed_uri.port or 3306
             self.user = parsed_uri.username
+            # URL decode the password to handle special characters
             self.password = parsed_uri.password
+            if self.password and '%' in self.password:
+                from urllib.parse import unquote
+                original_password = self.password
+                self.password = unquote(self.password)
+                logger.info(f"URL decoded password: '{original_password}' -> '{self.password}'")
+            # Handle URL encoding in database name
             self.database = parsed_uri.path.lstrip('/')
             if '%' in self.database:
                 from urllib.parse import unquote
