@@ -23,22 +23,40 @@ class MySQLClient:
         mysql_uri = os.getenv("MYSQL_URI")
         
         if mysql_uri:
-            # Parse the URI
-            parsed_uri = urlparse(mysql_uri.replace('mysql+pymysql://', 'mysql://'))
+            # Parse the URI - handle mysql+pymysql:// protocol
+            if mysql_uri.startswith('mysql+pymysql://'):
+                # Remove the mysql+pymysql:// prefix for parsing
+                uri_for_parsing = mysql_uri.replace('mysql+pymysql://', 'mysql://')
+            else:
+                uri_for_parsing = mysql_uri
+                
+            parsed_uri = urlparse(uri_for_parsing)
             self.host = parsed_uri.hostname
             self.port = parsed_uri.port or 3306
             self.user = parsed_uri.username
             self.password = parsed_uri.password
+            # Handle URL encoding in database name
             self.database = parsed_uri.path.lstrip('/')
+            if '%' in self.database:
+                from urllib.parse import unquote
+                self.database = unquote(self.database)
             logger.info(f"Parsed MySQL URI: {self.host}:{self.port}/{self.database}")
         elif uri:
             # Use provided URI
-            parsed_uri = urlparse(uri.replace('mysql+pymysql://', 'mysql://'))
+            if uri.startswith('mysql+pymysql://'):
+                uri_for_parsing = uri.replace('mysql+pymysql://', 'mysql://')
+            else:
+                uri_for_parsing = uri
+                
+            parsed_uri = urlparse(uri_for_parsing)
             self.host = parsed_uri.hostname
             self.port = parsed_uri.port or 3306
             self.user = parsed_uri.username
             self.password = parsed_uri.password
             self.database = parsed_uri.path.lstrip('/')
+            if '%' in self.database:
+                from urllib.parse import unquote
+                self.database = unquote(self.database)
         else:
             # Use individual parameters
             self.host = host or os.getenv("MYSQL_HOST", "mysql-server")
