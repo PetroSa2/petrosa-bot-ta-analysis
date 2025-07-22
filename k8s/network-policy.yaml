@@ -12,19 +12,19 @@ spec:
   policyTypes:
   - Egress
   egress:
-  # Allow DNS resolution
+  # DNS
   - ports:
     - port: 53
       protocol: UDP
     to: []
-  # Allow HTTP/HTTPS for API calls
+  # HTTP/HTTPS
   - ports:
     - port: 80
       protocol: TCP
     - port: 443
       protocol: TCP
     to: []
-  # Allow NATS connection
+  # NATS
   - ports:
     - port: 4222
       protocol: TCP
@@ -32,7 +32,12 @@ spec:
     - namespaceSelector:
         matchLabels:
           name: nats
-  # Allow health check endpoints
+  # MySQL (for external database)
+  - ports:
+    - port: 3306
+      protocol: TCP
+    to: []
+  # HTTP for health checks
   - ports:
     - port: 8000
       protocol: TCP
