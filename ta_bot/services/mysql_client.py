@@ -76,6 +76,8 @@ class MySQLClient:
             logger.info(f"  User: {self.user}")
             logger.info(f"  Database: {self.database}")
             logger.info(f"  Password: {'***' if self.password else 'None'}")
+            logger.info(f"  Database repr: {repr(self.database)}")
+            logger.info(f"  Password repr: {repr(self.password)}")
             
             self.connection = pymysql.connect(
                 host=self.host,
