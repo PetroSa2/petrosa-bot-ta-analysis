@@ -74,10 +74,11 @@ class MySQLClient:
 
     async def fetch_candles(self, symbol: str, period: str, limit: int = 100) -> pd.DataFrame:
         """Fetch candle data from MySQL."""
-        try:
-            if not self.connection:
-                await self.connect()
+        if not self.connection:
+            logger.error("Not connected to MySQL")
+            return pd.DataFrame()
 
+        try:
             # Map period to table name
             period_mapping = {
                 "1m": "klines_m1",
@@ -85,7 +86,7 @@ class MySQLClient:
                 "15m": "klines_m15",
                 "30m": "klines_m30",
                 "1h": "klines_h1",
-                "4h": "klines_h4",
+                "4h": "klines_h4", 
                 "1d": "klines_d1"
             }
             
@@ -94,45 +95,42 @@ class MySQLClient:
                 logger.error(f"Unsupported period: {period}")
                 return pd.DataFrame()
 
-            # Query to fetch recent candles
-            query = f"""
-                SELECT 
-                    timestamp,
-                    open,
-                    high, 
-                    low,
-                    close,
-                    volume
+            # Build SQL query
+            sql = f"""
+                SELECT timestamp, open, high, low, close, volume
                 FROM {table_name}
                 WHERE symbol = %s
                 ORDER BY timestamp DESC
                 LIMIT %s
             """
-
+            
+            logger.info(f"Executing SQL query: {sql}")
+            logger.info(f"Parameters: symbol={symbol}, limit={limit}")
+            
             with self.connection.cursor() as cursor:
-                cursor.execute(query, (symbol, limit))
-                results = cursor.fetchall()
+                cursor.execute(sql, (symbol, limit))
+                rows = cursor.fetchall()
+                
+                logger.info(f"Query returned {len(rows)} rows")
+                if rows:
+                    logger.info(f"First row: {rows[0]}")
+                    logger.info(f"Last row: {rows[-1]}")
+                
+                if not rows:
+                    logger.warning(f"No data found for {symbol} {period} in table {table_name}")
+                    return pd.DataFrame()
 
-            if not results:
-                logger.warning(f"No candle data found for {symbol} {period}")
-                return pd.DataFrame()
-
-            # Convert to DataFrame
-            df = pd.DataFrame(results)
-            
-            # Convert timestamp to datetime
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
-            
-            # Sort by timestamp (oldest first)
-            df = df.sort_values('timestamp')
-            
-            # Convert numeric columns
-            numeric_columns = ['open', 'high', 'low', 'close', 'volume']
-            for col in numeric_columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-
-            logger.info(f"Fetched {len(df)} candles for {symbol} {period}")
-            return df
+                # Convert to DataFrame
+                df = pd.DataFrame(rows)
+                df.columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
+                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df = df.sort_values('timestamp').reset_index(drop=True)
+                
+                logger.info(f"Created DataFrame with {len(df)} rows")
+                logger.info(f"DataFrame columns: {df.columns.tolist()}")
+                logger.info(f"DataFrame head:\n{df.head()}")
+                
+                return df
 
         except Exception as e:
             logger.error(f"Error fetching candles for {symbol} {period}: {e}")
