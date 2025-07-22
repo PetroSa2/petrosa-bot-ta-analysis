@@ -110,7 +110,11 @@ class MySQLClient:
                 password=self.password,
                 database=self.database,
                 cursorclass=DictCursor,
-                autocommit=True
+                autocommit=True,
+                connect_timeout=30,
+                read_timeout=30,
+                write_timeout=30,
+                charset='utf8mb4'
             )
             logger.info(f"Connected to MySQL at {self.host}:{self.port}/{self.database}")
         except Exception as e:
@@ -130,6 +134,13 @@ class MySQLClient:
             return pd.DataFrame()
 
         try:
+            # Check if connection is still alive
+            try:
+                self.connection.ping(reconnect=True)
+            except Exception as e:
+                logger.warning(f"Connection lost, reconnecting: {e}")
+                await self.connect()
+
             # Map period to table name
             period_mapping = {
                 "1m": "klines_m1",
@@ -182,9 +193,14 @@ class MySQLClient:
                 logger.info(f"DataFrame head:\n{df.head()}")
                 
                 return df
-
+                
         except Exception as e:
             logger.error(f"Error fetching candles for {symbol} {period}: {e}")
+            # Try to reconnect on error
+            try:
+                await self.connect()
+            except Exception as reconnect_error:
+                logger.error(f"Failed to reconnect: {reconnect_error}")
             return pd.DataFrame()
 
     async def persist_signal(self, signal_data: Dict[str, Any]) -> bool:
