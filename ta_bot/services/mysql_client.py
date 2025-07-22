@@ -9,20 +9,21 @@ import pandas as pd
 import pymysql
 from pymysql.cursors import DictCursor
 from urllib.parse import urlparse
+import json
 
 logger = logging.getLogger(__name__)
 
 
 class MySQLClient:
     """MySQL client for database operations."""
-
-    def __init__(self, host: str = None, port: int = 3306, user: str = None, 
-                 password: str = None, database: str = None, uri: str = None):
+    
+    def __init__(self, host: str | None = None, port: int = 3306, user: str | None = None,
+                 password: str | None = None, database: str | None = None, uri: str | None = None):
         """Initialize MySQL client."""
         # Try to get URI from environment first
         mysql_uri = os.getenv("MYSQL_URI")
         logger.info(f"Raw MYSQL_URI from environment: {mysql_uri}")
-        
+
         if mysql_uri:
             # Parse the URI - handle mysql+pymysql:// protocol
             if mysql_uri.startswith('mysql+pymysql://'):
@@ -31,7 +32,7 @@ class MySQLClient:
                 logger.info(f"Converted URI for parsing: {uri_for_parsing}")
             else:
                 uri_for_parsing = mysql_uri
-                
+
             parsed_uri = urlparse(uri_for_parsing)
             logger.info(f"Parsed URI components:")
             logger.info(f"  hostname: {parsed_uri.hostname}")
@@ -39,57 +40,34 @@ class MySQLClient:
             logger.info(f"  username: {parsed_uri.username}")
             logger.info(f"  password: {'***' if parsed_uri.password else 'None'}")
             logger.info(f"  path: {parsed_uri.path}")
-            
-            self.host = parsed_uri.hostname
-            self.port = parsed_uri.port or 3306
-            self.user = parsed_uri.username
+
+            self.host: str = parsed_uri.hostname or "localhost"
+            self.port: int = parsed_uri.port or 3306
+            self.user: str = parsed_uri.username or "root"
             # URL decode the password to handle special characters
-            self.password = parsed_uri.password
+            self.password: str | None = parsed_uri.password
             if self.password and '%' in self.password:
                 from urllib.parse import unquote
                 original_password = self.password
                 self.password = unquote(self.password)
                 logger.info(f"URL decoded password: '{original_password}' -> '{self.password}'")
             # Handle URL encoding in database name
-            self.database = parsed_uri.path.lstrip('/')
+            self.database: str = parsed_uri.path.lstrip('/')
             if '%' in self.database:
                 from urllib.parse import unquote
                 original_db = self.database
                 self.database = unquote(self.database)
                 logger.info(f"URL decoded database name: '{original_db}' -> '{self.database}'")
             logger.info(f"Final parsed MySQL URI: {self.host}:{self.port}/{self.database}")
-        elif uri:
-            # Use provided URI
-            if uri.startswith('mysql+pymysql://'):
-                uri_for_parsing = uri.replace('mysql+pymysql://', 'mysql://')
-            else:
-                uri_for_parsing = uri
-                
-            parsed_uri = urlparse(uri_for_parsing)
-            self.host = parsed_uri.hostname
-            self.port = parsed_uri.port or 3306
-            self.user = parsed_uri.username
-            # URL decode the password to handle special characters
-            self.password = parsed_uri.password
-            if self.password and '%' in self.password:
-                from urllib.parse import unquote
-                original_password = self.password
-                self.password = unquote(self.password)
-                logger.info(f"URL decoded password: '{original_password}' -> '{self.password}'")
-            # Handle URL encoding in database name
-            self.database = parsed_uri.path.lstrip('/')
-            if '%' in self.database:
-                from urllib.parse import unquote
-                self.database = unquote(self.database)
         else:
             # Use individual parameters
-            self.host = host or os.getenv("MYSQL_HOST", "mysql-server")
+            self.host = (host or os.getenv("MYSQL_HOST", "mysql-server")) or "mysql-server"
             self.port = port or int(os.getenv("MYSQL_PORT", "3306"))
-            self.user = user or os.getenv("MYSQL_USER", "petrosa")
+            self.user = (user or os.getenv("MYSQL_USER", "petrosa")) or "petrosa"
             self.password = password or os.getenv("MYSQL_PASSWORD", "petrosa")
-            self.database = database or os.getenv("MYSQL_DATABASE", "petrosa")
+            self.database = (database or os.getenv("MYSQL_DATABASE", "petrosa")) or "petrosa"
         
-        self.connection = None
+        self.connection: Any = None
 
     async def connect(self):
         """Connect to MySQL database."""
@@ -110,7 +88,11 @@ class MySQLClient:
                 password=self.password,
                 database=self.database,
                 cursorclass=DictCursor,
-                autocommit=True
+                autocommit=True,
+                connect_timeout=30,
+                read_timeout=30,
+                write_timeout=30,
+                charset='utf8mb4'
             )
             logger.info(f"Connected to MySQL at {self.host}:{self.port}/{self.database}")
         except Exception as e:
@@ -130,6 +112,13 @@ class MySQLClient:
             return pd.DataFrame()
 
         try:
+            # Check if connection is still alive
+            try:
+                self.connection.ping(reconnect=True)
+            except Exception as e:
+                logger.warning(f"Connection lost, reconnecting: {e}")
+                await self.connect()
+
             # Map period to table name
             period_mapping = {
                 "1m": "klines_m1",
@@ -182,53 +171,72 @@ class MySQLClient:
                 logger.info(f"DataFrame head:\n{df.head()}")
                 
                 return df
-
+                
         except Exception as e:
             logger.error(f"Error fetching candles for {symbol} {period}: {e}")
+            # Try to reconnect on error
+            try:
+                await self.connect()
+            except Exception as reconnect_error:
+                logger.error(f"Failed to reconnect: {reconnect_error}")
             return pd.DataFrame()
 
     async def persist_signal(self, signal_data: Dict[str, Any]) -> bool:
-        """Persist signal to MySQL with trade engine API schema."""
+        """Persist a single signal to MySQL."""
+        if not self.connection:
+            logger.error("Not connected to MySQL")
+            return False
+
         try:
-            if not self.connection:
+            # Check if connection is still alive
+            try:
+                self.connection.ping(reconnect=True)
+            except Exception as e:
+                logger.warning(f"Connection lost, reconnecting: {e}")
                 await self.connect()
 
-            # Insert signal into signals table
-            query = """
-                INSERT INTO signals (
-                    symbol,
-                    period,
-                    signal_type,
-                    confidence,
-                    strategy,
-                    metadata,
-                    timestamp,
-                    created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+            sql = """
+                INSERT INTO signals (symbol, period, signal_type, confidence, strategy, metadata, timestamp, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
             """
-
+            
+            metadata_json = json.dumps(signal_data.get('metadata', {}))
+            
             with self.connection.cursor() as cursor:
-                cursor.execute(query, (
+                cursor.execute(sql, (
                     signal_data['symbol'],
                     signal_data['period'],
-                    signal_data['signal'],
+                    signal_data['signal_type'],
                     signal_data['confidence'],
                     signal_data['strategy'],
-                    str(signal_data['metadata']),  # Store as JSON string
+                    metadata_json,
                     signal_data['timestamp']
                 ))
-
-            logger.info(f"Signal persisted for {signal_data['symbol']} {signal_data['strategy']}")
+                
+            logger.info(f"Persisted signal for {signal_data['symbol']} {signal_data['period']}")
             return True
-
+            
         except Exception as e:
             logger.error(f"Error persisting signal: {e}")
+            # Try to reconnect on error
+            try:
+                await self.connect()
+            except Exception as reconnect_error:
+                logger.error(f"Failed to reconnect: {reconnect_error}")
             return False
 
     async def persist_signals_batch(self, signals: List[Dict[str, Any]]) -> bool:
         """Persist multiple signals in a batch."""
+        if not self.connection:
+            logger.error("Not connected to MySQL")
+            return False
+
         try:
-            if not self.connection:
+            # Check if connection is still alive
+            try:
+                self.connection.ping(reconnect=True)
+            except Exception as e:
+                logger.warning(f"Connection lost, reconnecting: {e}")
                 await self.connect()
 
             if not signals:
@@ -265,7 +273,12 @@ class MySQLClient:
 
             logger.info(f"Persisted {len(signals)} signals in batch")
             return True
-
+            
         except Exception as e:
             logger.error(f"Error persisting signals batch: {e}")
+            # Try to reconnect on error
+            try:
+                await self.connect()
+            except Exception as reconnect_error:
+                logger.error(f"Failed to reconnect: {reconnect_error}")
             return False 

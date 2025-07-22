@@ -22,16 +22,11 @@ logger = logging.getLogger(__name__)
 class NATSListener:
     """NATS message listener for candle data."""
 
-    def __init__(
-        self, 
-        nats_url: str, 
-        signal_engine: SignalEngine, 
-        publisher: SignalPublisher,
-        nats_subject_prefix: str = "binance.extraction",
-        nats_subject_prefix_production: str = "binance.extraction.production",
-        supported_symbols: List[str] = None,
-        supported_timeframes: List[str] = None
-    ):
+    def __init__(self, nats_url: str, signal_engine: SignalEngine, publisher: SignalPublisher,
+                 nats_subject_prefix: str = "binance.extraction",
+                 nats_subject_prefix_production: str = "binance.extraction.production",
+                 supported_symbols: list[str] | None = None,
+                 supported_timeframes: list[str] | None = None):
         """Initialize the NATS listener."""
         self.nats_url = nats_url
         self.signal_engine = signal_engine
