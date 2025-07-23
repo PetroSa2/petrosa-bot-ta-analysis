@@ -118,7 +118,7 @@ class MySQLClient:
 
             # Build SQL query
             sql = f"""
-                SELECT timestamp, open, high, low, close, volume
+                SELECT timestamp, open_price as open, high_price as high, low_price as low, close_price as close, volume
                 FROM {table_name}
                 WHERE symbol = %s
                 ORDER BY timestamp DESC
