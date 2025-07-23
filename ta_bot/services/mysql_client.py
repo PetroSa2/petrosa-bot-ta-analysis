@@ -145,6 +145,10 @@ class MySQLClient:
                 df = pd.DataFrame(rows)
                 df.columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
+                # Convert Decimal columns to float for pandas calculations
+                numeric_columns = ['open', 'high', 'low', 'close', 'volume']
+                for col in numeric_columns:
+                    df[col] = df[col].astype(float)
                 df = df.sort_values('timestamp').reset_index(drop=True)
                 
                 logger.info(f"Created DataFrame with {len(df)} rows")
