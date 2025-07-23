@@ -146,7 +146,7 @@ class NATSListener:
                     logger.error(f"Failed to persist signals to MySQL for {symbol} {period}")
 
             else:
-                logger.debug(f"No signals generated for {symbol} {period}")
+                logger.info(f"No signals generated for {symbol} {period} - all strategies conditions not met")
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse NATS message: {e}")

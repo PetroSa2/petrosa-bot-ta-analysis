@@ -125,17 +125,9 @@ class MySQLClient:
                 LIMIT %s
             """
             
-            logger.info(f"Executing SQL query: {sql}")
-            logger.info(f"Parameters: symbol={symbol}, limit={limit}")
-            
             with self.connection.cursor() as cursor:
                 cursor.execute(sql, (symbol, limit))
                 rows = cursor.fetchall()
-                
-                logger.info(f"Query returned {len(rows)} rows")
-                if rows:
-                    logger.info(f"First row: {rows[0]}")
-                    logger.info(f"Last row: {rows[-1]}")
                 
                 if not rows:
                     logger.warning(f"No data found for {symbol} {period} in table {table_name}")
@@ -150,10 +142,6 @@ class MySQLClient:
                 for col in numeric_columns:
                     df[col] = df[col].astype(float)
                 df = df.sort_values('timestamp').reset_index(drop=True)
-                
-                logger.info(f"Created DataFrame with {len(df)} rows")
-                logger.info(f"DataFrame columns: {df.columns.tolist()}")
-                logger.info(f"DataFrame head:\n{df.head()}")
                 
                 return df
                 
