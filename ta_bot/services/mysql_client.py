@@ -22,24 +22,16 @@ class MySQLClient:
         """Initialize MySQL client."""
         # Try to get URI from environment first
         mysql_uri = os.getenv("MYSQL_URI")
-        logger.info(f"Raw MYSQL_URI from environment: {mysql_uri}")
 
         if mysql_uri:
             # Parse the URI - handle mysql+pymysql:// protocol
             if mysql_uri.startswith('mysql+pymysql://'):
                 # Remove the mysql+pymysql:// prefix for parsing
                 uri_for_parsing = mysql_uri.replace('mysql+pymysql://', 'mysql://')
-                logger.info(f"Converted URI for parsing: {uri_for_parsing}")
             else:
                 uri_for_parsing = mysql_uri
 
             parsed_uri = urlparse(uri_for_parsing)
-            logger.info(f"Parsed URI components:")
-            logger.info(f"  hostname: {parsed_uri.hostname}")
-            logger.info(f"  port: {parsed_uri.port}")
-            logger.info(f"  username: {parsed_uri.username}")
-            logger.info(f"  password: {'***' if parsed_uri.password else 'None'}")
-            logger.info(f"  path: {parsed_uri.path}")
 
             self.host: str = parsed_uri.hostname or "localhost"
             self.port: int = parsed_uri.port or 3306
@@ -48,17 +40,13 @@ class MySQLClient:
             self.password: str | None = parsed_uri.password
             if self.password and '%' in self.password:
                 from urllib.parse import unquote
-                original_password = self.password
                 self.password = unquote(self.password)
-                logger.info(f"URL decoded password: '{original_password}' -> '{self.password}'")
             # Handle URL encoding in database name
             self.database: str = parsed_uri.path.lstrip('/')
             if '%' in self.database:
                 from urllib.parse import unquote
-                original_db = self.database
                 self.database = unquote(self.database)
-                logger.info(f"URL decoded database name: '{original_db}' -> '{self.database}'")
-            logger.info(f"Final parsed MySQL URI: {self.host}:{self.port}/{self.database}")
+            logger.info(f"MySQL URI parsed successfully")
         else:
             # Use individual parameters
             self.host = (host or os.getenv("MYSQL_HOST", "mysql-server")) or "mysql-server"
@@ -72,14 +60,7 @@ class MySQLClient:
     async def connect(self):
         """Connect to MySQL database."""
         try:
-            logger.info(f"Attempting to connect to MySQL with parameters:")
-            logger.info(f"  Host: {self.host}")
-            logger.info(f"  Port: {self.port}")
-            logger.info(f"  User: {self.user}")
-            logger.info(f"  Database: {self.database}")
-            logger.info(f"  Password: {'***' if self.password else 'None'}")
-            logger.info(f"  Database repr: {repr(self.database)}")
-            logger.info(f"  Password repr: {repr(self.password)}")
+            logger.info(f"Attempting to connect to MySQL...")
             
             self.connection = pymysql.connect(
                 host=self.host,
@@ -94,7 +75,7 @@ class MySQLClient:
                 write_timeout=30,
                 charset='utf8mb4'
             )
-            logger.info(f"Connected to MySQL at {self.host}:{self.port}/{self.database}")
+            logger.info(f"Connected to MySQL successfully")
         except Exception as e:
             logger.error(f"Failed to connect to MySQL: {e}")
             raise
