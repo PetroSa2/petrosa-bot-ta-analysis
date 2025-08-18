@@ -26,72 +26,62 @@ class RangeBreakPopStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
-        """Analyze for range break pop signals."""
-        if len(df) < 12:
+    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Analyze candles for Range Break Pop signals."""
+        if len(df) < 20:
             return None
 
         # Get current values
         current = df.iloc[-1]
         close = current["close"]
-        volume = current["volume"]
+        high = current["high"]
+        low = current["low"]
 
-        # Calculate indicators
-        atr = self.indicators.atr(df)
-        rsi = self.indicators.rsi(df)
-
-        if atr is None or rsi is None:
+        # Get ATR for volatility measurement
+        atr = indicators.get("atr", [])
+        if not atr:
             return None
 
-        current_atr = atr.iloc[-1]
-        current_rsi = rsi.iloc[-1]
-        previous_atr = atr.iloc[-2] if len(atr) > 1 else current_atr
+        current_atr = float(atr.iloc[-1])
 
-        # Check if we have a tight range in the last 10 candles
-        recent_high = df["high"].iloc[-11:-1].max()  # Last 10 candles excluding current
-        recent_low = df["low"].iloc[-11:-1].min()
-        range_spread = (recent_high - recent_low) / recent_low * 100
+        # Calculate recent range (last 10 candles)
+        recent_high = df["high"].iloc[-10:].max()
+        recent_low = df["low"].iloc[-10:].min()
+        range_size = recent_high - recent_low
 
-        # Range should be tight (< 2.5% spread)
-        if range_spread >= 2.5:
-            return None
+        # Check for breakout
+        breakout_up = close > recent_high
+        breakout_down = close < recent_low
 
-        # Current price should break above the recent high
-        breakout_trigger = close > recent_high
+        # Check for volume confirmation
+        current_volume = current["volume"]
+        avg_volume = df["volume"].iloc[-10:].mean()
+        volume_spike = current_volume > avg_volume * 1.5
 
-        if not breakout_trigger:
-            return None
+        # Check for volatility expansion
+        volatility_expansion = current_atr > df["close"].iloc[-10:].std() * 1.2
 
-        # Confirmations
-        # ATR falling (current ATR < previous ATR)
-        atr_falling = current_atr < previous_atr
+        if breakout_up and volume_spike and volatility_expansion:
+            return {
+                "signal_type": SignalType.BUY,
+                "metadata": {
+                    "breakout_level": recent_high,
+                    "range_size": range_size,
+                    "atr": current_atr,
+                    "volume_ratio": current_volume / avg_volume,
+                    "volatility_expansion": volatility_expansion,
+                },
+            }
+        elif breakout_down and volume_spike and volatility_expansion:
+            return {
+                "signal_type": SignalType.SELL,
+                "metadata": {
+                    "breakout_level": recent_low,
+                    "range_size": range_size,
+                    "atr": current_atr,
+                    "volume_ratio": current_volume / avg_volume,
+                    "volatility_expansion": volatility_expansion,
+                },
+            }
 
-        # RSI around 50 (between 45-55)
-        rsi_ok = 45 <= current_rsi <= 55
-
-        # Breakout volume > 1.5x average
-        avg_volume = df["volume"].iloc[-11:-1].mean()  # Average of last 10 candles
-        volume_ratio = volume / avg_volume
-        volume_ok = volume_ratio > 1.5
-
-        # Check if all confirmations are met
-        if not (atr_falling and rsi_ok and volume_ok):
-            return None
-
-        return Signal(
-            symbol=metadata.get("symbol", "UNKNOWN"),
-            period=metadata.get("period", "15m"),
-            signal=SignalType.BUY,
-            strategy="range_break_pop",
-            confidence=0.75,
-            metadata={
-                "rsi": float(current_rsi),
-                "atr": float(current_atr),
-                "volume_ratio": float(volume_ratio),
-                "range_spread": float(range_spread),
-                "recent_high": float(recent_high),
-                "atr_falling": atr_falling,
-                "rsi_neutral": rsi_ok,
-                "volume_breakout": volume_ok,
-            },
-        )
+        return None

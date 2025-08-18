@@ -18,11 +18,12 @@ class Config:
     nats_subject_prefix_production: str = os.getenv("NATS_SUBJECT_PREFIX_PRODUCTION", "binance.extraction.production")
 
     # API Configuration
-    api_endpoint: str = os.getenv("TA_BOT_API_ENDPOINT", "http://localhost:8080/signals")
+    # Prefer cluster-provided API_ENDPOINT, fallback to old var for local
+    api_endpoint: str = os.getenv("API_ENDPOINT", os.getenv("TA_BOT_API_ENDPOINT", "http://localhost:8080/signals"))
 
     # Optional settings with defaults
-    log_level: str = os.getenv("TA_BOT_LOG_LEVEL", "INFO")
-    environment: str = os.getenv("TA_BOT_ENVIRONMENT", "production")
+    log_level: str = os.getenv("LOG_LEVEL", os.getenv("TA_BOT_LOG_LEVEL", "INFO"))
+    environment: str = os.getenv("ENVIRONMENT", os.getenv("TA_BOT_ENVIRONMENT", "production"))
     health_check_interval: int = 30
     max_retries: int = 3
     timeout: int = 30

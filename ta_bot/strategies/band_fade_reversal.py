@@ -18,49 +18,55 @@ class BandFadeReversalStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Analyze candles for Band Fade Reversal signals."""
         if len(df) < 20:
             return None
 
-        # Get latest candle
+        # Get current values
         current = df.iloc[-1]
-        high = current["high"]
-        low = current["low"]
         close = current["close"]
 
-        # Calculate Bollinger Bands
-        bb_upper, bb_middle, bb_lower = self.indicators.bollinger_bands(df)
+        # Get Bollinger Bands
+        bb_lower = indicators.get("bb_lower", [])
+        bb_upper = indicators.get("bb_upper", [])
+        bb_middle = indicators.get("bb_middle", [])
 
-        if bb_upper is None or bb_middle is None or bb_lower is None:
+        if not all([bb_lower, bb_upper, bb_middle]):
             return None
 
-        # Check if price is near upper band
-        upper_band = bb_upper.iloc[-1]
-        middle_band = bb_middle.iloc[-1]
+        current_bb_lower = float(bb_lower.iloc[-1])
+        current_bb_upper = float(bb_upper.iloc[-1])
+        current_bb_middle = float(bb_middle.iloc[-1])
 
-        # Calculate RSI for additional context
-        rsi = self.indicators.rsi(df)
-        rsi_value = rsi.iloc[-1] if rsi is not None else 50.0
+        # Check if price is near the lower band
+        near_lower_band = close <= current_bb_lower * 1.01
 
-        # Signal conditions
-        near_upper = close >= upper_band * 0.98  # Within 2% of upper band
-        bearish_candle = close < (high + low) / 2  # Close below midpoint
-        volume_spike = metadata.get("volume_ratio", 0) > 1.5
+        # Check if price is below the middle band
+        below_middle = close < current_bb_middle
 
-        if near_upper and bearish_candle and volume_spike:
-            return Signal(
-                symbol=metadata.get("symbol", "UNKNOWN"),
-                period=metadata.get("period", "15m"),
-                signal=SignalType.SELL,
-                strategy="band_fade_reversal",
-                confidence=0.68,
-                metadata={
-                    "upper_band": upper_band,
-                    "middle_band": middle_band,
-                    "close": close,
-                    "rsi": rsi_value,
+        # Check for reversal pattern (price was lower but now moving up)
+        if len(df) >= 3:
+            prev_close = df.iloc[-2]["close"]
+            prev_prev_close = df.iloc[-3]["close"]
+            
+            # Price was declining but now showing signs of reversal
+            was_declining = prev_close < prev_prev_close
+            now_reversing = close > prev_close
+            
+            reversal_pattern = was_declining and now_reversing
+        else:
+            reversal_pattern = False
+
+        if near_lower_band and below_middle and reversal_pattern:
+            return {
+                "signal_type": SignalType.BUY,
+                "metadata": {
+                    "bb_lower": current_bb_lower,
+                    "bb_middle": current_bb_middle,
+                    "bb_upper": current_bb_upper,
+                    "distance_from_lower": (close - current_bb_lower) / current_bb_lower,
                 },
-            )
+            }
 
         return None

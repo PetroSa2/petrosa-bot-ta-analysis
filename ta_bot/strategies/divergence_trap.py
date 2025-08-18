@@ -18,54 +18,48 @@ class DivergenceTrapStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Analyze candles for Divergence Trap signals."""
         if len(df) < 20:
             return None
 
-        # Get current and previous values
+        # Get current values
         current = df.iloc[-1]
-        previous = df.iloc[-2]
+        close = current["close"]
 
-        # Calculate RSI
-        rsi = self.indicators.rsi(df)
-        if rsi is None:
+        # Get RSI for divergence detection
+        rsi = indicators.get("rsi", [])
+        if not rsi:
             return None
 
-        current_rsi = rsi.iloc[-1]
-        previous_rsi = rsi.iloc[-2]
-
-        # Get price lows
-        current_low = current["low"]
-        previous_low = previous["low"]
+        current_rsi = float(rsi.iloc[-1])
 
         # Check for hidden bullish divergence
         # Price makes lower low, but RSI makes higher low
-        price_lower_low = current_low < previous_low
-        rsi_higher_low = current_rsi > previous_rsi
+        if len(df) >= 10:
+            # Find recent lows
+            recent_lows = self._find_recent_lows(df, 10)
+            recent_rsi_lows = self._find_recent_lows(rsi, 10)
 
-        if price_lower_low and rsi_higher_low:
-            # Calculate divergence strength
-            rsi_change = (current_rsi - previous_rsi) / previous_rsi
-            price_change = ((current_low - previous_low) / previous_low) * 100
+            if len(recent_lows) >= 2 and len(recent_rsi_lows) >= 2:
+                # Check for hidden bullish divergence
+                price_lower_low = recent_lows[-1] < recent_lows[-2]
+                rsi_higher_low = recent_rsi_lows[-1] > recent_rsi_lows[-2]
 
-            # Strong divergence if RSI change is significant
-            strong_divergence = abs(rsi_change) > 0.1  # 10% RSI change
+                if price_lower_low and rsi_higher_low:
+                    # Additional confirmation: RSI should be above 30
+                    rsi_oversold = current_rsi > 30
 
-            if strong_divergence:
-                return Signal(
-                    symbol=metadata.get("symbol", "UNKNOWN"),
-                    period=metadata.get("period", "15m"),
-                    signal=SignalType.BUY,
-                    strategy="divergence_trap",
-                    confidence=0.78,
-                    metadata={
-                        "rsi_current": current_rsi,
-                        "rsi_previous": previous_rsi,
-                        "divergence_strength": abs(rsi_change),
-                        "price_change": price_change,
-                    },
-                )
+                    if rsi_oversold:
+                        return {
+                            "signal_type": SignalType.BUY,
+                            "metadata": {
+                                "rsi": current_rsi,
+                                "price_lower_low": price_lower_low,
+                                "rsi_higher_low": rsi_higher_low,
+                                "divergence_type": "hidden_bullish",
+                            },
+                        }
 
         return None
 
