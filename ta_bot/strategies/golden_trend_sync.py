@@ -18,49 +18,50 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Analyze candles for Golden Trend Sync signals."""
-        if len(df) < 20:
+        if len(df) < 50:
             return None
 
         # Get current values
         current = df.iloc[-1]
         close = current["close"]
-        high = current["high"]
-        low = current["low"]
 
-        # Calculate EMAs
-        ema21 = self.indicators.ema(df, 21)
-        ema50 = self.indicators.ema(df, 50)
+        # Get EMAs
+        ema21 = indicators.get("ema21", [])
+        ema50 = indicators.get("ema50", [])
 
-        if ema21 is None or ema50 is None:
+        if not all([ema21, ema50]):
             return None
 
-        current_ema21 = ema21.iloc[-1]
-        current_ema50 = ema50.iloc[-1]
+        # Handle both pandas Series and list types
+        if hasattr(ema21, 'iloc'):
+            current_ema21 = float(ema21.iloc[-1])
+            current_ema50 = float(ema50.iloc[-1])
+        else:
+            # Handle list type
+            current_ema21 = float(ema21[-1]) if ema21 else 0
+            current_ema50 = float(ema50[-1]) if ema50 else 0
 
         # Check for golden cross (EMA21 > EMA50)
         golden_cross = current_ema21 > current_ema50
 
-        # Check for pullback to EMA21
-        pullback_to_ema21 = abs(close - current_ema21) / current_ema21 < 0.02
+        # Check for pullback to EMA21 (price near EMA21)
+        pullback_distance = abs(close - current_ema21) / current_ema21
+        pullback_to_ema21 = pullback_distance <= 0.02  # Within 2%
 
-        # Check for bullish candle
-        bullish_candle = close > (high + low) / 2
+        # Check for bullish candle (close > open)
+        bullish_candle = close > current["open"]
 
         if golden_cross and pullback_to_ema21 and bullish_candle:
-            return Signal(
-                symbol=metadata.get("symbol", "UNKNOWN"),
-                period=metadata.get("period", "15m"),
-                signal=SignalType.BUY,
-                strategy="golden_trend_sync",
-                confidence=0.72,
-                metadata={
+            return {
+                "signal_type": SignalType.BUY,
+                "metadata": {
                     "ema21": current_ema21,
                     "ema50": current_ema50,
                     "pullback_distance": abs(close - current_ema21) / current_ema21,
                 },
-            )
+            }
 
         return None
 

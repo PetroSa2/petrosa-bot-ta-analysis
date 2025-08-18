@@ -27,7 +27,13 @@ async def main():
         # Initialize components
         config = Config()
         signal_engine = SignalEngine()
-        publisher = SignalPublisher(config.api_endpoint)
+        
+        # Initialize publisher with both REST API and NATS capabilities
+        publisher = SignalPublisher(
+            api_endpoint=config.api_endpoint,
+            nats_url=config.nats_url if config.nats_enabled else None
+        )
+        
         # Parse supported symbols and timeframes
         supported_symbols = [s.strip() for s in config.symbols]
         supported_timeframes = [t.strip() for t in config.candle_periods]

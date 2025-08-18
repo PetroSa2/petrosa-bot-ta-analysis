@@ -7,7 +7,7 @@ import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from ta_bot.models.signal import Signal, SignalType
+from ta_bot.models.signal import Signal, SignalType, SignalStrength, StrategyMode, OrderType, TimeInForce
 from ta_bot.core.confidence import ConfidenceCalculator
 from ta_bot.core.indicators import Indicators
 from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
@@ -36,31 +36,33 @@ class SignalEngine:
     def analyze_candles(
         self, df: pd.DataFrame, symbol: str, period: str
     ) -> List[Signal]:
-        """Analyze candles using all strategies and return signals."""
-        signals: List[Signal] = []
-        
-        logger.info(f"=== Starting strategy analysis for {symbol} {period} ===")
-        logger.info(f"DataFrame shape: {df.shape}, Time range: {df['timestamp'].min()} to {df['timestamp'].max()}")
+        """Analyze candle data and generate trading signals."""
+        if df is None or len(df) == 0:
+            logger.warning("No candle data provided for analysis")
+            return []
 
-        # Calculate indicators
-        logger.info("Calculating technical indicators...")
+        logger.info(f"=== Starting signal analysis for {symbol} {period} ===")
+        logger.info(f"Dataframe shape: {df.shape}")
+
+        # Calculate all technical indicators
         indicators = self._calculate_indicators(df)
-        
-        # Log key indicator values
-        latest_rsi = indicators["rsi"].iloc[-1] if not indicators["rsi"].empty else None
-        latest_macd = indicators["macd"].iloc[-1] if not indicators["macd"].empty else None
-        latest_adx = indicators["adx"].iloc[-1] if not indicators["adx"].empty else None
-        logger.info(f"Latest indicators - RSI: {latest_rsi:.2f}, MACD: {latest_macd:.6f}, ADX: {latest_adx:.2f}")
+        logger.info(f"Calculated {len(indicators)} technical indicators")
+
+        # Get current price from the latest candle
+        current_price = float(df['close'].iloc[-1])
+        logger.info(f"Current price: {current_price}")
+
+        signals = []
 
         # Run each strategy
         for strategy_name, strategy in self.strategies.items():
             logger.info(f"--- Running {strategy_name} strategy ---")
             signal = self._run_strategy(
-                strategy, strategy_name, df, symbol, period, indicators
+                strategy, strategy_name, df, symbol, period, indicators, current_price
             )
             if signal:
                 signals.append(signal)
-                logger.info(f"✅ {strategy_name}: SIGNAL GENERATED - {signal.signal.value} with {signal.confidence:.2f} confidence")
+                logger.info(f"✅ {strategy_name}: SIGNAL GENERATED - {signal.action} with {signal.confidence:.2f} confidence")
             else:
                 logger.info(f"❌ {strategy_name}: No signal - conditions not met")
 
@@ -106,6 +108,7 @@ class SignalEngine:
         symbol: str,
         period: str,
         indicators: Dict[str, Any],
+        current_price: float,
     ) -> Optional[Signal]:
         """Run a single strategy and return signal if valid."""
         try:
@@ -131,14 +134,32 @@ class SignalEngine:
             )
             logger.info(f"  {strategy_name}: Calculated confidence: {confidence:.2f}")
 
-            # Create signal object
+            # Determine signal strength based on confidence
+            strength = self._calculate_signal_strength(confidence)
+            
+            # Calculate risk management parameters
+            stop_loss, take_profit = self._calculate_risk_management(current_price, indicators, signal_type)
+
+            # Create signal object with new format
             signal = Signal(
+                strategy_id=f"{strategy_name}_{period}",
+                strategy_mode=StrategyMode.DETERMINISTIC,
                 symbol=symbol,
-                period=period,
-                signal=signal_type,
+                action=signal_type.value,  # Convert enum to string
                 confidence=confidence,
+                strength=strength,
+                current_price=current_price,
+                price=current_price,
+                quantity=0.0,  # Will be calculated by trade engine
+                source="ta_bot",
                 strategy=strategy_name,
                 metadata=metadata,
+                timeframe=period,
+                order_type=OrderType.MARKET,
+                time_in_force=TimeInForce.GTC,
+                position_size_pct=0.1,  # Default 10% position size
+                stop_loss=stop_loss,
+                take_profit=take_profit,
                 timestamp=datetime.utcnow().isoformat(),
             )
 
@@ -153,3 +174,36 @@ class SignalEngine:
         except Exception as e:
             logger.error(f"  {strategy_name}: Error during analysis: {e}")
             return None
+
+    def _calculate_signal_strength(self, confidence: float) -> SignalStrength:
+        """Calculate signal strength based on confidence."""
+        if confidence >= 0.8:
+            return SignalStrength.EXTREME
+        elif confidence >= 0.7:
+            return SignalStrength.STRONG
+        elif confidence >= 0.6:
+            return SignalStrength.MEDIUM
+        else:
+            return SignalStrength.WEAK
+
+    def _calculate_risk_management(self, current_price: float, indicators: Dict[str, Any], signal_type: SignalType) -> tuple[Optional[float], Optional[float]]:
+        """Calculate stop loss and take profit levels."""
+        atr = indicators.get("atr", 0)
+        
+        if atr <= 0:
+            # Default percentages if ATR is not available
+            stop_loss_pct = 0.02  # 2%
+            take_profit_pct = 0.05  # 5%
+        else:
+            # Use ATR for dynamic levels
+            stop_loss_pct = (atr * 2) / current_price  # 2x ATR
+            take_profit_pct = (atr * 3) / current_price  # 3x ATR
+        
+        if signal_type == SignalType.BUY:
+            stop_loss = current_price * (1 - stop_loss_pct)
+            take_profit = current_price * (1 + take_profit_pct)
+        else:  # SELL
+            stop_loss = current_price * (1 + stop_loss_pct)
+            take_profit = current_price * (1 - take_profit_pct)
+        
+        return stop_loss, take_profit

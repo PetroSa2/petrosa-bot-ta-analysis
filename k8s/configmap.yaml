@@ -7,7 +7,7 @@ metadata:
     app: petrosa-ta-bot
 data:
   nats_url: "nats://nats-server:4222"
-  api_endpoint: "http://api-server:8080/signals"
+  api_endpoint: "http://petrosa-tradeengine-service/trade/signal"
   log_level: "INFO"
   environment: "production"
   supported_symbols: "BTCUSDT,ETHUSDT,ADAUSDT"

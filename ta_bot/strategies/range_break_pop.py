@@ -26,72 +26,57 @@ class RangeBreakPopStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
-        """Analyze for range break pop signals."""
-        if len(df) < 12:
+    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Analyze candles for Range Break Pop signals."""
+        if len(df) < 20:
             return None
 
         # Get current values
         current = df.iloc[-1]
         close = current["close"]
-        volume = current["volume"]
+        high = current["high"]
+        low = current["low"]
 
-        # Calculate indicators
-        atr = self.indicators.atr(df)
-        rsi = self.indicators.rsi(df)
+        # Get ATR for volatility measurement
+        atr = indicators.get("atr", [])
 
-        if atr is None or rsi is None:
+        if not atr:
             return None
 
-        current_atr = atr.iloc[-1]
-        current_rsi = rsi.iloc[-1]
-        previous_atr = atr.iloc[-2] if len(atr) > 1 else current_atr
+        # Handle both pandas Series and list types
+        if hasattr(atr, 'iloc'):
+            current_atr = float(atr.iloc[-1])
+        else:
+            # Handle list type
+            current_atr = float(atr[-1]) if atr else 0
 
-        # Check if we have a tight range in the last 10 candles
-        recent_high = df["high"].iloc[-11:-1].max()  # Last 10 candles excluding current
-        recent_low = df["low"].iloc[-11:-1].min()
-        range_spread = (recent_high - recent_low) / recent_low * 100
+        # Calculate range
+        range_size = high - low
+        range_breakout = range_size > current_atr * 1.5  # Range is 1.5x ATR
 
-        # Range should be tight (< 2.5% spread)
-        if range_spread >= 2.5:
-            return None
+        # Check for volume confirmation (if available)
+        volume = current.get("volume", 0)
+        volume_confirmation = volume > 0  # Basic check
 
-        # Current price should break above the recent high
-        breakout_trigger = close > recent_high
+        # Check for price momentum
+        if len(df) >= 3:
+            prev_close = df.iloc[-2]["close"]
+            prev_prev_close = df.iloc[-3]["close"]
+            
+            # Strong upward momentum
+            momentum = close > prev_close > prev_prev_close
+        else:
+            momentum = False
 
-        if not breakout_trigger:
-            return None
+        if range_breakout and volume_confirmation and momentum:
+            return {
+                "signal_type": SignalType.BUY,
+                "metadata": {
+                    "atr": current_atr,
+                    "range_size": range_size,
+                    "volume": volume,
+                    "momentum": momentum,
+                },
+            }
 
-        # Confirmations
-        # ATR falling (current ATR < previous ATR)
-        atr_falling = current_atr < previous_atr
-
-        # RSI around 50 (between 45-55)
-        rsi_ok = 45 <= current_rsi <= 55
-
-        # Breakout volume > 1.5x average
-        avg_volume = df["volume"].iloc[-11:-1].mean()  # Average of last 10 candles
-        volume_ratio = volume / avg_volume
-        volume_ok = volume_ratio > 1.5
-
-        # Check if all confirmations are met
-        if not (atr_falling and rsi_ok and volume_ok):
-            return None
-
-        return Signal(
-            symbol=metadata.get("symbol", "UNKNOWN"),
-            period=metadata.get("period", "15m"),
-            signal=SignalType.BUY,
-            strategy="range_break_pop",
-            confidence=0.75,
-            metadata={
-                "rsi": float(current_rsi),
-                "atr": float(current_atr),
-                "volume_ratio": float(volume_ratio),
-                "range_spread": float(range_spread),
-                "recent_high": float(recent_high),
-                "atr_falling": atr_falling,
-                "rsi_neutral": rsi_ok,
-                "volume_breakout": volume_ok,
-            },
-        )
+        return None

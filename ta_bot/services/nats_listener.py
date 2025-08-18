@@ -45,35 +45,43 @@ class NATSListener:
         try:
             # Connect to NATS
             await self.nc.connect(self.nats_url)
-            logger.info(f"Connected to NATS at {self.nats_url}")
+            logger.info(f"Connected to NATS server: {self.nats_url}")
 
             # Initialize leader election
             self.leader_election = LeaderElection(self.nc)
-            asyncio.create_task(self.leader_election.start_election())
+            await self.leader_election.start()
 
-            # Connect to MySQL
+            # Initialize MySQL client
             await self.mysql_client.connect()
 
-            # Subscribe to candle updates using production subject prefix
-            subscriptions: List[Subscription] = []
+            # Initialize publisher
+            await self.publisher.start()
 
-            for symbol in self.supported_symbols:
-                for timeframe in self.supported_timeframes:
-                    # Use the production subject prefix for candle data with klines
-                    subject = f"{self.nats_subject_prefix_production}.klines.{symbol}.{timeframe}"
-                    # Use queue group to ensure only one replica processes each message
-                    sub = await self.nc.subscribe(
-                        subject, cb=self._handle_candle_message, queue="ta-bot-workers"
-                    )
-                    subscriptions.append(sub)
-                    logger.info(f"Subscribed to {subject}")
+            # Subscribe to candle data subjects
+            await self._subscribe_to_candle_data()
 
-            self.subscriptions = subscriptions
-            logger.info(f"NATS listener started successfully with {len(subscriptions)} subscriptions")
+            logger.info("NATS listener started successfully")
 
         except Exception as e:
             logger.error(f"Error starting NATS listener: {e}")
             raise
+
+    async def _subscribe_to_candle_data(self):
+        """Subscribe to candle data subjects."""
+        # Subscribe to both development and production subjects
+        subjects = [
+            f"{self.nats_subject_prefix}.klines.*.*",
+            f"{self.nats_subject_prefix_production}.klines.*.*"
+        ]
+
+        for subject in subjects:
+            subscription = await self.nc.subscribe(
+                subject,
+                cb=self._handle_candle_message,
+                queue="ta_bot_workers"  # Load balancing across instances
+            )
+            self.subscriptions.append(subscription)
+            logger.info(f"Subscribed to NATS subject: {subject}")
 
     async def _handle_candle_message(self, msg):
         """Handle incoming candle message."""
@@ -103,6 +111,15 @@ class NATSListener:
                 logger.warning(f"Invalid message format - missing symbol or period: {data}")
                 return
 
+            # Check if symbol and timeframe are supported
+            if symbol not in self.supported_symbols:
+                logger.debug(f"Skipping unsupported symbol: {symbol}")
+                return
+
+            if period not in self.supported_timeframes:
+                logger.debug(f"Skipping unsupported timeframe: {period}")
+                return
+
             logger.info(f"Processing extraction completion for {symbol} {period}")
 
             # Fetch candle data from MySQL
@@ -120,30 +137,21 @@ class NATSListener:
             if signals:
                 logger.info(f"Generated {len(signals)} signals for {symbol} {period}")
 
-                # Convert signals to trade engine API schema
+                # Persist signals to MySQL (using new format)
                 signal_data_list = []
                 for signal in signals:
-                    signal_data = {
-                        "symbol": signal.symbol,
-                        "period": signal.period,
-                        "signal": signal.signal.value,
-                        "confidence": signal.confidence,
-                        "strategy": signal.strategy,
-                        "metadata": signal.metadata,
-                        "timestamp": signal.timestamp
-                    }
+                    signal_data = signal.to_dict()
                     signal_data_list.append(signal_data)
 
-                # Persist signals to MySQL
                 success = await self.mysql_client.persist_signals_batch(signal_data_list)
                 
                 if success:
                     logger.info(f"Successfully persisted {len(signals)} signals to MySQL")
-                    
-                    # Also publish to trade engine API (optional)
-                    await self.publisher.publish_signals(signals)
                 else:
                     logger.error(f"Failed to persist signals to MySQL for {symbol} {period}")
+                
+                # Publish signals to Trade Engine regardless of DB persistence outcome
+                await self.publisher.publish_signals(signals)
 
             else:
                 logger.info(f"No signals generated for {symbol} {period} - all strategies conditions not met")
@@ -158,6 +166,9 @@ class NATSListener:
     async def _cleanup(self):
         """Clean up NATS connections and subscriptions."""
         try:
+            # Stop publisher
+            await self.publisher.stop()
+            
             # Unsubscribe from all topics
             for subscription in self.subscriptions:
                 await subscription.unsubscribe()

@@ -169,7 +169,7 @@ class MySQLClient:
                 await self.connect()
 
             sql = """
-                INSERT INTO signals (symbol, period, signal_type, confidence, strategy, metadata, timestamp, created_at)
+                INSERT INTO signals (symbol, timeframe, action, confidence, strategy, metadata, timestamp, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
             """
             
@@ -178,15 +178,15 @@ class MySQLClient:
             with self.connection.cursor() as cursor:
                 cursor.execute(sql, (
                     signal_data['symbol'],
-                    signal_data['period'],
-                    signal_data['signal_type'],
+                    signal_data['timeframe'],
+                    signal_data['action'],
                     signal_data['confidence'],
                     signal_data['strategy'],
                     metadata_json,
                     signal_data['timestamp']
                 ))
                 
-            logger.info(f"Persisted signal for {signal_data['symbol']} {signal_data['period']}")
+            logger.info(f"Persisted signal for {signal_data['symbol']} {signal_data['timeframe']}")
             return True
             
         except Exception as e:
@@ -199,10 +199,14 @@ class MySQLClient:
             return False
 
     async def persist_signals_batch(self, signals: List[Dict[str, Any]]) -> bool:
-        """Persist multiple signals in a batch."""
+        """Persist multiple signals to MySQL in a batch."""
         if not self.connection:
             logger.error("Not connected to MySQL")
             return False
+
+        if not signals:
+            logger.warning("No signals to persist")
+            return True
 
         try:
             # Check if connection is still alive
@@ -212,39 +216,28 @@ class MySQLClient:
                 logger.warning(f"Connection lost, reconnecting: {e}")
                 await self.connect()
 
-            if not signals:
-                return True
-
-            # Insert multiple signals
-            query = """
-                INSERT INTO signals (
-                    symbol,
-                    period,
-                    signal_type,
-                    confidence,
-                    strategy,
-                    metadata,
-                    timestamp,
-                    created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+            sql = """
+                INSERT INTO signals (symbol, timeframe, action, confidence, strategy, metadata, timestamp, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
             """
-
+            
             values = []
-            for signal in signals:
+            for signal_data in signals:
+                metadata_json = json.dumps(signal_data.get('metadata', {}))
                 values.append((
-                    signal['symbol'],
-                    signal['period'],
-                    signal['signal'],
-                    signal['confidence'],
-                    signal['strategy'],
-                    str(signal['metadata']),
-                    signal['timestamp']
+                    signal_data['symbol'],
+                    signal_data['timeframe'],
+                    signal_data['action'],
+                    signal_data['confidence'],
+                    signal_data['strategy'],
+                    metadata_json,
+                    signal_data['timestamp']
                 ))
-
+            
             with self.connection.cursor() as cursor:
-                cursor.executemany(query, values)
-
-            logger.info(f"Persisted {len(signals)} signals in batch")
+                cursor.executemany(sql, values)
+                
+            logger.info(f"Persisted {len(signals)} signals to MySQL")
             return True
             
         except Exception as e:
