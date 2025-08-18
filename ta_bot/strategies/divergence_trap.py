@@ -20,46 +20,61 @@ class DivergenceTrapStrategy(BaseStrategy):
 
     def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Analyze candles for Divergence Trap signals."""
-        if len(df) < 20:
+        if len(df) < 30:
             return None
 
         # Get current values
         current = df.iloc[-1]
         close = current["close"]
 
-        # Get RSI for divergence detection
+        # Get RSI
         rsi = indicators.get("rsi", [])
+
         if not rsi:
             return None
 
-        current_rsi = float(rsi.iloc[-1])
+        # Handle both pandas Series and list types
+        if hasattr(rsi, 'iloc'):
+            current_rsi = float(rsi.iloc[-1])
+        else:
+            # Handle list type
+            current_rsi = float(rsi[-1]) if rsi else 50
 
         # Check for hidden bullish divergence
-        # Price makes lower low, but RSI makes higher low
+        # Price making lower lows but RSI making higher lows
         if len(df) >= 10:
-            # Find recent lows
-            recent_lows = self._find_recent_lows(df, 10)
-            recent_rsi_lows = self._find_recent_lows(rsi, 10)
+            # Get recent price lows
+            recent_lows = df["low"].iloc[-10:].values
+            recent_rsi = rsi.iloc[-10:].values if hasattr(rsi, 'iloc') else rsi[-10:]
+            
+            # Find local minima
+            price_lower_low = recent_lows[-1] < recent_lows[-5]  # Current low < previous low
+            rsi_higher_low = current_rsi > recent_rsi[-5]  # Current RSI > previous RSI
+            
+            hidden_bullish_divergence = price_lower_low and rsi_higher_low
+        else:
+            hidden_bullish_divergence = False
 
-            if len(recent_lows) >= 2 and len(recent_rsi_lows) >= 2:
-                # Check for hidden bullish divergence
-                price_lower_low = recent_lows[-1] < recent_lows[-2]
-                rsi_higher_low = recent_rsi_lows[-1] > recent_rsi_lows[-2]
+        # Check for oversold conditions
+        oversold = current_rsi < 30
 
-                if price_lower_low and rsi_higher_low:
-                    # Additional confirmation: RSI should be above 30
-                    rsi_oversold = current_rsi > 30
+        # Check for price momentum
+        if len(df) >= 3:
+            prev_close = df.iloc[-2]["close"]
+            momentum = close > prev_close
+        else:
+            momentum = False
 
-                    if rsi_oversold:
-                        return {
-                            "signal_type": SignalType.BUY,
-                            "metadata": {
-                                "rsi": current_rsi,
-                                "price_lower_low": price_lower_low,
-                                "rsi_higher_low": rsi_higher_low,
-                                "divergence_type": "hidden_bullish",
-                            },
-                        }
+        if hidden_bullish_divergence and oversold and momentum:
+            return {
+                "signal_type": SignalType.BUY,
+                "metadata": {
+                    "rsi": current_rsi,
+                    "divergence_type": "hidden_bullish",
+                    "oversold": oversold,
+                    "momentum": momentum,
+                },
+            }
 
         return None
 

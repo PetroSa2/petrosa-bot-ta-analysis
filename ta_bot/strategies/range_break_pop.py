@@ -39,48 +39,43 @@ class RangeBreakPopStrategy(BaseStrategy):
 
         # Get ATR for volatility measurement
         atr = indicators.get("atr", [])
+
         if not atr:
             return None
 
-        current_atr = float(atr.iloc[-1])
+        # Handle both pandas Series and list types
+        if hasattr(atr, 'iloc'):
+            current_atr = float(atr.iloc[-1])
+        else:
+            # Handle list type
+            current_atr = float(atr[-1]) if atr else 0
 
-        # Calculate recent range (last 10 candles)
-        recent_high = df["high"].iloc[-10:].max()
-        recent_low = df["low"].iloc[-10:].min()
-        range_size = recent_high - recent_low
+        # Calculate range
+        range_size = high - low
+        range_breakout = range_size > current_atr * 1.5  # Range is 1.5x ATR
 
-        # Check for breakout
-        breakout_up = close > recent_high
-        breakout_down = close < recent_low
+        # Check for volume confirmation (if available)
+        volume = current.get("volume", 0)
+        volume_confirmation = volume > 0  # Basic check
 
-        # Check for volume confirmation
-        current_volume = current["volume"]
-        avg_volume = df["volume"].iloc[-10:].mean()
-        volume_spike = current_volume > avg_volume * 1.5
+        # Check for price momentum
+        if len(df) >= 3:
+            prev_close = df.iloc[-2]["close"]
+            prev_prev_close = df.iloc[-3]["close"]
+            
+            # Strong upward momentum
+            momentum = close > prev_close > prev_prev_close
+        else:
+            momentum = False
 
-        # Check for volatility expansion
-        volatility_expansion = current_atr > df["close"].iloc[-10:].std() * 1.2
-
-        if breakout_up and volume_spike and volatility_expansion:
+        if range_breakout and volume_confirmation and momentum:
             return {
                 "signal_type": SignalType.BUY,
                 "metadata": {
-                    "breakout_level": recent_high,
-                    "range_size": range_size,
                     "atr": current_atr,
-                    "volume_ratio": current_volume / avg_volume,
-                    "volatility_expansion": volatility_expansion,
-                },
-            }
-        elif breakout_down and volume_spike and volatility_expansion:
-            return {
-                "signal_type": SignalType.SELL,
-                "metadata": {
-                    "breakout_level": recent_low,
                     "range_size": range_size,
-                    "atr": current_atr,
-                    "volume_ratio": current_volume / avg_volume,
-                    "volatility_expansion": volatility_expansion,
+                    "volume": volume,
+                    "momentum": momentum,
                 },
             }
 

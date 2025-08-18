@@ -35,9 +35,16 @@ class BandFadeReversalStrategy(BaseStrategy):
         if not all([bb_lower, bb_upper, bb_middle]):
             return None
 
-        current_bb_lower = float(bb_lower.iloc[-1])
-        current_bb_upper = float(bb_upper.iloc[-1])
-        current_bb_middle = float(bb_middle.iloc[-1])
+        # Handle both pandas Series and list types
+        if hasattr(bb_lower, 'iloc'):
+            current_bb_lower = float(bb_lower.iloc[-1])
+            current_bb_upper = float(bb_upper.iloc[-1])
+            current_bb_middle = float(bb_middle.iloc[-1])
+        else:
+            # Handle list type
+            current_bb_lower = float(bb_lower[-1]) if bb_lower else 0
+            current_bb_upper = float(bb_upper[-1]) if bb_upper else 0
+            current_bb_middle = float(bb_middle[-1]) if bb_middle else 0
 
         # Check if price is near the lower band
         near_lower_band = close <= current_bb_lower * 1.01
