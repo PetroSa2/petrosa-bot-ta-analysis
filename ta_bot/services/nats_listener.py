@@ -49,7 +49,8 @@ class NATSListener:
 
             # Initialize leader election
             self.leader_election = LeaderElection(self.nc)
-            await self.leader_election.start()
+            # Start leader election in background
+            asyncio.create_task(self.leader_election.start_election())
 
             # Initialize MySQL client
             await self.mysql_client.connect()
