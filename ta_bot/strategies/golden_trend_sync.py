@@ -23,27 +23,17 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         if len(df) < 50:
             return None
 
-        # Get current values
-        current = df.iloc[-1]
-        close = current["close"]
-
-        # Get EMAs
-        ema21 = indicators.get("ema21", [])
-        ema50 = indicators.get("ema50", [])
-
-        # Check if indicators are available and not empty
-        if (not ema21 or (hasattr(ema21, 'empty') and ema21.empty)) or \
-           (not ema50 or (hasattr(ema50, 'empty') and ema50.empty)):
+        # Get current values using base strategy methods
+        current_values = self._get_current_values(indicators, df)
+        
+        # Check if we have all required indicators
+        required_indicators = ["ema21", "ema50", "close", "open"]
+        if not all(indicator in current_values for indicator in required_indicators):
             return None
 
-        # Handle both pandas Series and list types
-        if hasattr(ema21, 'iloc'):
-            current_ema21 = float(ema21.iloc[-1])
-            current_ema50 = float(ema50.iloc[-1])
-        else:
-            # Handle list type
-            current_ema21 = float(ema21[-1]) if ema21 else 0
-            current_ema50 = float(ema50[-1]) if ema50 else 0
+        close = current_values["close"]
+        current_ema21 = current_values["ema21"]
+        current_ema50 = current_values["ema50"]
 
         # Check for golden cross (EMA21 > EMA50)
         golden_cross = current_ema21 > current_ema50
@@ -53,7 +43,7 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         pullback_to_ema21 = pullback_distance <= 0.02  # Within 2%
 
         # Check for bullish candle (close > open)
-        bullish_candle = close > current["open"]
+        bullish_candle = close > current_values["open"]
 
         if golden_cross and pullback_to_ema21 and bullish_candle:
             return {

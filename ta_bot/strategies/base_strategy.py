@@ -3,9 +3,12 @@ Base strategy class for technical analysis strategies.
 """
 
 import pandas as pd
+import logging
 from typing import Dict, Any, Optional
 
 from ta_bot.models.signal import Signal
+
+logger = logging.getLogger(__name__)
 
 
 class BaseStrategy:
@@ -35,16 +38,39 @@ class BaseStrategy:
         current_values = {}
 
         for indicator_name, indicator_series in indicators.items():
-            if isinstance(indicator_series, pd.Series) and len(indicator_series) > 0:
-                current_values[indicator_name] = float(indicator_series.iloc[-1])
+            # Handle pandas Series
+            if isinstance(indicator_series, pd.Series):
+                if not indicator_series.empty and len(indicator_series) > 0:
+                    try:
+                        current_values[indicator_name] = float(indicator_series.iloc[-1])
+                    except (ValueError, IndexError) as e:
+                        logger.debug(f"Failed to get current value for {indicator_name}: {e}")
+                        continue
+            # Handle list type
+            elif isinstance(indicator_series, list) and len(indicator_series) > 0:
+                try:
+                    current_values[indicator_name] = float(indicator_series[-1])
+                except (ValueError, IndexError) as e:
+                    logger.debug(f"Failed to get current value for {indicator_name}: {e}")
+                    continue
+            # Handle scalar values
+            elif indicator_series is not None:
+                try:
+                    current_values[indicator_name] = float(indicator_series)
+                except (ValueError, TypeError) as e:
+                    logger.debug(f"Failed to get current value for {indicator_name}: {e}")
+                    continue
 
         # Add current price data
         if len(df) > 0:
-            current_values["open"] = float(df["open"].iloc[-1])
-            current_values["high"] = float(df["high"].iloc[-1])
-            current_values["low"] = float(df["low"].iloc[-1])
-            current_values["close"] = float(df["close"].iloc[-1])
-            current_values["volume"] = float(df["volume"].iloc[-1])
+            try:
+                current_values["open"] = float(df["open"].iloc[-1])
+                current_values["high"] = float(df["high"].iloc[-1])
+                current_values["low"] = float(df["low"].iloc[-1])
+                current_values["close"] = float(df["close"].iloc[-1])
+                current_values["volume"] = float(df["volume"].iloc[-1])
+            except (ValueError, IndexError) as e:
+                logger.debug(f"Failed to get current price data: {e}")
 
         return current_values
 
@@ -55,16 +81,39 @@ class BaseStrategy:
         previous_values = {}
 
         for indicator_name, indicator_series in indicators.items():
-            if isinstance(indicator_series, pd.Series) and len(indicator_series) > 1:
-                previous_values[indicator_name] = float(indicator_series.iloc[-2])
+            # Handle pandas Series
+            if isinstance(indicator_series, pd.Series):
+                if not indicator_series.empty and len(indicator_series) > 1:
+                    try:
+                        previous_values[indicator_name] = float(indicator_series.iloc[-2])
+                    except (ValueError, IndexError) as e:
+                        logger.debug(f"Failed to get previous value for {indicator_name}: {e}")
+                        continue
+            # Handle list type
+            elif isinstance(indicator_series, list) and len(indicator_series) > 1:
+                try:
+                    previous_values[indicator_name] = float(indicator_series[-2])
+                except (ValueError, IndexError) as e:
+                    logger.debug(f"Failed to get previous value for {indicator_name}: {e}")
+                    continue
+            # Handle scalar values (use same value for previous)
+            elif indicator_series is not None:
+                try:
+                    previous_values[indicator_name] = float(indicator_series)
+                except (ValueError, TypeError) as e:
+                    logger.debug(f"Failed to get previous value for {indicator_name}: {e}")
+                    continue
 
         # Add previous price data
         if len(df) > 1:
-            previous_values["open"] = float(df["open"].iloc[-2])
-            previous_values["high"] = float(df["high"].iloc[-2])
-            previous_values["low"] = float(df["low"].iloc[-2])
-            previous_values["close"] = float(df["close"].iloc[-2])
-            previous_values["volume"] = float(df["volume"].iloc[-2])
+            try:
+                previous_values["open"] = float(df["open"].iloc[-2])
+                previous_values["high"] = float(df["high"].iloc[-2])
+                previous_values["low"] = float(df["low"].iloc[-2])
+                previous_values["close"] = float(df["close"].iloc[-2])
+                previous_values["volume"] = float(df["volume"].iloc[-2])
+            except (ValueError, IndexError) as e:
+                logger.debug(f"Failed to get previous price data: {e}")
 
         return previous_values
 

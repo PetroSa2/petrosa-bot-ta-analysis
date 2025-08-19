@@ -31,32 +31,25 @@ class RangeBreakPopStrategy(BaseStrategy):
         if len(df) < 20:
             return None
 
-        # Get current values
-        current = df.iloc[-1]
-        close = current["close"]
-        high = current["high"]
-        low = current["low"]
-
-        # Get ATR for volatility measurement
-        atr = indicators.get("atr", [])
-
-        # Check if indicator is available and not empty
-        if not atr or (hasattr(atr, 'empty') and atr.empty):
+        # Get current values using base strategy methods
+        current_values = self._get_current_values(indicators, df)
+        
+        # Check if we have all required indicators
+        required_indicators = ["atr", "close", "high", "low", "volume"]
+        if not all(indicator in current_values for indicator in required_indicators):
             return None
 
-        # Handle both pandas Series and list types
-        if hasattr(atr, 'iloc'):
-            current_atr = float(atr.iloc[-1])
-        else:
-            # Handle list type
-            current_atr = float(atr[-1]) if atr else 0
+        close = current_values["close"]
+        high = current_values["high"]
+        low = current_values["low"]
+        current_atr = current_values["atr"]
+        volume = current_values["volume"]
 
         # Calculate range
         range_size = high - low
         range_breakout = range_size > current_atr * 1.5  # Range is 1.5x ATR
 
         # Check for volume confirmation (if available)
-        volume = current.get("volume", 0)
         volume_confirmation = volume > 0  # Basic check
 
         # Check for price momentum
