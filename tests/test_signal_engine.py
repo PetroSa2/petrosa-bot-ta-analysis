@@ -86,7 +86,7 @@ class TestSignalEngine:
         for signal in signals:
             assert signal.validate()
             assert signal.symbol == "BTCUSDT"
-            assert signal.period == "15m"
+            assert signal.timeframe == "15m"
             assert signal.confidence >= 0.0
             assert signal.confidence <= 1.0
 
@@ -135,15 +135,16 @@ class TestSignalEngine:
         indicators = signal_engine._calculate_indicators(sample_candles)
 
         # Test each strategy
+        current_price = float(sample_candles['close'].iloc[-1])
         for strategy_name, strategy in signal_engine.strategies.items():
             signal = signal_engine._run_strategy(
-                strategy, strategy_name, sample_candles, "BTCUSDT", "15m", indicators
+                strategy, strategy_name, sample_candles, "BTCUSDT", "15m", indicators, current_price
             )
 
             # Signal should be None or a valid Signal object
             if signal is not None:
                 assert signal.validate()
-                assert signal.strategy == strategy_name
+                assert signal.strategy_id == strategy_name
 
 
 class TestSignalModel:
@@ -156,20 +157,22 @@ class TestSignalModel:
         metadata = {"rsi": 58.3, "macd_hist": 0.0012, "adx": 27}
 
         signal = Signal(
+            strategy_id="momentum_pulse",
             symbol="BTCUSDT",
-            period="15m",
-            signal=SignalType.BUY,
+            action="buy",
             confidence=0.74,
-            strategy="momentum_pulse",
+            current_price=50000.0,
+            price=50000.0,
+            timeframe="15m",
             metadata=metadata,
         )
 
         assert signal.validate()
         assert signal.symbol == "BTCUSDT"
-        assert signal.period == "15m"
-        assert signal.signal == SignalType.BUY
+        assert signal.timeframe == "15m"
+        assert signal.action == "buy"
         assert signal.confidence == 0.74
-        assert signal.strategy == "momentum_pulse"
+        assert signal.strategy_id == "momentum_pulse"
 
     def test_signal_validation(self):
         """Test signal validation."""
@@ -177,22 +180,26 @@ class TestSignalModel:
 
         # Test invalid confidence
         signal = Signal(
+            strategy_id="momentum_pulse",
             symbol="BTCUSDT",
-            period="15m",
-            signal=SignalType.BUY,
+            action="buy",
             confidence=1.5,  # Invalid confidence
-            strategy="momentum_pulse",
+            current_price=50000.0,
+            price=50000.0,
+            timeframe="15m",
             metadata={},
         )
         assert not signal.validate()
 
         # Test missing required fields
         signal = Signal(
+            strategy_id="momentum_pulse",
             symbol="",  # Empty symbol
-            period="15m",
-            signal=SignalType.BUY,
+            action="buy",
             confidence=0.74,
-            strategy="momentum_pulse",
+            current_price=50000.0,
+            price=50000.0,
+            timeframe="15m",
             metadata={},
         )
         assert not signal.validate()
@@ -203,17 +210,19 @@ class TestSignalModel:
 
         metadata = {"rsi": 58.3}
         signal = Signal(
+            strategy_id="momentum_pulse",
             symbol="BTCUSDT",
-            period="15m",
-            signal=SignalType.BUY,
+            action="buy",
             confidence=0.74,
-            strategy="momentum_pulse",
+            current_price=50000.0,
+            price=50000.0,
+            timeframe="15m",
             metadata=metadata,
         )
 
         signal_dict = signal.to_dict()
         assert signal_dict["symbol"] == "BTCUSDT"
-        assert signal_dict["signal"] == "BUY"
+        assert signal_dict["action"] == "buy"
         assert signal_dict["confidence"] == 0.74
         assert signal_dict["metadata"] == metadata
 
