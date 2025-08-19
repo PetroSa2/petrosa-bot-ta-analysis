@@ -5,6 +5,7 @@ metadata:
   namespace: petrosa-apps
   labels:
     app: petrosa-ta-bot
+    version: VERSION_PLACEHOLDER
 spec:
   selector:
     app: petrosa-ta-bot
