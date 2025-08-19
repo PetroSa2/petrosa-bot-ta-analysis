@@ -3,11 +3,14 @@ Band Fade Reversal strategy for technical analysis.
 """
 
 import pandas as pd
+import logging
 from typing import Dict, Any, Optional
 
 from ta_bot.strategies.base_strategy import BaseStrategy
 from ta_bot.core.indicators import Indicators
 from ta_bot.models.signal import Signal, SignalType
+
+logger = logging.getLogger(__name__)
 
 
 class BandFadeReversalStrategy(BaseStrategy):
@@ -23,31 +26,24 @@ class BandFadeReversalStrategy(BaseStrategy):
         if len(df) < 20:
             return None
 
-        # Get current values
-        current = df.iloc[-1]
-        close = current["close"]
-
-        # Get Bollinger Bands
-        bb_lower = indicators.get("bb_lower", [])
-        bb_upper = indicators.get("bb_upper", [])
-        bb_middle = indicators.get("bb_middle", [])
-
-        # Check if indicators are available and not empty
-        if (not bb_lower or (hasattr(bb_lower, 'empty') and bb_lower.empty)) or \
-           (not bb_upper or (hasattr(bb_upper, 'empty') and bb_upper.empty)) or \
-           (not bb_middle or (hasattr(bb_middle, 'empty') and bb_middle.empty)):
+        # Get current values using base strategy methods
+        current_values = self._get_current_values(indicators, df)
+        
+        # Debug logging
+        logger.info(f"Available indicators: {list(indicators.keys())}")
+        logger.info(f"Current values: {list(current_values.keys())}")
+        
+        # Check if we have all required indicators
+        required_indicators = ["bb_lower", "bb_upper", "bb_middle", "close"]
+        missing_indicators = [ind for ind in required_indicators if ind not in current_values]
+        if missing_indicators:
+            logger.info(f"Missing indicators: {missing_indicators}")
             return None
 
-        # Handle both pandas Series and list types
-        if hasattr(bb_lower, 'iloc'):
-            current_bb_lower = float(bb_lower.iloc[-1])
-            current_bb_upper = float(bb_upper.iloc[-1])
-            current_bb_middle = float(bb_middle.iloc[-1])
-        else:
-            # Handle list type
-            current_bb_lower = float(bb_lower[-1]) if bb_lower else 0
-            current_bb_upper = float(bb_upper[-1]) if bb_upper else 0
-            current_bb_middle = float(bb_middle[-1]) if bb_middle else 0
+        close = current_values["close"]
+        current_bb_lower = current_values["bb_lower"]
+        current_bb_upper = current_values["bb_upper"]
+        current_bb_middle = current_values["bb_middle"]
 
         # Check if price is near the lower band
         near_lower_band = close <= current_bb_lower * 1.01

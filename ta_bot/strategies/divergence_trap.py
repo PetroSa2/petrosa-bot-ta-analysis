@@ -23,36 +23,45 @@ class DivergenceTrapStrategy(BaseStrategy):
         if len(df) < 30:
             return None
 
-        # Get current values
-        current = df.iloc[-1]
-        close = current["close"]
-
-        # Get RSI
-        rsi = indicators.get("rsi", [])
-
-        # Check if indicator is available and not empty
-        if not rsi or (hasattr(rsi, 'empty') and rsi.empty):
+        # Get current values using base strategy methods
+        current_values = self._get_current_values(indicators, df)
+        
+        # Check if we have all required indicators
+        required_indicators = ["rsi", "close"]
+        if not all(indicator in current_values for indicator in required_indicators):
             return None
 
-        # Handle both pandas Series and list types
-        if hasattr(rsi, 'iloc'):
-            current_rsi = float(rsi.iloc[-1])
-        else:
-            # Handle list type
-            current_rsi = float(rsi[-1]) if rsi else 50
+        close = current_values["close"]
+        current_rsi = current_values["rsi"]
+
+        # Get RSI series for divergence analysis
+        rsi = indicators.get("rsi", [])
+        if not rsi or (hasattr(rsi, 'empty') and rsi.empty) or len(rsi) < 10:
+            return None
 
         # Check for hidden bullish divergence
         # Price making lower lows but RSI making higher lows
         if len(df) >= 10:
             # Get recent price lows
             recent_lows = df["low"].iloc[-10:].values
-            recent_rsi = rsi.iloc[-10:].values if hasattr(rsi, 'iloc') else rsi[-10:]
             
-            # Find local minima
-            price_lower_low = recent_lows[-1] < recent_lows[-5]  # Current low < previous low
-            rsi_higher_low = current_rsi > recent_rsi[-5]  # Current RSI > previous RSI
+            # Get recent RSI values as a list to avoid Series operations
+            if hasattr(rsi, 'iloc'):
+                recent_rsi_values = rsi.iloc[-10:].tolist()
+            else:
+                recent_rsi_values = rsi[-10:] if rsi else []
             
-            hidden_bullish_divergence = price_lower_low and rsi_higher_low
+            # Find local minima - use specific indices to avoid Series operations
+            if len(recent_rsi_values) >= 10:
+                try:
+                    price_lower_low = recent_lows[-1] < recent_lows[-5]  # Current low < previous low
+                    rsi_higher_low = current_rsi > recent_rsi_values[-5]  # Current RSI > previous RSI
+                    
+                    hidden_bullish_divergence = price_lower_low and rsi_higher_low
+                except (IndexError, ValueError):
+                    hidden_bullish_divergence = False
+            else:
+                hidden_bullish_divergence = False
         else:
             hidden_bullish_divergence = False
 
