@@ -190,14 +190,23 @@ class SignalEngine:
         """Calculate stop loss and take profit levels."""
         atr = indicators.get("atr", 0)
         
-        if atr <= 0:
+        # Handle case where ATR might be a pandas Series
+        if isinstance(atr, pd.Series):
+            if atr.empty or len(atr) == 0:
+                atr_value = 0
+            else:
+                atr_value = float(atr.iloc[-1]) if not pd.isna(atr.iloc[-1]) else 0
+        else:
+            atr_value = float(atr) if atr is not None else 0
+        
+        if atr_value <= 0:
             # Default percentages if ATR is not available
             stop_loss_pct = 0.02  # 2%
             take_profit_pct = 0.05  # 5%
         else:
             # Use ATR for dynamic levels
-            stop_loss_pct = (atr * 2) / current_price  # 2x ATR
-            take_profit_pct = (atr * 3) / current_price  # 3x ATR
+            stop_loss_pct = (atr_value * 2) / current_price  # 2x ATR
+            take_profit_pct = (atr_value * 3) / current_price  # 3x ATR
         
         if signal_type == SignalType.BUY:
             stop_loss = current_price * (1 - stop_loss_pct)

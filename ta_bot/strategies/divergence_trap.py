@@ -36,7 +36,9 @@ class DivergenceTrapStrategy(BaseStrategy):
 
         # Get RSI series for divergence analysis
         rsi = indicators.get("rsi", [])
-        if not rsi or (hasattr(rsi, 'empty') and rsi.empty) or len(rsi) < 10:
+        # Properly check if RSI series is valid
+        if (isinstance(rsi, pd.Series) and (rsi.empty or len(rsi) < 10)) or \
+           (not isinstance(rsi, pd.Series) and (not rsi or len(rsi) < 10)):
             return None
 
         # Check for hidden bullish divergence
