@@ -4,7 +4,7 @@
 
 # Default target
 help:
-	@echo "Petrosa TA Bot - Available Commands"
+	@echo "Petrosa Data Extractor - Available Commands"
 	@echo "==================================="
 	@echo ""
 	@echo "Development Setup:"
@@ -32,6 +32,12 @@ help:
 	@echo "  run            Run the application locally"
 	@echo "  run-docker     Run the application in Docker"
 	@echo ""
+	@echo "Bug Investigation:"
+	@echo "  bug-confirm    Confirm bug behavior locally"
+	@echo "  bug-investigate Investigate root cause"
+	@echo "  bug-test       Test bug fixes"
+	@echo "  bug-all        Run complete bug investigation"
+	@echo ""
 
 # Development setup
 setup:
@@ -55,7 +61,7 @@ lint:
 
 format:
 	@echo "🎨 Formatting code with black..."
-	black ta_bot/ tests/
+	black tradeengine/ tests/
 
 test:
 	@echo "🧪 Running tests..."
@@ -80,9 +86,9 @@ container:
 
 docker-clean:
 	@echo "🧹 Cleaning up Docker images..."
-	docker rmi yurisa2/petrosa-ta-bot:latest 2>/dev/null || true
-	docker rmi yurisa2/petrosa-ta-bot:local-* 2>/dev/null || true
-	docker rmi yurisa2/petrosa-ta-bot:v* 2>/dev/null || true
+	docker rmi yurisa2/petrosa-tradeengine:latest 2>/dev/null || true
+	docker rmi yurisa2/petrosa-tradeengine:local-* 2>/dev/null || true
+	docker rmi yurisa2/petrosa-tradeengine:v* 2>/dev/null || true
 	docker system prune -f
 
 # Deployment
@@ -144,13 +150,13 @@ install-tools:
 # Kubernetes utilities
 k8s-status:
 	@echo "📊 Kubernetes deployment status:"
-	kubectl get pods -n petrosa-apps -l app=petrosa-ta-bot
-	kubectl get svc -n petrosa-apps -l app=petrosa-ta-bot
-	kubectl get ingress -n petrosa-apps -l app=petrosa-ta-bot
+	kubectl get pods -n petrosa-apps -l app=petrosa-tradeengine
+	kubectl get svc -n petrosa-apps -l app=petrosa-tradeengine
+	kubectl get ingress -n petrosa-apps -l app=petrosa-tradeengine
 
 k8s-logs:
 	@echo "📋 Kubernetes logs:"
-	kubectl logs -n petrosa-apps -l app=petrosa-ta-bot --tail=50
+	kubectl logs -n petrosa-apps -l app=petrosa-tradeengine --tail=50
 
 k8s-clean:
 	@echo "🧹 Cleaning up Kubernetes resources..."
@@ -173,22 +179,47 @@ benchmark:
 	@echo "⚡ Running performance tests..."
 	python -m pytest tests/ -v
 
-# Database utilities (not applicable for TA Bot)
+# Database utilities
 db-migrate:
-	@echo "🗄️  TA Bot doesn't use a database"
+	@echo "🗄️  Running database migrations..."
+	@echo "Trading Engine uses MongoDB - migrations handled automatically"
 
 db-seed:
-	@echo "🌱 TA Bot doesn't use a database"
+	@echo "🌱 Seeding database with initial data..."
+	@echo "Trading Engine initializes with default configuration"
 
 # Monitoring
 monitor:
-	@echo "📊 TA Bot metrics:"
-	@echo "Check logs for signal generation metrics"
+	@echo "📊 Trading Engine metrics:"
+	@echo "Check logs for order execution and signal processing metrics"
 
 # Backup
 backup:
-	@echo "💾 TA Bot doesn't require backup"
+	@echo "💾 Trading Engine backup:"
+	@echo "Backup MongoDB collections and configuration"
 
 # Restore
 restore:
-	@echo "🔄 TA Bot doesn't require restore" 
+	@echo "🔄 Trading Engine restore:"
+	@echo "Restore from MongoDB backup and configuration"
+
+# Bug Investigation
+bug-confirm:
+	@echo "🔍 Confirming bug behavior locally..."
+	@chmod +x scripts/bug-investigation.sh
+	@./scripts/bug-investigation.sh confirm
+
+bug-investigate:
+	@echo "🔬 Investigating root cause..."
+	@chmod +x scripts/bug-investigation.sh
+	@./scripts/bug-investigation.sh investigate
+
+bug-test:
+	@echo "🧪 Testing bug fixes..."
+	@chmod +x scripts/bug-investigation.sh
+	@./scripts/bug-investigation.sh test
+
+bug-all:
+	@echo "🚨 Running complete bug investigation..."
+	@chmod +x scripts/bug-investigation.sh
+	@./scripts/bug-investigation.sh all 
