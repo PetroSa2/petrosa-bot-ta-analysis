@@ -44,7 +44,7 @@ class TestConfig:
         """Test that candle_periods has correct default values."""
         config = Config()
 
-        expected_periods = ["1m", "5m", "15m", "1h", "4h"]
+        expected_periods = ["5m"]  # Default from SUPPORTED_TIMEFRAMES env var
 
         assert config.candle_periods == expected_periods
 

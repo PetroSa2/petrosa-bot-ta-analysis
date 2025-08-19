@@ -27,7 +27,8 @@ class TestMomentumPulseStrategy:
         )  # Only 1 row
         indicators = {"macd_hist": [0.1], "rsi": [55], "adx": [25]}
 
-        result = self.strategy.analyze(df, indicators)
+        metadata = {"indicators": indicators}
+        result = self.strategy.analyze(df, metadata)
         assert result is None
 
     def test_analyze_missing_indicators(self):
@@ -47,7 +48,8 @@ class TestMomentumPulseStrategy:
             # Missing adx, ema21, ema50
         }
 
-        result = self.strategy.analyze(df, indicators)
+        metadata = {"indicators": indicators}
+        result = self.strategy.analyze(df, metadata)
         assert result is None
 
     def test_analyze_no_macd_cross(self):
@@ -70,7 +72,8 @@ class TestMomentumPulseStrategy:
             "close": [100, 101, 102],
         }
 
-        result = self.strategy.analyze(df, indicators)
+        metadata = {"indicators": indicators}
+        result = self.strategy.analyze(df, metadata)
         assert result is None
 
     def test_analyze_rsi_out_of_range(self):
@@ -165,14 +168,19 @@ class TestMomentumPulseStrategy:
             "macd_signal": pd.Series([0.05, 0.06, 0.07]),
         }
 
-        result = self.strategy.analyze(df, indicators, "BTCUSDT", "15m")
+        metadata = {
+            "indicators": indicators,
+            "symbol": "BTCUSDT",
+            "timeframe": "15m"
+        }
+        result = self.strategy.analyze(df, metadata)
 
         assert (
             result is not None
             and result.symbol == "BTCUSDT"
-            and result.period == "15m"
-            and result.signal == SignalType.BUY
-            and result.strategy == "momentum_pulse"
+            and result.timeframe == "15m"
+            and result.action == "buy"
+            and result.strategy_id == "momentum_pulse"
             and result.confidence == 0.74
             and "macd_hist" in result.metadata
             and "macd_signal" in result.metadata
@@ -201,7 +209,12 @@ class TestMomentumPulseStrategy:
             "volume": pd.Series([1000, 1100, 1200]),
         }
 
-        result = self.strategy.analyze(df, indicators, "ETHUSDT", "5m")
+        metadata = {
+            "indicators": indicators,
+            "symbol": "ETHUSDT",
+            "timeframe": "5m"
+        }
+        result = self.strategy.analyze(df, metadata)
 
         assert result is not None and result.symbol == "ETHUSDT"
 
@@ -225,7 +238,8 @@ class TestMomentumPulseStrategy:
             "close": pd.Series([100, 101, 102]),
         }
 
-        result = self.strategy.analyze(df, indicators)
+        metadata = {"indicators": indicators}
+        result = self.strategy.analyze(df, metadata)
         assert result is not None
 
     def test_analyze_edge_case_rsi_65(self):
@@ -248,7 +262,8 @@ class TestMomentumPulseStrategy:
             "close": pd.Series([100, 101, 102]),
         }
 
-        result = self.strategy.analyze(df, indicators)
+        metadata = {"indicators": indicators}
+        result = self.strategy.analyze(df, metadata)
         assert result is not None
 
     def test_analyze_edge_case_adx_20(self):
@@ -271,7 +286,8 @@ class TestMomentumPulseStrategy:
             "close": pd.Series([100, 101, 102]),
         }
 
-        result = self.strategy.analyze(df, indicators)
+        metadata = {"indicators": indicators}
+        result = self.strategy.analyze(df, metadata)
         assert result is not None
 
     def test_analyze_missing_macd_signal(self):
@@ -295,7 +311,8 @@ class TestMomentumPulseStrategy:
             # Missing macd_signal
         }
 
-        result = self.strategy.analyze(df, indicators)
+        metadata = {"indicators": indicators}
+        result = self.strategy.analyze(df, metadata)
         assert result is not None
         assert result.metadata["macd_signal"] == 0  # Default value
 
@@ -319,6 +336,7 @@ class TestMomentumPulseStrategy:
             "close": pd.Series([100, 101, 102]),
         }
 
-        result = self.strategy.analyze(df, indicators)
+        metadata = {"indicators": indicators}
+        result = self.strategy.analyze(df, metadata)
         assert result is not None
         assert result.metadata["volume"] == 1200  # Should use actual volume value

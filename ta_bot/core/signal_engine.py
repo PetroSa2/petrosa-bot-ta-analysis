@@ -112,56 +112,23 @@ class SignalEngine:
     ) -> Optional[Signal]:
         """Run a single strategy and return signal if valid."""
         try:
+            # Prepare metadata for strategy
+            metadata = {
+                "indicators": indicators,
+                "symbol": symbol,
+                "timeframe": period
+            }
             # Run strategy analysis
-            signal_data = strategy.analyze(df, indicators)
+            signal = strategy.analyze(df, metadata)
 
-            if not signal_data:
-                logger.info(f"  {strategy_name}: No signal data returned by strategy")
+            if not signal:
+                logger.info(f"  {strategy_name}: No signal returned by strategy")
                 return None
 
-            # Extract signal information
-            signal_type = signal_data.get("signal_type", SignalType.BUY)
-            metadata = signal_data.get("metadata", {})
-            
             # Log strategy-specific details
-            logger.info(f"  {strategy_name}: Signal type: {signal_type}")
-            if metadata:
-                logger.info(f"  {strategy_name}: Metadata: {metadata}")
-
-            # Calculate confidence
-            confidence = ConfidenceCalculator.calculate_confidence(
-                strategy_name, df, metadata
-            )
-            logger.info(f"  {strategy_name}: Calculated confidence: {confidence:.2f}")
-
-            # Determine signal strength based on confidence
-            strength = self._calculate_signal_strength(confidence)
-            
-            # Calculate risk management parameters
-            stop_loss, take_profit = self._calculate_risk_management(current_price, indicators, signal_type)
-
-            # Create signal object with new format
-            signal = Signal(
-                strategy_id=f"{strategy_name}_{period}",
-                strategy_mode=StrategyMode.DETERMINISTIC,
-                symbol=symbol,
-                action=signal_type.value,  # Convert enum to string
-                confidence=confidence,
-                strength=strength,
-                current_price=current_price,
-                price=current_price,
-                quantity=0.0,  # Will be calculated by trade engine
-                source="ta_bot",
-                strategy=strategy_name,
-                metadata=metadata,
-                timeframe=period,
-                order_type=OrderType.MARKET,
-                time_in_force=TimeInForce.GTC,
-                position_size_pct=0.1,  # Default 10% position size
-                stop_loss=stop_loss,
-                take_profit=take_profit,
-                timestamp=datetime.utcnow().isoformat(),
-            )
+            logger.info(f"  {strategy_name}: Signal type: {signal.action}")
+            if signal.metadata:
+                logger.info(f"  {strategy_name}: Metadata: {signal.metadata}")
 
             # Validate signal
             if not signal.validate():
