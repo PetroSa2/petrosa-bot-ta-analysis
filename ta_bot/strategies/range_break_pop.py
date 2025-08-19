@@ -40,7 +40,8 @@ class RangeBreakPopStrategy(BaseStrategy):
         # Get ATR for volatility measurement
         atr = indicators.get("atr", [])
 
-        if not atr:
+        # Check if indicator is available and not empty
+        if not atr or (hasattr(atr, 'empty') and atr.empty):
             return None
 
         # Handle both pandas Series and list types

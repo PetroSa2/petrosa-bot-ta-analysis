@@ -6,12 +6,7 @@ metadata:
   labels:
     app: petrosa-ta-bot
 data:
-  nats_url: "nats://nats-server:4222"
   api_endpoint: "http://petrosa-tradeengine-service/trade/signal"
-  log_level: "INFO"
-  environment: "production"
-  supported_symbols: "BTCUSDT,ETHUSDT,ADAUSDT"
-  supported_timeframes: "15m,1h"
   rsi_period: "14"
   macd_fast: "12"
   macd_slow: "26"

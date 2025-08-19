@@ -30,6 +30,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ta_bot/ ./ta_bot/
 COPY tests/ ./tests/
 
+# Force rebuild timestamp
+RUN echo "Build timestamp: $(date)" > /app/build_timestamp.txt
+
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app && \
     chown -R app:app /app

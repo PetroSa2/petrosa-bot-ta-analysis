@@ -15,11 +15,11 @@ spec:
     metadata:
       labels:
         app: petrosa-ta-bot
-        version: VERSION_PLACEHOLDER
+        version: local-20250818-224756-0f0c993
     spec:
       containers:
       - name: ta-bot
-        image: yurisa2/petrosa-ta-bot:VERSION_PLACEHOLDER
+        image: yurisa2/petrosa-ta-bot:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -48,13 +48,13 @@ spec:
         - name: SUPPORTED_SYMBOLS
           valueFrom:
             configMapKeyRef:
-              name: ta-bot-config
-              key: supported_symbols
+              name: petrosa-common-config
+              key: DEFAULT_SYMBOLS
         - name: SUPPORTED_TIMEFRAMES
           valueFrom:
             configMapKeyRef:
-              name: ta-bot-config
-              key: supported_timeframes
+              name: petrosa-common-config
+              key: SUPPORTED_INTERVALS
         - name: RSI_PERIOD
           valueFrom:
             configMapKeyRef:
@@ -110,16 +110,6 @@ spec:
             configMapKeyRef:
               name: petrosa-common-config
               key: NATS_SUBJECT_PREFIX_PRODUCTION
-        - name: SUPPORTED_SYMBOLS
-          valueFrom:
-            configMapKeyRef:
-              name: ta-bot-config
-              key: supported_symbols
-        - name: SUPPORTED_TIMEFRAMES
-          valueFrom:
-            configMapKeyRef:
-              name: ta-bot-config
-              key: supported_timeframes
         - name: MYSQL_HOST
           value: "mysql-server"
         - name: MYSQL_PORT
