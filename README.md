@@ -100,6 +100,21 @@ make setup
 make install-dev
 ```
 
+### Bug Investigation
+When bugs are reported or detected, follow our systematic approach:
+
+```bash
+# Quick bug investigation
+./scripts/bug-investigation.sh all
+
+# Or step by step:
+./scripts/bug-investigation.sh confirm    # Confirm the bug
+./scripts/bug-investigation.sh investigate # Investigate root cause
+./scripts/bug-investigation.sh test       # Test the fix
+```
+
+**Full Documentation**: See `docs/BUG_INVESTIGATION_GUIDE.md` for detailed procedures.
+
 ### Code Quality
 ```bash
 # Run all linting
