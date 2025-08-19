@@ -31,7 +31,9 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         ema21 = indicators.get("ema21", [])
         ema50 = indicators.get("ema50", [])
 
-        if not all([ema21, ema50]):
+        # Check if indicators are available and not empty
+        if (not ema21 or (hasattr(ema21, 'empty') and ema21.empty)) or \
+           (not ema50 or (hasattr(ema50, 'empty') and ema50.empty)):
             return None
 
         # Handle both pandas Series and list types

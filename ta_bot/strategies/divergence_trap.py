@@ -30,7 +30,8 @@ class DivergenceTrapStrategy(BaseStrategy):
         # Get RSI
         rsi = indicators.get("rsi", [])
 
-        if not rsi:
+        # Check if indicator is available and not empty
+        if not rsi or (hasattr(rsi, 'empty') and rsi.empty):
             return None
 
         # Handle both pandas Series and list types

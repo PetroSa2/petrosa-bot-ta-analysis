@@ -32,7 +32,10 @@ class BandFadeReversalStrategy(BaseStrategy):
         bb_upper = indicators.get("bb_upper", [])
         bb_middle = indicators.get("bb_middle", [])
 
-        if not all([bb_lower, bb_upper, bb_middle]):
+        # Check if indicators are available and not empty
+        if (not bb_lower or (hasattr(bb_lower, 'empty') and bb_lower.empty)) or \
+           (not bb_upper or (hasattr(bb_upper, 'empty') and bb_upper.empty)) or \
+           (not bb_middle or (hasattr(bb_middle, 'empty') and bb_middle.empty)):
             return None
 
         # Handle both pandas Series and list types
