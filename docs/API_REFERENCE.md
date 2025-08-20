@@ -506,12 +506,12 @@ import json
 class TASignalClient:
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url
-    
+
     def get_health(self):
         """Get service health status."""
         response = requests.get(f"{self.base_url}/health")
         return response.json()
-    
+
     def generate_signals(self, candle_data: dict):
         """Generate trading signals."""
         response = requests.post(
@@ -519,7 +519,7 @@ class TASignalClient:
             json=candle_data
         )
         return response.json()
-    
+
     def get_signals(self, symbol: str, limit: int = 10):
         """Get recent signals for a symbol."""
         params = {"limit": limit}
@@ -542,12 +542,12 @@ class TASignalClient {
     constructor(baseUrl = 'http://localhost:8000') {
         this.baseUrl = baseUrl;
     }
-    
+
     async getHealth() {
         const response = await fetch(`${this.baseUrl}/health`);
         return response.json();
     }
-    
+
     async generateSignals(candleData) {
         const response = await fetch(`${this.baseUrl}/signals`, {
             method: 'POST',
@@ -558,7 +558,7 @@ class TASignalClient {
         });
         return response.json();
     }
-    
+
     async getSignals(symbol, limit = 10) {
         const params = new URLSearchParams({ limit });
         const response = await fetch(`${this.baseUrl}/signals/${symbol}?${params}`);
@@ -594,4 +594,4 @@ X-API-Deprecated: false
 **Next Steps**:
 - Review [Signal Engine](./SIGNAL_ENGINE.md) for core analysis details
 - Check [Trading Strategies](./STRATEGIES.md) for strategy information
-- See [Configuration](./CONFIGURATION.md) for environment setup 
+- See [Configuration](./CONFIGURATION.md) for environment setup

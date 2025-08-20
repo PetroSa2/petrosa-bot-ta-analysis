@@ -3,11 +3,13 @@ Range Break Pop Strategy
 Detects volatility breakout signals when price breaks above a tight range.
 """
 
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import pandas as pd
-from ta_bot.models.signal import Signal, SignalType
-from ta_bot.strategies.base_strategy import BaseStrategy
+
 from ta_bot.core.indicators import Indicators
+from ta_bot.models.signal import SignalType
+from ta_bot.strategies.base_strategy import BaseStrategy
 
 
 class RangeBreakPopStrategy(BaseStrategy):
@@ -26,14 +28,16 @@ class RangeBreakPopStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def analyze(
+        self, df: pd.DataFrame, indicators: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Analyze candles for Range Break Pop signals."""
         if len(df) < 20:
             return None
 
         # Get current values using base strategy methods
         current_values = self._get_current_values(indicators, df)
-        
+
         # Check if we have all required indicators
         required_indicators = ["atr", "close", "high", "low", "volume"]
         if not all(indicator in current_values for indicator in required_indicators):
@@ -56,7 +60,7 @@ class RangeBreakPopStrategy(BaseStrategy):
         if len(df) >= 3:
             prev_close = df.iloc[-2]["close"]
             prev_prev_close = df.iloc[-3]["close"]
-            
+
             # Strong upward momentum
             momentum = close > prev_close > prev_prev_close
         else:

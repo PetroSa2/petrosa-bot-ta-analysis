@@ -47,7 +47,7 @@ import re
 
 class CandleDataValidator(BaseModel):
     """Validate candle data input."""
-    
+
     symbol: str = Field(..., min_length=1, max_length=20)
     period: str = Field(..., regex=r'^(1m|5m|15m|1h|4h|1d)$')
     timestamp: int = Field(..., gt=0)
@@ -56,21 +56,21 @@ class CandleDataValidator(BaseModel):
     low: float = Field(..., gt=0)
     close: float = Field(..., gt=0)
     volume: float = Field(..., ge=0)
-    
+
     @validator('symbol')
     def validate_symbol(cls, v):
         """Validate trading symbol format."""
         if not re.match(r'^[A-Z0-9]+$', v):
             raise ValueError('Symbol must contain only uppercase letters and numbers')
         return v
-    
+
     @validator('high')
     def validate_high(cls, v, values):
         """Validate high price is highest."""
         if 'low' in values and v < values['low']:
             raise ValueError('High price must be greater than low price')
         return v
-    
+
     @validator('low')
     def validate_low(cls, v, values):
         """Validate low price is lowest."""
@@ -80,14 +80,14 @@ class CandleDataValidator(BaseModel):
 
 class SignalValidator(BaseModel):
     """Validate signal output."""
-    
+
     symbol: str = Field(..., min_length=1, max_length=20)
     period: str = Field(..., regex=r'^(1m|5m|15m|1h|4h|1d)$')
     signal: str = Field(..., regex=r'^(BUY|SELL)$')
     confidence: float = Field(..., ge=0.0, le=1.0)
     strategy: str = Field(..., min_length=1, max_length=50)
     metadata: dict = Field(default_factory=dict)
-    
+
     @validator('strategy')
     def validate_strategy(cls, v):
         """Validate strategy name."""
@@ -116,10 +116,10 @@ from functools import wraps
 
 class SecurityManager:
     """Security manager for authentication and authorization."""
-    
+
     def __init__(self, secret_key: str):
         self.secret_key = secret_key
-    
+
     def generate_token(self, user_id: str, expires_in: int = 3600) -> str:
         """Generate JWT token."""
         payload = {
@@ -128,7 +128,7 @@ class SecurityManager:
             'iat': time.time()
         }
         return jwt.encode(payload, self.secret_key, algorithm='HS256')
-    
+
     def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
         """Verify JWT token."""
         try:
@@ -138,7 +138,7 @@ class SecurityManager:
             return None
         except jwt.InvalidTokenError:
             return None
-    
+
     def verify_hmac(self, data: str, signature: str, secret: str) -> bool:
         """Verify HMAC signature."""
         expected_signature = hmac.new(
@@ -177,24 +177,24 @@ from pydantic import BaseSettings, Field
 
 class SecurityConfig(BaseSettings):
     """Security configuration."""
-    
+
     # JWT settings
     jwt_secret_key: str = Field(..., env='JWT_SECRET_KEY')
     jwt_algorithm: str = Field(default='HS256', env='JWT_ALGORITHM')
     jwt_expires_in: int = Field(default=3600, env='JWT_EXPIRES_IN')
-    
+
     # API security
     api_rate_limit: int = Field(default=100, env='API_RATE_LIMIT')
     api_rate_limit_window: int = Field(default=60, env='API_RATE_LIMIT_WINDOW')
-    
+
     # CORS settings
     cors_origins: list = Field(default=['*'], env='CORS_ORIGINS')
     cors_methods: list = Field(default=['GET', 'POST'], env='CORS_METHODS')
-    
+
     # TLS settings
     tls_cert_file: Optional[str] = Field(None, env='TLS_CERT_FILE')
     tls_key_file: Optional[str] = Field(None, env='TLS_KEY_FILE')
-    
+
     # Security headers
     security_headers: dict = Field(default={
         'X-Content-Type-Options': 'nosniff',
@@ -202,7 +202,7 @@ class SecurityConfig(BaseSettings):
         'X-XSS-Protection': '1; mode=block',
         'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
     })
-    
+
     class Config:
         env_prefix = 'SECURITY_'
 ```
@@ -218,41 +218,41 @@ from collections import defaultdict
 
 class RateLimiter:
     """Rate limiter implementation."""
-    
+
     def __init__(self, max_requests: int, window_seconds: int):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self.requests = defaultdict(list)
         self.lock = threading.Lock()
-    
+
     def is_allowed(self, client_id: str) -> bool:
         """Check if request is allowed."""
         now = time.time()
-        
+
         with self.lock:
             # Clean old requests
             self.requests[client_id] = [
                 req_time for req_time in self.requests[client_id]
                 if now - req_time < self.window_seconds
             ]
-            
+
             # Check if under limit
             if len(self.requests[client_id]) < self.max_requests:
                 self.requests[client_id].append(now)
                 return True
-            
+
             return False
-    
+
     def get_remaining(self, client_id: str) -> int:
         """Get remaining requests for client."""
         now = time.time()
-        
+
         with self.lock:
             valid_requests = [
                 req_time for req_time in self.requests[client_id]
                 if now - req_time < self.window_seconds
             ]
-            
+
             return max(0, self.max_requests - len(valid_requests))
 
 # Global rate limiter
@@ -321,7 +321,7 @@ from typing import Optional
 
 class SecureEnvironment:
     """Secure environment variable management."""
-    
+
     @staticmethod
     def get_secret(key: str, default: Optional[str] = None) -> str:
         """Get secret from environment variable."""
@@ -329,12 +329,12 @@ class SecureEnvironment:
         if not value:
             raise ValueError(f"Required environment variable {key} not set")
         return value
-    
+
     @staticmethod
     def get_optional_secret(key: str) -> Optional[str]:
         """Get optional secret from environment variable."""
         return os.getenv(key)
-    
+
     @staticmethod
     def validate_required_secrets():
         """Validate all required secrets are present."""
@@ -343,12 +343,12 @@ class SecureEnvironment:
             'TA_BOT_API_ENDPOINT',
             'JWT_SECRET_KEY'
         ]
-        
+
         missing_secrets = []
         for secret in required_secrets:
             if not os.getenv(secret):
                 missing_secrets.append(secret)
-        
+
         if missing_secrets:
             raise ValueError(f"Missing required secrets: {missing_secrets}")
 ```
@@ -684,7 +684,7 @@ groups:
     annotations:
       summary: "Security event detected"
       description: "{{ $value }} security events per second"
-  
+
   - alert: HighAuthFailures
     expr: rate(ta_bot_authentication_attempts_total{success="false"}[5m]) > 0.1
     for: 2m
@@ -693,7 +693,7 @@ groups:
     annotations:
       summary: "High authentication failure rate"
       description: "{{ $value }} failed auth attempts per second"
-  
+
   - alert: AuthorizationFailures
     expr: rate(ta_bot_authorization_failures_total[5m]) > 0
     for: 1m
@@ -702,7 +702,7 @@ groups:
     annotations:
       summary: "Authorization failures detected"
       description: "{{ $value }} authorization failures per second"
-  
+
   - alert: RateLimitViolations
     expr: rate(ta_bot_rate_limit_exceeded_total[5m]) > 0.5
     for: 2m
@@ -757,4 +757,4 @@ groups:
 **Next Steps**:
 - Read [Deployment Guide](./DEPLOYMENT.md) for secure deployment
 - Check [Kubernetes Configuration](./KUBERNETES.md) for K8s security
-- Review [Monitoring Guide](./MONITORING.md) for security monitoring 
+- Review [Monitoring Guide](./MONITORING.md) for security monitoring

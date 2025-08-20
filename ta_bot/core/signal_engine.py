@@ -2,19 +2,18 @@
 Signal engine that coordinates all trading strategies.
 """
 
-import pandas as pd
 import logging
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from ta_bot.models.signal import Signal, SignalType, SignalStrength, StrategyMode, OrderType, TimeInForce
-from ta_bot.core.confidence import ConfidenceCalculator
+import pandas as pd
+
 from ta_bot.core.indicators import Indicators
-from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
+from ta_bot.models.signal import Signal, SignalStrength, SignalType
 from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy
-from ta_bot.strategies.golden_trend_sync import GoldenTrendSyncStrategy
-from ta_bot.strategies.range_break_pop import RangeBreakPopStrategy
 from ta_bot.strategies.divergence_trap import DivergenceTrapStrategy
+from ta_bot.strategies.golden_trend_sync import GoldenTrendSyncStrategy
+from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
+from ta_bot.strategies.range_break_pop import RangeBreakPopStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class SignalEngine:
         logger.info(f"Calculated {len(indicators)} technical indicators")
 
         # Get current price from the latest candle
-        current_price = float(df['close'].iloc[-1])
+        current_price = float(df["close"].iloc[-1])
         logger.info(f"Current price: {current_price}")
 
         signals = []
@@ -62,11 +61,15 @@ class SignalEngine:
             )
             if signal:
                 signals.append(signal)
-                logger.info(f"✅ {strategy_name}: SIGNAL GENERATED - {signal.action} with {signal.confidence:.2f} confidence")
+                logger.info(
+                    f"✅ {strategy_name}: SIGNAL GENERATED - {signal.action} with {signal.confidence:.2f} confidence"
+                )
             else:
                 logger.info(f"❌ {strategy_name}: No signal - conditions not met")
 
-        logger.info(f"=== Strategy analysis complete: {len(signals)} signals generated ===")
+        logger.info(
+            f"=== Strategy analysis complete: {len(signals)} signals generated ==="
+        )
         return signals
 
     def _calculate_indicators(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -75,9 +78,11 @@ class SignalEngine:
 
         # Basic indicators
         indicators["rsi"] = self.indicators.rsi(df)
-        indicators["macd"], indicators["macd_signal"], indicators["macd_hist"] = (
-            self.indicators.macd(df)
-        )
+        (
+            indicators["macd"],
+            indicators["macd_signal"],
+            indicators["macd_hist"],
+        ) = self.indicators.macd(df)
         indicators["adx"] = self.indicators.adx(df)
         indicators["atr"] = self.indicators.atr(df)
         indicators["vwap"] = self.indicators.vwap(df)
@@ -88,9 +93,11 @@ class SignalEngine:
         indicators["ema200"] = self.indicators.ema(df, 200)
 
         # Bollinger Bands
-        indicators["bb_lower"], indicators["bb_middle"], indicators["bb_upper"] = (
-            self.indicators.bollinger_bands(df)
-        )
+        (
+            indicators["bb_lower"],
+            indicators["bb_middle"],
+            indicators["bb_upper"],
+        ) = self.indicators.bollinger_bands(df)
 
         # Volume indicators
         indicators["volume_sma"] = self.indicators.volume_sma(df)
@@ -113,11 +120,7 @@ class SignalEngine:
         """Run a single strategy and return signal if valid."""
         try:
             # Prepare metadata for strategy
-            metadata = {
-                "indicators": indicators,
-                "symbol": symbol,
-                "timeframe": period
-            }
+            metadata = {"indicators": indicators, "symbol": symbol, "timeframe": period}
             # Run strategy analysis
             signal = strategy.analyze(df, metadata)
 
@@ -132,7 +135,9 @@ class SignalEngine:
 
             # Validate signal
             if not signal.validate():
-                logger.warning(f"  {strategy_name}: Invalid signal generated - validation failed")
+                logger.warning(
+                    f"  {strategy_name}: Invalid signal generated - validation failed"
+                )
                 return None
 
             logger.info(f"  {strategy_name}: Signal validated successfully")
@@ -153,10 +158,12 @@ class SignalEngine:
         else:
             return SignalStrength.WEAK
 
-    def _calculate_risk_management(self, current_price: float, indicators: Dict[str, Any], signal_type: SignalType) -> tuple[Optional[float], Optional[float]]:
+    def _calculate_risk_management(
+        self, current_price: float, indicators: Dict[str, Any], signal_type: SignalType
+    ) -> tuple[Optional[float], Optional[float]]:
         """Calculate stop loss and take profit levels."""
         atr = indicators.get("atr", 0)
-        
+
         # Handle case where ATR might be a pandas Series
         if isinstance(atr, pd.Series):
             if atr.empty or len(atr) == 0:
@@ -165,7 +172,7 @@ class SignalEngine:
                 atr_value = float(atr.iloc[-1]) if not pd.isna(atr.iloc[-1]) else 0
         else:
             atr_value = float(atr) if atr is not None else 0
-        
+
         if atr_value <= 0:
             # Default percentages if ATR is not available
             stop_loss_pct = 0.02  # 2%
@@ -174,12 +181,12 @@ class SignalEngine:
             # Use ATR for dynamic levels
             stop_loss_pct = (atr_value * 2) / current_price  # 2x ATR
             take_profit_pct = (atr_value * 3) / current_price  # 3x ATR
-        
+
         if signal_type == SignalType.BUY:
             stop_loss = current_price * (1 - stop_loss_pct)
             take_profit = current_price * (1 + take_profit_pct)
         else:  # SELL
             stop_loss = current_price * (1 + stop_loss_pct)
             take_profit = current_price * (1 - take_profit_pct)
-        
+
         return stop_loss, take_profit

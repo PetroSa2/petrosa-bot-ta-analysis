@@ -474,7 +474,7 @@ groups:
       severity: critical
     annotations:
       summary: "TA Bot pod is down"
-  
+
   - alert: TAHighErrorRate
     expr: rate(ta_bot_errors_total[5m]) > 0.1
     for: 2m
@@ -482,7 +482,7 @@ groups:
       severity: warning
     annotations:
       summary: "High error rate in TA Bot"
-  
+
   - alert: TANoSignals
     expr: rate(ta_bot_signals_generated_total[10m]) == 0
     for: 5m
@@ -533,4 +533,4 @@ When reporting issues, please include:
 **Next Steps**:
 - Read [Monitoring Guide](./MONITORING.md) for observability setup
 - Check [Security Guide](./SECURITY.md) for security best practices
-- Review [Configuration](./CONFIGURATION.md) for environment setup 
+- Review [Configuration](./CONFIGURATION.md) for environment setup

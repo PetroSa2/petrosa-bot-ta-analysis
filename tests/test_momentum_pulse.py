@@ -3,8 +3,8 @@ Tests for the Momentum Pulse Strategy.
 """
 
 import pandas as pd
+
 from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
-from ta_bot.models.signal import SignalType
 
 
 class TestMomentumPulseStrategy:
@@ -168,11 +168,7 @@ class TestMomentumPulseStrategy:
             "macd_signal": pd.Series([0.05, 0.06, 0.07]),
         }
 
-        metadata = {
-            "indicators": indicators,
-            "symbol": "BTCUSDT",
-            "timeframe": "15m"
-        }
+        metadata = {"indicators": indicators, "symbol": "BTCUSDT", "timeframe": "15m"}
         result = self.strategy.analyze(df, metadata)
 
         assert (
@@ -209,11 +205,7 @@ class TestMomentumPulseStrategy:
             "volume": pd.Series([1000, 1100, 1200]),
         }
 
-        metadata = {
-            "indicators": indicators,
-            "symbol": "ETHUSDT",
-            "timeframe": "5m"
-        }
+        metadata = {"indicators": indicators, "symbol": "ETHUSDT", "timeframe": "5m"}
         result = self.strategy.analyze(df, metadata)
 
         assert result is not None and result.symbol == "ETHUSDT"

@@ -17,7 +17,7 @@ Comprehensive testing guide for the Petrosa TA Bot.
 ```
     /\
    /  \     E2E Tests (Few)
-  /____\    
+  /____\
  /      \   Integration Tests (Some)
 /________\  Unit Tests (Many)
 ```
@@ -150,13 +150,13 @@ def mock_nats_connection():
     class MockNATSConnection:
         def subscribe(self, subject, callback):
             return "subscription_id"
-        
+
         def publish(self, subject, payload):
             return True
-        
+
         def close(self):
             return True
-    
+
     return MockNATSConnection()
 
 @pytest.fixture
@@ -165,14 +165,14 @@ def mock_api_client():
     class MockAPIClient:
         def post(self, url, json=None):
             return MockResponse(200, {"status": "success"})
-    
+
     return MockAPIClient()
 
 class MockResponse:
     def __init__(self, status_code, json_data):
         self.status_code = status_code
         self._json = json_data
-    
+
     def json(self):
         return self._json
 ```
@@ -190,35 +190,35 @@ from ta_bot.models.signal import Signal
 
 class TestSignalEngine:
     """Test cases for SignalEngine."""
-    
+
     @pytest.fixture
     def signal_engine(self):
         """Create SignalEngine instance for testing."""
         return SignalEngine()
-    
+
     def test_initialization(self, signal_engine):
         """Test SignalEngine initialization."""
         assert len(signal_engine.strategies) == 5
         assert signal_engine.indicators is not None
         assert signal_engine.confidence is not None
-    
+
     def test_process_candle(self, signal_engine, sample_candle_data):
         """Test candle processing."""
         signals = signal_engine.process_candle(sample_candle_data)
         assert isinstance(signals, list)
-        
+
         for signal in signals:
             assert isinstance(signal, Signal)
             assert signal.symbol in ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
             assert signal.confidence >= 0.0
             assert signal.confidence <= 1.0
-    
+
     def test_empty_data_handling(self, signal_engine):
         """Test handling of empty data."""
         empty_data = pd.DataFrame()
         signals = signal_engine.process_candle(empty_data)
         assert signals == []
-    
+
     def test_invalid_data_handling(self, signal_engine):
         """Test handling of invalid data."""
         invalid_data = pd.DataFrame({'invalid': [1, 2, 3]})
@@ -237,12 +237,12 @@ from ta_bot.core.indicators import TechnicalIndicators
 
 class TestTechnicalIndicators:
     """Test cases for TechnicalIndicators."""
-    
+
     @pytest.fixture
     def indicators(self):
         """Create TechnicalIndicators instance."""
         return TechnicalIndicators()
-    
+
     @pytest.fixture
     def sample_data(self):
         """Create sample data for indicator testing."""
@@ -251,13 +251,13 @@ class TestTechnicalIndicators:
             'high': [102, 103, 104, 103, 102, 101, 100, 99, 98, 97],
             'low': [98, 99, 100, 99, 98, 97, 96, 95, 94, 93]
         })
-    
+
     def test_rsi_calculation(self, indicators, sample_data):
         """Test RSI calculation."""
         rsi = indicators.calculate_rsi(sample_data, period=14)
         assert 0 <= rsi <= 100
         assert isinstance(rsi, float)
-    
+
     def test_macd_calculation(self, indicators, sample_data):
         """Test MACD calculation."""
         macd = indicators.calculate_macd(sample_data)
@@ -265,7 +265,7 @@ class TestTechnicalIndicators:
         assert 'signal' in macd
         assert 'histogram' in macd
         assert all(isinstance(v, float) for v in macd.values())
-    
+
     def test_bollinger_bands_calculation(self, indicators, sample_data):
         """Test Bollinger Bands calculation."""
         bb = indicators.calculate_bollinger_bands(sample_data)
@@ -273,13 +273,13 @@ class TestTechnicalIndicators:
         assert 'middle' in bb
         assert 'lower' in bb
         assert bb['upper'] > bb['middle'] > bb['lower']
-    
+
     def test_adx_calculation(self, indicators, sample_data):
         """Test ADX calculation."""
         adx = indicators.calculate_adx(sample_data)
         assert 0 <= adx <= 100
         assert isinstance(adx, float)
-    
+
     def test_atr_calculation(self, indicators, sample_data):
         """Test ATR calculation."""
         atr = indicators.calculate_atr(sample_data)
@@ -298,12 +298,12 @@ from ta_bot.models.signal import Signal
 
 class TestMomentumPulseStrategy:
     """Test cases for MomentumPulseStrategy."""
-    
+
     @pytest.fixture
     def strategy(self):
         """Create strategy instance."""
         return MomentumPulseStrategy()
-    
+
     @pytest.fixture
     def bullish_data(self):
         """Create bullish market data."""
@@ -312,7 +312,7 @@ class TestMomentumPulseStrategy:
             'high': [102, 103, 104, 105, 106, 107, 108, 109, 110, 111],
             'low': [98, 99, 100, 101, 102, 103, 104, 105, 106, 107]
         })
-    
+
     @pytest.fixture
     def bearish_data(self):
         """Create bearish market data."""
@@ -321,25 +321,25 @@ class TestMomentumPulseStrategy:
             'high': [111, 110, 109, 108, 107, 106, 105, 104, 103, 102],
             'low': [107, 106, 105, 104, 103, 102, 101, 100, 99, 98]
         })
-    
+
     def test_strategy_name(self, strategy):
         """Test strategy name."""
         assert strategy.get_name() == "momentum_pulse"
-    
+
     def test_bullish_signal(self, strategy, bullish_data, sample_indicators):
         """Test bullish signal generation."""
         signal = strategy.analyze(bullish_data, sample_indicators)
         if signal:
             assert signal.signal == "BUY"
             assert signal.confidence > 0.5
-    
+
     def test_bearish_signal(self, strategy, bearish_data, sample_indicators):
         """Test bearish signal generation."""
         signal = strategy.analyze(bearish_data, sample_indicators)
         if signal:
             assert signal.signal == "SELL"
             assert signal.confidence > 0.5
-    
+
     def test_no_signal_conditions(self, strategy, sample_candle_data, sample_indicators):
         """Test conditions where no signal is generated."""
         signal = strategy.analyze(sample_candle_data, sample_indicators)
@@ -361,7 +361,7 @@ from ta_bot.services.nats_listener import NATSListener
 
 class TestNATSIntegration:
     """Test NATS integration."""
-    
+
     @pytest.fixture
     def nats_listener(self):
         """Create NATS listener for testing."""
@@ -372,7 +372,7 @@ class TestNATSIntegration:
             signal_engine=signal_engine,
             publisher=publisher
         )
-    
+
     @pytest.mark.asyncio
     async def test_connection_establishment(self, nats_listener):
         """Test NATS connection establishment."""
@@ -380,7 +380,7 @@ class TestNATSIntegration:
             mock_connect.return_value = Mock()
             await nats_listener.start()
             mock_connect.assert_called_once_with("nats://localhost:4222")
-    
+
     @pytest.mark.asyncio
     async def test_message_processing(self, nats_listener):
         """Test message processing."""
@@ -394,14 +394,14 @@ class TestNATSIntegration:
             "close": 50050.0,
             "volume": 1000.0
         }
-        
+
         # Mock the callback
         callback_called = False
         def mock_callback(msg):
             nonlocal callback_called
             callback_called = True
             assert msg.data == test_message
-        
+
         nats_listener._process_message = mock_callback
         await nats_listener._handle_message(test_message)
         assert callback_called
@@ -418,12 +418,12 @@ from ta_bot.services.publisher import SignalPublisher
 
 class TestAPIIntegration:
     """Test API integration."""
-    
+
     @pytest.fixture
     def publisher(self):
         """Create signal publisher for testing."""
         return SignalPublisher("http://localhost:8080/signals")
-    
+
     def test_signal_publishing(self, publisher):
         """Test signal publishing to API."""
         test_signal = {
@@ -434,17 +434,17 @@ class TestAPIIntegration:
             "strategy": "momentum_pulse",
             "metadata": {"rsi": 58.3}
         }
-        
+
         with patch('requests.post') as mock_post:
             mock_post.return_value = Mock(status_code=200)
             result = publisher.publish_signal(test_signal)
             assert result is True
             mock_post.assert_called_once()
-    
+
     def test_api_error_handling(self, publisher):
         """Test API error handling."""
         test_signal = {"symbol": "BTCUSDT", "signal": "BUY"}
-        
+
         with patch('requests.post') as mock_post:
             mock_post.side_effect = requests.exceptions.ConnectionError()
             result = publisher.publish_signal(test_signal)
@@ -464,39 +464,39 @@ from ta_bot.main import main
 
 class TestCompleteWorkflow:
     """Test complete application workflow."""
-    
+
     @pytest.mark.asyncio
     async def test_complete_signal_generation(self):
         """Test complete signal generation workflow."""
         # Mock external dependencies
         with patch('ta_bot.services.nats_listener.NATSListener') as mock_nats, \
              patch('ta_bot.services.publisher.SignalPublisher') as mock_publisher:
-            
+
             # Setup mocks
             mock_nats_instance = Mock()
             mock_nats.return_value = mock_nats_instance
-            
+
             mock_publisher_instance = Mock()
             mock_publisher.return_value = mock_publisher_instance
-            
+
             # Run main function
             try:
                 await main()
             except KeyboardInterrupt:
                 # Expected when running in test mode
                 pass
-            
+
             # Verify components were initialized
             mock_nats.assert_called_once()
             mock_publisher.assert_called_once()
-    
+
     @pytest.mark.asyncio
     async def test_signal_pipeline(self):
         """Test complete signal pipeline."""
         from ta_bot.core.signal_engine import SignalEngine
         from ta_bot.services.nats_listener import NATSListener
         from ta_bot.services.publisher import SignalPublisher
-        
+
         # Create components
         signal_engine = SignalEngine()
         publisher = SignalPublisher("http://localhost:8080/signals")
@@ -505,7 +505,7 @@ class TestCompleteWorkflow:
             signal_engine=signal_engine,
             publisher=publisher
         )
-        
+
         # Test data flow
         test_candle = {
             "symbol": "BTCUSDT",
@@ -517,11 +517,11 @@ class TestCompleteWorkflow:
             "close": 50050.0,
             "volume": 1000.0
         }
-        
+
         # Process candle through pipeline
         signals = signal_engine.process_candle(test_candle)
         assert isinstance(signals, list)
-        
+
         # Verify signal structure
         for signal in signals:
             assert hasattr(signal, 'symbol')
@@ -542,42 +542,42 @@ from ta_bot.core.signal_engine import SignalEngine
 
 class TestPerformance:
     """Performance tests."""
-    
+
     @pytest.fixture
     def signal_engine(self):
         """Create signal engine for performance testing."""
         return SignalEngine()
-    
+
     def test_signal_generation_performance(self, signal_engine, sample_candle_data):
         """Test signal generation performance."""
         start_time = time.time()
-        
+
         # Process multiple candles
         for _ in range(100):
             signals = signal_engine.process_candle(sample_candle_data)
-        
+
         end_time = time.time()
         processing_time = end_time - start_time
-        
+
         # Should process 100 candles in under 1 second
         assert processing_time < 1.0
         print(f"Processed 100 candles in {processing_time:.3f} seconds")
-    
+
     def test_memory_usage(self, signal_engine, sample_candle_data):
         """Test memory usage during processing."""
         import psutil
         import os
-        
+
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss
-        
+
         # Process many candles
         for _ in range(1000):
             signals = signal_engine.process_candle(sample_candle_data)
-        
+
         final_memory = process.memory_info().rss
         memory_increase = final_memory - initial_memory
-        
+
         # Memory increase should be reasonable (< 100MB)
         assert memory_increase < 100 * 1024 * 1024
         print(f"Memory increase: {memory_increase / 1024 / 1024:.2f} MB")
@@ -605,15 +605,15 @@ def generate_candle_data(
         periods=periods,
         freq='15min'
     )
-    
+
     # Generate price series with random walk
     price_changes = np.random.normal(0, volatility, periods)
     prices = [start_price]
-    
+
     for change in price_changes[1:]:
         new_price = prices[-1] * (1 + change)
         prices.append(new_price)
-    
+
     # Generate OHLCV data
     data = []
     for i, (date, close) in enumerate(zip(dates, prices)):
@@ -621,7 +621,7 @@ def generate_candle_data(
         low = close * (1 - abs(np.random.normal(0, 0.005)))
         open_price = prices[i-1] if i > 0 else close
         volume = np.random.uniform(1000, 2000)
-        
+
         data.append({
             'timestamp': date,
             'open': open_price,
@@ -630,14 +630,14 @@ def generate_candle_data(
             'close': close,
             'volume': volume
         })
-    
+
     return pd.DataFrame(data)
 
 def generate_signals(count: int = 10) -> list:
     """Generate sample signals for testing."""
     signals = []
     strategies = ["momentum_pulse", "band_fade_reversal", "golden_trend_sync"]
-    
+
     for i in range(count):
         signal = {
             "symbol": "BTCUSDT",
@@ -653,7 +653,7 @@ def generate_signals(count: int = 10) -> list:
             "timestamp": datetime.now().isoformat()
         }
         signals.append(signal)
-    
+
     return signals
 ```
 
@@ -667,7 +667,7 @@ testpaths = tests
 python_files = test_*.py
 python_classes = Test*
 python_functions = test_*
-addopts = 
+addopts =
     -v
     --strict-markers
     --disable-warnings
@@ -687,7 +687,7 @@ markers =
 ```ini
 [coverage:run]
 source = ta_bot
-omit = 
+omit =
     */tests/*
     */__pycache__/*
     */migrations/*
@@ -744,4 +744,4 @@ exclude_lines =
 **Next Steps**:
 - Read [Development Guide](./DEVELOPMENT.md) for development workflow
 - Check [API Reference](./API_REFERENCE.md) for API testing
-- Review [Configuration](./CONFIGURATION.md) for test setup 
+- Review [Configuration](./CONFIGURATION.md) for test setup

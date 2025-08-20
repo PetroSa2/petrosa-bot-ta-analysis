@@ -173,13 +173,13 @@ Use Google-style docstrings:
 ```python
 def calculate_macd(data: pd.DataFrame) -> Dict[str, float]:
     """Calculate MACD indicator.
-    
+
     Args:
         data: DataFrame with OHLCV data
-        
+
     Returns:
         Dictionary containing MACD, signal, and histogram values
-        
+
     Raises:
         ValueError: If data is empty or missing required columns
     """
@@ -218,17 +218,17 @@ from ta_bot.core.signal_engine import SignalEngine
 
 class TestSignalEngine:
     """Test cases for SignalEngine."""
-    
+
     @pytest.fixture
     def signal_engine(self):
         """Create SignalEngine instance for testing."""
         return SignalEngine()
-    
+
     def test_initialization(self, signal_engine):
         """Test SignalEngine initialization."""
         assert len(signal_engine.strategies) == 5
         assert signal_engine.indicators is not None
-    
+
     def test_signal_generation(self, signal_engine):
         """Test signal generation."""
         # Test implementation
@@ -328,13 +328,13 @@ from ..models.signal import Signal
 
 class NewStrategy(BaseStrategy):
     """New trading strategy implementation."""
-    
+
     def get_name(self) -> str:
         return "new_strategy"
-    
+
     def analyze(
-        self, 
-        candle_data: pd.DataFrame, 
+        self,
+        candle_data: pd.DataFrame,
         indicators: Dict[str, float]
     ) -> Optional[Signal]:
         """Analyze market data and return signal."""
@@ -351,12 +351,12 @@ from ta_bot.strategies.new_strategy import NewStrategy
 
 class TestNewStrategy:
     """Test cases for NewStrategy."""
-    
+
     def test_strategy_initialization(self):
         """Test strategy initialization."""
         strategy = NewStrategy()
         assert strategy.get_name() == "new_strategy"
-    
+
     def test_signal_generation(self):
         """Test signal generation."""
         # Test implementation
@@ -416,23 +416,23 @@ from pydantic import BaseSettings, Field
 
 class Config(BaseSettings):
     """Application configuration."""
-    
+
     # Core settings
     nats_url: str = Field(default="nats://localhost:4222")
     api_endpoint: str = Field(default="http://localhost:8080/signals")
     log_level: str = Field(default="INFO")
     environment: str = Field(default="production")
-    
+
     # Trading settings
     supported_symbols: str = Field(default="BTCUSDT,ETHUSDT,ADAUSDT")
     supported_timeframes: str = Field(default="15m,1h")
-    
+
     # Technical analysis settings
     rsi_period: int = Field(default=14)
     macd_fast: int = Field(default=12)
     macd_slow: int = Field(default=26)
     macd_signal: int = Field(default=9)
-    
+
     class Config:
         env_prefix = "TA_BOT_"
 ```
@@ -449,10 +449,10 @@ def profile_function():
     """Profile function performance."""
     profiler = cProfile.Profile()
     profiler.enable()
-    
+
     # Your code here
     signal_engine.process_candle(candle_data)
-    
+
     profiler.disable()
     stats = pstats.Stats(profiler)
     stats.sort_stats('cumulative')
@@ -490,7 +490,7 @@ from pydantic import BaseModel, validator
 
 class CandleData(BaseModel):
     """Validate candle data input."""
-    
+
     symbol: str
     period: str
     open: float
@@ -498,13 +498,13 @@ class CandleData(BaseModel):
     low: float
     close: float
     volume: float
-    
+
     @validator('symbol')
     def validate_symbol(cls, v):
         if not v.isalnum():
             raise ValueError('Symbol must be alphanumeric')
         return v.upper()
-    
+
     @validator('period')
     def validate_period(cls, v):
         valid_periods = ['1m', '5m', '15m', '1h', '4h', '1d']
@@ -607,4 +607,4 @@ docker logs <container-id>
 **Next Steps**:
 - Read [Testing Guide](./TESTING.md) for testing best practices
 - Check [API Reference](./API_REFERENCE.md) for API development
-- Review [Configuration](./CONFIGURATION.md) for environment setup 
+- Review [Configuration](./CONFIGURATION.md) for environment setup

@@ -32,7 +32,7 @@ print_error() {
 run_stage() {
     local stage=$1
     print_status "Running stage: $stage"
-    
+
     case $stage in
         "setup")
             print_status "Setting up development environment..."
@@ -106,4 +106,4 @@ for stage in "${stages[@]}"; do
     fi
 done
 
-print_success "All stages completed successfully!" 
+print_success "All stages completed successfully!"

@@ -3,9 +3,11 @@ Momentum Pulse Strategy
 Detects trend entry signals based on MACD histogram crossovers.
 """
 
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import pandas as pd
-from ta_bot.models.signal import SignalType, Signal
+
+from ta_bot.models.signal import Signal
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 

@@ -2,10 +2,11 @@
 Shared pytest fixtures and configuration for TA Bot tests.
 """
 
-import pytest
-import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
+
+import numpy as np
+import pandas as pd
+import pytest
 
 
 @pytest.fixture(scope="session")
@@ -150,16 +151,16 @@ def signals():
     """Create sample signals for testing."""
     from ta_bot.core.signal_engine import SignalEngine
     from ta_bot.models.signal import Signal
-    
+
     # Create sample data
     df = _create_sample_candles_data()
-    
+
     # Initialize signal engine
     signal_engine = SignalEngine()
-    
+
     # Generate signals
     signals = signal_engine.analyze_candles(df, "BTCUSDT", "15m")
-    
+
     # If no signals generated, create a mock signal
     if not signals:
         signals = [
@@ -171,10 +172,10 @@ def signals():
                 current_price=50000.0,
                 price=50000.0,
                 timeframe="15m",
-                metadata={"rsi": 58.3, "macd_hist": 0.0012}
+                metadata={"rsi": 58.3, "macd_hist": 0.0012},
             )
         ]
-    
+
     return signals
 
 
@@ -182,7 +183,7 @@ def signals():
 def signal():
     """Create a single sample signal for testing."""
     from ta_bot.models.signal import Signal
-    
+
     return Signal(
         strategy_id="momentum_pulse_test",
         symbol="BTCUSDT",
@@ -191,5 +192,5 @@ def signal():
         current_price=50000.0,
         price=50000.0,
         timeframe="15m",
-        metadata={"rsi": 58.3, "macd_hist": 0.0012}
+        metadata={"rsi": 58.3, "macd_hist": 0.0012},
     )

@@ -15,15 +15,22 @@ class Config:
     nats_url: str = os.getenv("NATS_URL", "nats://localhost:4222")
     nats_enabled: bool = os.getenv("NATS_ENABLED", "true").lower() == "true"
     nats_subject_prefix: str = os.getenv("NATS_SUBJECT_PREFIX", "binance.extraction")
-    nats_subject_prefix_production: str = os.getenv("NATS_SUBJECT_PREFIX_PRODUCTION", "binance.extraction.production")
+    nats_subject_prefix_production: str = os.getenv(
+        "NATS_SUBJECT_PREFIX_PRODUCTION", "binance.extraction.production"
+    )
 
     # API Configuration
     # Prefer cluster-provided API_ENDPOINT, fallback to old var for local
-    api_endpoint: str = os.getenv("API_ENDPOINT", os.getenv("TA_BOT_API_ENDPOINT", "http://localhost:8080/signals"))
+    api_endpoint: str = os.getenv(
+        "API_ENDPOINT",
+        os.getenv("TA_BOT_API_ENDPOINT", "http://localhost:8080/signals"),
+    )
 
     # Optional settings with defaults
     log_level: str = os.getenv("LOG_LEVEL", os.getenv("TA_BOT_LOG_LEVEL", "INFO"))
-    environment: str = os.getenv("ENVIRONMENT", os.getenv("TA_BOT_ENVIRONMENT", "production"))
+    environment: str = os.getenv(
+        "ENVIRONMENT", os.getenv("TA_BOT_ENVIRONMENT", "production")
+    )
     health_check_interval: int = 30
     max_retries: int = 3
     timeout: int = 30
@@ -44,7 +51,9 @@ class Config:
         default_factory=lambda: os.getenv("SUPPORTED_TIMEFRAMES", "5m").split(",")
     )
     symbols: List[str] = field(
-        default_factory=lambda: os.getenv("SUPPORTED_SYMBOLS", "BTCUSDT,ETHUSDT,ADAUSDT").split(",")
+        default_factory=lambda: os.getenv(
+            "SUPPORTED_SYMBOLS", "BTCUSDT,ETHUSDT,ADAUSDT"
+        ).split(",")
     )
 
     # Confidence thresholds

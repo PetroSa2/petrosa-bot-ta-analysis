@@ -70,6 +70,6 @@ This documentation follows Petrosa standards:
 
 ---
 
-**Last Updated**: January 2024  
-**Version**: 1.0.0  
-**Maintainer**: Petrosa Development Team 
+**Last Updated**: January 2024
+**Version**: 1.0.0
+**Maintainer**: Petrosa Development Team

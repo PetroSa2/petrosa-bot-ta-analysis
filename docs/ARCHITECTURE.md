@@ -47,7 +47,7 @@ class NATSListener:
         self.nats_url = nats_url
         self.signal_engine = SignalEngine()
         self.publisher = RESTPublisher()
-    
+
     async def handle_candle_update(self, message):
         # Parse candle data
         # Run signal analysis
@@ -84,7 +84,7 @@ class SignalEngine:
             'range_break_pop': RangeBreakPopStrategy(),
             'divergence_trap': DivergenceTrapStrategy()
         }
-    
+
     def analyze_candles(self, candles, symbol, period):
         # Calculate indicators
         # Run all strategies
@@ -120,7 +120,7 @@ class BaseStrategy:
 class RESTPublisher:
     def __init__(self, api_endpoint: str):
         self.api_endpoint = api_endpoint
-    
+
     async def publish_signal(self, signal: Signal):
         # Send HTTP POST request
         # Handle response and errors
@@ -299,4 +299,4 @@ SUPPORTED_TIMEFRAMES=15m,1h
 **Next Steps**:
 - Read [Trading Strategies](./STRATEGIES.md) for detailed strategy documentation
 - Check [Signal Engine](./SIGNAL_ENGINE.md) for core analysis engine details
-- Review [API Reference](./API_REFERENCE.md) for REST API documentation 
+- Review [API Reference](./API_REFERENCE.md) for REST API documentation

@@ -348,4 +348,4 @@ After successful installation:
 **Need Help?**
 - Check [Troubleshooting Guide](./TROUBLESHOOTING.md)
 - Review [Architecture Overview](./ARCHITECTURE.md)
-- See [Configuration](./CONFIGURATION.md) for environment setup 
+- See [Configuration](./CONFIGURATION.md) for environment setup

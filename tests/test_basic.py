@@ -2,9 +2,10 @@
 Basic tests for the TA Bot to ensure CI pipeline passes.
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Add the ta_bot directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -33,11 +34,11 @@ def test_import_signal_engine():
 def test_import_strategies():
     """Test that strategies can be imported."""
     try:
-        from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
         from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy
-        from ta_bot.strategies.golden_trend_sync import GoldenTrendSyncStrategy
-        from ta_bot.strategies.range_break_pop import RangeBreakPopStrategy
         from ta_bot.strategies.divergence_trap import DivergenceTrapStrategy
+        from ta_bot.strategies.golden_trend_sync import GoldenTrendSyncStrategy
+        from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
+        from ta_bot.strategies.range_break_pop import RangeBreakPopStrategy
 
         assert MomentumPulseStrategy is not None
         assert BandFadeReversalStrategy is not None

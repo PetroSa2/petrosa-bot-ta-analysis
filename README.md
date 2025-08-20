@@ -411,4 +411,4 @@ This project is part of the Petrosa trading ecosystem.
 
 ---
 
-**Note**: This is a production-ready TA bot with comprehensive CI/CD pipeline, **remote MicroK8s cluster** deployment, and **full integration with Petrosa Trade Engine for end-to-end automated trading**. 
+**Note**: This is a production-ready TA bot with comprehensive CI/CD pipeline, **remote MicroK8s cluster** deployment, and **full integration with Petrosa Trade Engine for end-to-end automated trading**.

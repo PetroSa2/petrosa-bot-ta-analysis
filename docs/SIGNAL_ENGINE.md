@@ -19,7 +19,7 @@ The Signal Engine is the central component that:
 ```python
 class SignalEngine:
     """Core signal generation engine."""
-    
+
     def __init__(self):
         self.strategies = [
             MomentumPulseStrategy(),
@@ -37,7 +37,7 @@ class SignalEngine:
 ```python
 class TechnicalIndicators:
     """Technical analysis indicators calculator."""
-    
+
     def calculate_rsi(self, data: pd.DataFrame, period: int = 14) -> float
     def calculate_macd(self, data: pd.DataFrame) -> Dict[str, float]
     def calculate_bollinger_bands(self, data: pd.DataFrame) -> Dict[str, float]
@@ -50,7 +50,7 @@ class TechnicalIndicators:
 ```python
 class ConfidenceCalculator:
     """Calculate signal confidence based on multiple factors."""
-    
+
     def calculate_confidence(self, signal: Signal, indicators: Dict) -> float
     def validate_signal_strength(self, signal: Signal) -> bool
     def adjust_for_market_conditions(self, confidence: float, market_data: Dict) -> float
@@ -146,7 +146,7 @@ def calculate_macd(data: pd.DataFrame) -> Dict[str, float]:
     macd = exp1 - exp2
     signal = macd.ewm(span=9).mean()
     histogram = macd - signal
-    
+
     return {
         "macd": macd.iloc[-1],
         "signal": signal.iloc[-1],
@@ -163,7 +163,7 @@ def calculate_bollinger_bands(data: pd.DataFrame, period: int = 20, std: float =
     """Calculate Bollinger Bands."""
     sma = data['close'].rolling(window=period).mean()
     std_dev = data['close'].rolling(window=period).std()
-    
+
     return {
         "upper": sma + (std_dev * std),
         "middle": sma,
@@ -193,7 +193,7 @@ def calculate_atr(data: pd.DataFrame, period: int = 14) -> float:
     high_low = data['high'] - data['low']
     high_close = np.abs(data['high'] - data['close'].shift())
     low_close = np.abs(data['low'] - data['close'].shift())
-    
+
     true_range = np.maximum(high_low, np.maximum(high_close, low_close))
     atr = true_range.rolling(window=period).mean()
     return atr.iloc[-1]
@@ -208,12 +208,12 @@ def calculate_atr(data: pd.DataFrame, period: int = 14) -> float:
 ```python
 class BaseStrategy(ABC):
     """Base class for all trading strategies."""
-    
+
     @abstractmethod
     def analyze(self, candle_data: pd.DataFrame, indicators: Dict) -> Optional[Signal]:
         """Analyze market data and return signal if conditions are met."""
         pass
-    
+
     @abstractmethod
     def get_name(self) -> str:
         """Return strategy name."""
@@ -226,10 +226,10 @@ class BaseStrategy(ABC):
 def process_candle(self, candle_data: pd.DataFrame) -> List[Signal]:
     """Process candle data through all strategies."""
     signals = []
-    
+
     # Calculate indicators
     indicators = self.indicators.calculate_all(candle_data)
-    
+
     # Execute strategies
     for strategy in self.strategies:
         signal = strategy.analyze(candle_data, indicators)
@@ -237,7 +237,7 @@ def process_candle(self, candle_data: pd.DataFrame) -> List[Signal]:
             # Calculate confidence
             signal.confidence = self.confidence.calculate_confidence(signal, indicators)
             signals.append(signal)
-    
+
     return signals
 ```
 
@@ -324,15 +324,15 @@ data:
 ```python
 class IndicatorCache:
     """Cache calculated indicators for performance."""
-    
+
     def __init__(self, max_size: int = 1000):
         self.cache = {}
         self.max_size = max_size
-    
+
     def get(self, key: str) -> Optional[Dict]:
         """Get cached indicators."""
         return self.cache.get(key)
-    
+
     def set(self, key: str, indicators: Dict):
         """Cache indicators."""
         if len(self.cache) >= self.max_size:
@@ -351,7 +351,7 @@ async def process_strategies_parallel(self, candle_data: pd.DataFrame, indicator
     for strategy in self.strategies:
         task = asyncio.create_task(strategy.analyze_async(candle_data, indicators))
         tasks.append(task)
-    
+
     results = await asyncio.gather(*tasks, return_exceptions=True)
     signals = [result for result in results if result is not None]
     return signals
@@ -364,19 +364,19 @@ async def process_strategies_parallel(self, candle_data: pd.DataFrame, indicator
 ```python
 class SignalEngineMetrics:
     """Metrics for signal engine performance."""
-    
+
     def __init__(self):
         self.signals_generated = 0
         self.processing_time = 0.0
         self.strategy_performance = {}
-    
+
     def record_signal(self, strategy: str, confidence: float):
         """Record signal generation."""
         self.signals_generated += 1
         if strategy not in self.strategy_performance:
             self.strategy_performance[strategy] = []
         self.strategy_performance[strategy].append(confidence)
-    
+
     def get_metrics(self) -> Dict:
         """Get current metrics."""
         return {
@@ -420,10 +420,10 @@ def test_indicator_calculation():
     """Test technical indicator calculations."""
     indicators = TechnicalIndicators()
     data = create_test_candle_data()
-    
+
     rsi = indicators.calculate_rsi(data)
     assert 0 <= rsi <= 100
-    
+
     macd = indicators.calculate_macd(data)
     assert "macd" in macd
     assert "signal" in macd
@@ -434,7 +434,7 @@ def test_confidence_calculation():
     calculator = ConfidenceCalculator()
     signal = Signal(symbol="BTCUSDT", signal="BUY", confidence=0.0)
     indicators = {"rsi": 70, "macd_hist": 0.001}
-    
+
     confidence = calculator.calculate_confidence(signal, indicators)
     assert 0.0 <= confidence <= 1.0
 ```
@@ -446,10 +446,10 @@ async def test_signal_engine_integration():
     """Test complete signal engine integration."""
     engine = SignalEngine()
     candle_data = create_test_candle_data()
-    
+
     signals = await engine.process_candle(candle_data)
     assert isinstance(signals, list)
-    
+
     for signal in signals:
         assert signal.symbol == "BTCUSDT"
         assert signal.confidence > 0.0
@@ -512,4 +512,4 @@ def process_with_recovery(self, candle_data: pd.DataFrame) -> List[Signal]:
 **Next Steps**:
 - Review [Trading Strategies](./STRATEGIES.md) for strategy-specific details
 - Check [Configuration](./CONFIGURATION.md) for environment setup
-- See [API Reference](./API_REFERENCE.md) for signal output format 
+- See [API Reference](./API_REFERENCE.md) for signal output format

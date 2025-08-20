@@ -2,9 +2,11 @@
 Tests for the configuration module.
 """
 
-import pytest
 import os
 from unittest.mock import patch
+
+import pytest
+
 from ta_bot.config import Config
 
 

@@ -368,7 +368,7 @@ groups:
     annotations:
       summary: "TA Bot pod is down"
       description: "Pod {{ $labels.pod }} is not responding"
-  
+
   - alert: TAHighErrorRate
     expr: rate(ta_bot_errors_total[5m]) > 0.1
     for: 2m
@@ -377,7 +377,7 @@ groups:
     annotations:
       summary: "High error rate in TA Bot"
       description: "Error rate is {{ $value }} errors/second"
-  
+
   # Signal generation alerts
   - alert: TANoSignals
     expr: rate(ta_bot_signals_generated_total[10m]) == 0
@@ -387,7 +387,7 @@ groups:
     annotations:
       summary: "No signals generated in 10 minutes"
       description: "No trading signals have been generated"
-  
+
   - alert: TALowConfidenceSignals
     expr: histogram_quantile(0.5, rate(ta_bot_signal_confidence_bucket[5m])) < 0.6
     for: 10m
@@ -396,7 +396,7 @@ groups:
     annotations:
       summary: "Low confidence signals"
       description: "Median signal confidence is {{ $value }}"
-  
+
   # Performance alerts
   - alert: TAHighProcessingTime
     expr: histogram_quantile(0.95, rate(ta_bot_processing_time_seconds_bucket[5m])) > 0.1
@@ -406,7 +406,7 @@ groups:
     annotations:
       summary: "High processing time"
       description: "95th percentile processing time is {{ $value }}s"
-  
+
   # Infrastructure alerts
   - alert: TAHighCPUUsage
     expr: rate(container_cpu_usage_seconds_total{container="ta-bot"}[5m]) * 100 > 80
@@ -416,7 +416,7 @@ groups:
     annotations:
       summary: "High CPU usage"
       description: "CPU usage is {{ $value }}%"
-  
+
   - alert: TAHighMemoryUsage
     expr: (container_memory_usage_bytes{container="ta-bot"} / container_spec_memory_limit_bytes{container="ta-bot"}) * 100 > 80
     for: 5m
@@ -425,7 +425,7 @@ groups:
     annotations:
       summary: "High memory usage"
       description: "Memory usage is {{ $value }}%"
-  
+
   # Component health alerts
   - alert: TAComponentUnhealthy
     expr: ta_bot_component_status == 0
@@ -756,4 +756,4 @@ data:
 **Next Steps**:
 - Read [Deployment Guide](./DEPLOYMENT.md) for deployment details
 - Check [Kubernetes Configuration](./KUBERNETES.md) for K8s setup
-- Review [Troubleshooting](./TROUBLESHOOTING.md) for common issues 
+- Review [Troubleshooting](./TROUBLESHOOTING.md) for common issues

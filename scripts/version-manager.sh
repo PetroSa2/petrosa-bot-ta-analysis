@@ -31,7 +31,7 @@ print_error() {
 # Function to generate version
 generate_version() {
     local version_type=$1
-    
+
     case $version_type in
         "patch")
             # Get latest version from git tags
@@ -91,7 +91,7 @@ generate_version() {
             exit 1
             ;;
     esac
-    
+
     echo "$VERSION"
 }
 
@@ -99,9 +99,9 @@ generate_version() {
 update_k8s_manifests() {
     local version=$1
     local docker_username=${2:-"yurisa2"}
-    
+
     print_status "Updating Kubernetes manifests with version: $version"
-    
+
     # Update deployment.yaml
     if [ -f "k8s/deployment.yaml" ]; then
         sed -i.bak "s|VERSION_PLACEHOLDER|${version}|g" k8s/deployment.yaml
@@ -109,7 +109,7 @@ update_k8s_manifests() {
         rm -f k8s/deployment.yaml.bak
         print_success "Updated k8s/deployment.yaml"
     fi
-    
+
     # Update other manifests if they contain VERSION_PLACEHOLDER
     find k8s/ -name "*.yaml" -exec grep -l "VERSION_PLACEHOLDER" {} \; | while read file; do
         sed -i.bak "s|VERSION_PLACEHOLDER|${version}|g" "$file"
@@ -122,9 +122,9 @@ update_k8s_manifests() {
 build_docker_image() {
     local version=$1
     local docker_username=${2:-"yurisa2"}
-    
+
     print_status "Building Docker image with version: $version"
-    
+
     # Build the image with platform specification for macOS compatibility
     if ! docker build --platform linux/amd64 -t "${docker_username}/petrosa-ta-bot:${version}" .; then
         print_warning "Docker build failed, trying without platform specification..."
@@ -133,24 +133,24 @@ build_docker_image() {
             return 1
         fi
     fi
-    
+
     docker tag "${docker_username}/petrosa-ta-bot:${version}" "${docker_username}/petrosa-ta-bot:latest"
-    
+
     print_success "Built Docker image: ${docker_username}/petrosa-ta-bot:${version}"
 }
 
 # Function to deploy to Kubernetes
 deploy_to_k8s() {
     local version=$1
-    
+
     print_status "Deploying to Kubernetes with version: $version"
-    
+
     # Set kubeconfig
     export KUBECONFIG=k8s/kubeconfig.yaml
-    
+
     # Apply manifests
     kubectl apply -f k8s/ --recursive
-    
+
     print_success "Deployed to Kubernetes with version: $version"
 }
 
@@ -158,17 +158,17 @@ deploy_to_k8s() {
 create_git_tag() {
     local version=$1
     local push_tag=${2:-false}
-    
+
     print_status "Creating git tag: $version"
-    
+
     if git rev-parse "$version" >/dev/null 2>&1; then
         print_warning "Tag $version already exists, deleting and recreating..."
         git tag -d "$version"
         git push origin ":refs/tags/$version" 2>/dev/null || true
     fi
-    
+
     git tag "$version"
-    
+
     if [ "$push_tag" = "true" ]; then
         git push origin "$version"
         print_success "Pushed tag $version to remote"
@@ -188,28 +188,28 @@ case "${1:-help}" in
         version_type=${2:-"local"}
         version=$(generate_version "$version_type")
         docker_username=${3:-"yurisa2"}
-        
+
         update_k8s_manifests "$version" "$docker_username"
         build_docker_image "$version" "$docker_username"
-        
+
         print_success "Build completed with version: $version"
         ;;
     "deploy")
         version_type=${2:-"local"}
         version=$(generate_version "$version_type")
         docker_username=${3:-"yurisa2"}
-        
+
         update_k8s_manifests "$version" "$docker_username"
         build_docker_image "$version" "$docker_username"
         deploy_to_k8s "$version"
-        
+
         print_success "Deployment completed with version: $version"
         ;;
     "tag")
         version_type=${2:-"patch"}
         push_tag=${3:-"false"}
         version=$(generate_version "$version_type")
-        
+
         create_git_tag "$version" "$push_tag"
         ;;
     "full")
@@ -217,12 +217,12 @@ case "${1:-help}" in
         push_tag=${3:-"false"}
         docker_username=${4:-"yurisa2"}
         version=$(generate_version "$version_type")
-        
+
         update_k8s_manifests "$version" "$docker_username"
         build_docker_image "$version" "$docker_username"
         deploy_to_k8s "$version"
         create_git_tag "$version" "$push_tag"
-        
+
         print_success "Full pipeline completed with version: $version"
         ;;
     "help"|*)
@@ -251,4 +251,4 @@ case "${1:-help}" in
         echo "  $0 deploy patch"
         echo "  $0 full patch true"
         ;;
-esac 
+esac

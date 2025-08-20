@@ -777,4 +777,4 @@ kubectl logs -n petrosa-apps -l app=petrosa-ta-bot -f
 **Next Steps**:
 - Read [Deployment Guide](./DEPLOYMENT.md) for deployment details
 - Check [Configuration](./CONFIGURATION.md) for environment setup
-- Review [Monitoring Guide](./MONITORING.md) for observability 
+- Review [Monitoring Guide](./MONITORING.md) for observability

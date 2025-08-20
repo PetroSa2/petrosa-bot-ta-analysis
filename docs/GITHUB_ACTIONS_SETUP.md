@@ -215,10 +215,10 @@ If you encounter issues:
 ## Quick Setup Checklist
 
 - [ ] Add `DOCKERHUB_USERNAME` secret
-- [ ] Add `DOCKERHUB_TOKEN` secret  
+- [ ] Add `DOCKERHUB_TOKEN` secret
 - [ ] Add `KUBE_CONFIG_DATA` secret
 - [ ] Add `CODECOV_TOKEN` secret (optional)
 - [ ] Verify kubeconfig points to correct cluster
 - [ ] Test pipeline with a small change
 - [ ] Monitor first deployment
-- [ ] Verify application is running correctly 
+- [ ] Verify application is running correctly

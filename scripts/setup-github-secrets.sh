@@ -140,4 +140,4 @@ echo "4. Check the deployment status in your MicroK8s cluster"
 echo ""
 
 print_warning "Remember: Never commit secrets to your repository!"
-echo "All sensitive data should be stored as GitHub secrets." 
+echo "All sensitive data should be stored as GitHub secrets."

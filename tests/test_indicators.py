@@ -2,8 +2,9 @@
 Tests for the indicators module.
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from ta_bot.core.indicators import Indicators
 
 
