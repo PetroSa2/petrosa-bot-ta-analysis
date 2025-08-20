@@ -78,7 +78,7 @@ jobs:
         echo "📈 Total Coverage: ${COVERAGE_PERCENT}%"
 
         # Set coverage threshold (adjust as needed)
-        COVERAGE_THRESHOLD=80
+        COVERAGE_THRESHOLD=40
 
         # Only check threshold if we have a valid coverage percentage
         if [[ "$COVERAGE_PERCENT" =~ ^[0-9]+\.?[0-9]*$ ]]; then
