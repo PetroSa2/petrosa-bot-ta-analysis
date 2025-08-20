@@ -17,6 +17,7 @@ import pandas as pd
 sys.path.insert(0, ".")
 
 from ta_bot.core.signal_engine import SignalEngine
+from ta_bot.core.indicators import Indicators
 
 # Configure logging
 logging.basicConfig(
@@ -97,9 +98,6 @@ class PerfectConditionsTester:
 
         try:
             # Calculate indicators manually to see what we get
-            from ta_bot.
-from ta_bot.core.indicators import Indicators
-
             indicators = Indicators()
 
             # Calculate MACD
