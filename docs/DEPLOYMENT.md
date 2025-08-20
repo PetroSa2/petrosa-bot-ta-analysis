@@ -482,4 +482,4 @@ kubectl describe hpa petrosa-ta-bot-hpa -n petrosa-apps
 **Next Steps**:
 - Read [Kubernetes Configuration](./KUBERNETES.md) for detailed K8s setup
 - Check [Monitoring Guide](./MONITORING.md) for observability setup
-- Review [Troubleshooting](./TROUBLESHOOTING.md) for common issues 
+- Review [Troubleshooting](./TROUBLESHOOTING.md) for common issues

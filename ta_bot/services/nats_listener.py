@@ -5,16 +5,14 @@ NATS listener service for receiving candle data and processing signals.
 import asyncio
 import json
 import logging
-from typing import Dict, Any, List
-import pandas as pd
+from typing import Any, List
+
 from nats.aio.client import Client as NATS
-from nats.aio.subscription import Subscription
-import asyncio
 
 from ta_bot.core.signal_engine import SignalEngine
-from ta_bot.services.publisher import SignalPublisher
 from ta_bot.services.leader_election import LeaderElection
 from ta_bot.services.mysql_client import MySQLClient
+from ta_bot.services.publisher import SignalPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +20,16 @@ logger = logging.getLogger(__name__)
 class NATSListener:
     """NATS message listener for candle data."""
 
-    def __init__(self, nats_url: str, signal_engine: SignalEngine, publisher: SignalPublisher,
-                 nats_subject_prefix: str = "binance.extraction",
-                 nats_subject_prefix_production: str = "binance.extraction.production",
-                 supported_symbols: list[str] | None = None,
-                 supported_timeframes: list[str] | None = None):
+    def __init__(
+        self,
+        nats_url: str,
+        signal_engine: SignalEngine,
+        publisher: SignalPublisher,
+        nats_subject_prefix: str = "binance.extraction",
+        nats_subject_prefix_production: str = "binance.extraction.production",
+        supported_symbols: list[str] | None = None,
+        supported_timeframes: list[str] | None = None,
+    ):
         """Initialize the NATS listener."""
         self.nats_url = nats_url
         self.signal_engine = signal_engine
@@ -72,14 +75,14 @@ class NATSListener:
         # Subscribe to both development and production subjects
         subjects = [
             f"{self.nats_subject_prefix}.klines.*.*",
-            f"{self.nats_subject_prefix_production}.klines.*.*"
+            f"{self.nats_subject_prefix_production}.klines.*.*",
         ]
 
         for subject in subjects:
             subscription = await self.nc.subscribe(
                 subject,
                 cb=self._handle_candle_message,
-                queue="ta_bot_workers"  # Load balancing across instances
+                queue="ta_bot_workers",  # Load balancing across instances
             )
             self.subscriptions.append(subscription)
             logger.info(f"Subscribed to NATS subject: {subject}")
@@ -89,17 +92,23 @@ class NATSListener:
         try:
             # Only process messages if this replica is the leader
             if not self.leader_election or not self.leader_election.is_current_leader():
-                logger.debug(f"Skipping message processing - not the leader")
+                logger.debug("Skipping message processing - not the leader")
                 return
 
             # Log every message received with subject and data length
             subject = msg.subject
             data_length = len(msg.data)
-            logger.info(f"Received NATS message - Subject: {subject}, Data length: {data_length} bytes")
-            
+            logger.info(
+                f"Received NATS message - Subject: {subject}, Data length: {data_length} bytes"
+            )
+
             # Log the raw message data for debugging
             raw_data = msg.data.decode()
-            logger.info(f"Raw message data: {raw_data[:200]}..." if len(raw_data) > 200 else f"Raw message data: {raw_data}")
+            logger.info(
+                f"Raw message data: {raw_data[:200]}..."
+                if len(raw_data) > 200
+                else f"Raw message data: {raw_data}"
+            )
 
             # Parse message data
             data = json.loads(raw_data)
@@ -107,9 +116,11 @@ class NATSListener:
             # Extract message information
             symbol = data.get("symbol")
             period = data.get("period") or data.get("timeframe")
-            
+
             if not symbol or not period:
-                logger.warning(f"Invalid message format - missing symbol or period: {data}")
+                logger.warning(
+                    f"Invalid message format - missing symbol or period: {data}"
+                )
                 return
 
             # Check if symbol and timeframe are supported
@@ -144,18 +155,26 @@ class NATSListener:
                     signal_data = signal.to_dict()
                     signal_data_list.append(signal_data)
 
-                success = await self.mysql_client.persist_signals_batch(signal_data_list)
-                
+                success = await self.mysql_client.persist_signals_batch(
+                    signal_data_list
+                )
+
                 if success:
-                    logger.info(f"Successfully persisted {len(signals)} signals to MySQL")
+                    logger.info(
+                        f"Successfully persisted {len(signals)} signals to MySQL"
+                    )
                 else:
-                    logger.error(f"Failed to persist signals to MySQL for {symbol} {period}")
-                
+                    logger.error(
+                        f"Failed to persist signals to MySQL for {symbol} {period}"
+                    )
+
                 # Publish signals to Trade Engine regardless of DB persistence outcome
                 await self.publisher.publish_signals(signals)
 
             else:
-                logger.info(f"No signals generated for {symbol} {period} - all strategies conditions not met")
+                logger.info(
+                    f"No signals generated for {symbol} {period} - all strategies conditions not met"
+                )
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse NATS message: {e}")
@@ -169,17 +188,17 @@ class NATSListener:
         try:
             # Stop publisher
             await self.publisher.stop()
-            
+
             # Unsubscribe from all topics
             for subscription in self.subscriptions:
                 await subscription.unsubscribe()
 
             # Close NATS connection
             await self.nc.close()
-            
+
             # Close MySQL connection
             await self.mysql_client.disconnect()
-            
+
             logger.info("NATS listener cleaned up")
 
         except Exception as e:

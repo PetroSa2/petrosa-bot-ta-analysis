@@ -211,16 +211,16 @@ ENVIRONMENT = os.getenv('ENVIRONMENT', 'production')
 def validate_config():
     """Validate required configuration."""
     required_vars = ['NATS_URL', 'API_ENDPOINT']
-    
+
     for var in required_vars:
         if not os.getenv(var):
             raise ValueError(f"Required environment variable {var} not set")
-    
+
     # Validate NATS URL format
     nats_url = os.getenv('NATS_URL')
     if not nats_url.startswith(('nats://', 'tls://')):
         raise ValueError("NATS_URL must start with nats:// or tls://")
-    
+
     # Validate log level
     log_level = os.getenv('LOG_LEVEL', 'INFO')
     valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR']
@@ -233,21 +233,21 @@ def validate_config():
 ```python
 class Config:
     """Configuration management class."""
-    
+
     def __init__(self):
         self.nats_url = os.getenv('NATS_URL')
         self.api_endpoint = os.getenv('API_ENDPOINT')
         self.log_level = os.getenv('LOG_LEVEL', 'INFO')
         self.environment = os.getenv('ENVIRONMENT', 'production')
-        
+
         # Parse supported symbols
         symbols_str = os.getenv('SUPPORTED_SYMBOLS', 'BTCUSDT,ETHUSDT')
         self.supported_symbols = [s.strip() for s in symbols_str.split(',')]
-        
+
         # Parse supported timeframes
         timeframes_str = os.getenv('SUPPORTED_TIMEFRAMES', '15m,1h')
         self.supported_timeframes = [t.strip() for t in timeframes_str.split(',')]
-        
+
         # Technical analysis settings
         self.rsi_period = int(os.getenv('RSI_PERIOD', '14'))
         self.macd_fast = int(os.getenv('MACD_FAST', '12'))
@@ -269,20 +269,20 @@ import threading
 
 class ConfigManager:
     """Manages configuration with hot reload capability."""
-    
+
     def __init__(self):
         self.config = Config()
         self._reload_event = threading.Event()
-        
+
         # Setup signal handler for config reload
         signal.signal(signal.SIGUSR1, self._reload_config)
-    
+
     def _reload_config(self, signum, frame):
         """Reload configuration on signal."""
         self.config = Config()
         self._reload_event.set()
         logger.info("Configuration reloaded")
-    
+
     def wait_for_reload(self, timeout=None):
         """Wait for configuration reload."""
         return self._reload_event.wait(timeout)
@@ -378,7 +378,7 @@ def check_config_health():
         'symbols_configured': len(config.supported_symbols) > 0,
         'timeframes_configured': len(config.supported_timeframes) > 0
     }
-    
+
     return health_status
 ```
 
@@ -406,12 +406,12 @@ def test_config_validation():
     # Test required variables
     with pytest.raises(ValueError):
         validate_config()  # Missing required vars
-    
+
     # Test NATS URL format
     os.environ['NATS_URL'] = 'invalid-url'
     with pytest.raises(ValueError):
         validate_config()
-    
+
     # Test log level
     os.environ['LOG_LEVEL'] = 'INVALID'
     with pytest.raises(ValueError):
@@ -425,7 +425,7 @@ def test_development_config():
     """Test development configuration."""
     os.environ['ENVIRONMENT'] = 'development'
     os.environ['DEBUG'] = 'true'
-    
+
     config = Config()
     assert config.environment == 'development'
     assert config.debug is True
@@ -454,4 +454,4 @@ def test_development_config():
 **Next Steps**:
 - Read [Deployment Guide](./DEPLOYMENT.md) for production deployment
 - Check [Security Guide](./SECURITY.md) for security best practices
-- Review [Troubleshooting](./TROUBLESHOOTING.md) for common issues 
+- Review [Troubleshooting](./TROUBLESHOOTING.md) for common issues

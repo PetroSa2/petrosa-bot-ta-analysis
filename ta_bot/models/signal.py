@@ -2,14 +2,15 @@
 Signal data model for trading signals.
 """
 
-from dataclasses import dataclass, asdict
-from typing import Dict, Any, Optional, Literal
-from enum import Enum
+from dataclasses import asdict, dataclass
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, Literal, Optional
 
 
 class SignalType(str, Enum):
     """Signal types for trading actions"""
+
     BUY = "buy"
     SELL = "sell"
     HOLD = "hold"
@@ -18,6 +19,7 @@ class SignalType(str, Enum):
 
 class SignalStrength(str, Enum):
     """Signal strength levels"""
+
     WEAK = "weak"
     MEDIUM = "medium"
     STRONG = "strong"
@@ -26,6 +28,7 @@ class SignalStrength(str, Enum):
 
 class StrategyMode(str, Enum):
     """Strategy processing modes"""
+
     DETERMINISTIC = "deterministic"
     ML_LIGHT = "ml_light"
     LLM_REASONING = "llm_reasoning"
@@ -33,6 +36,7 @@ class StrategyMode(str, Enum):
 
 class OrderType(str, Enum):
     """Supported order types"""
+
     MARKET = "market"
     LIMIT = "limit"
     STOP = "stop"
@@ -43,6 +47,7 @@ class OrderType(str, Enum):
 
 class TimeInForce(str, Enum):
     """Order time in force options"""
+
     GTC = "GTC"
     IOC = "IOC"
     FOK = "FOK"
@@ -60,7 +65,7 @@ class Signal:
     confidence: float
     current_price: float
     price: float
-    
+
     # Optional fields with defaults
     strategy_mode: StrategyMode = StrategyMode.DETERMINISTIC
     strength: SignalStrength = SignalStrength.MEDIUM
@@ -77,7 +82,7 @@ class Signal:
     take_profit: Optional[float] = None
     take_profit_pct: Optional[float] = None
     timestamp: Optional[str] = None
-    
+
     def __post_init__(self):
         """Set default values after initialization."""
         if self.metadata is None:

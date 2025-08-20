@@ -261,6 +261,6 @@ SUPPORTED_TIMEFRAMES=15m,1h
 
 ---
 
-**🎉 Congratulations!** You've successfully set up the Petrosa TA Bot. 
+**🎉 Congratulations!** You've successfully set up the Petrosa TA Bot.
 
-For detailed information, check the [full documentation](./README.md). 
+For detailed information, check the [full documentation](./README.md).

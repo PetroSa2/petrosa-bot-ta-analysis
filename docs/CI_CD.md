@@ -567,4 +567,4 @@ kubectl rollout history deployment/petrosa-ta-bot -n petrosa-apps
 **Next Steps**:
 - Read [Deployment Guide](./DEPLOYMENT.md) for deployment details
 - Check [Kubernetes Configuration](./KUBERNETES.md) for K8s setup
-- Review [Monitoring Guide](./MONITORING.md) for monitoring 
+- Review [Monitoring Guide](./MONITORING.md) for monitoring

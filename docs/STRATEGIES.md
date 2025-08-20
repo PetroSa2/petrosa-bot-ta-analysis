@@ -17,9 +17,9 @@ The TA Bot implements 5 distinct trading strategies, each designed for different
 ## 🎯 Strategy 1: Momentum Pulse
 
 ### Overview
-**Type**: Trend Following  
-**Best For**: Trending markets with clear directional movement  
-**Timeframe**: 15m, 1h  
+**Type**: Trend Following
+**Best For**: Trending markets with clear directional movement
+**Timeframe**: 15m, 1h
 
 ### Logic
 Identifies momentum shifts using MACD histogram crossovers with trend confirmation.
@@ -78,9 +78,9 @@ if adx[-1] > 30:
 ## 🎯 Strategy 2: Band Fade Reversal
 
 ### Overview
-**Type**: Mean Reversion  
-**Best For**: Ranging markets with clear support/resistance  
-**Timeframe**: 15m, 1h  
+**Type**: Mean Reversion
+**Best For**: Ranging markets with clear support/resistance
+**Timeframe**: 15m, 1h
 
 ### Logic
 Captures reversals when price breaks out of Bollinger Bands and then returns inside.
@@ -136,9 +136,9 @@ if bb_width > 0.05:  # 5% band width
 ## 🎯 Strategy 3: Golden Trend Sync
 
 ### Overview
-**Type**: Trend Following  
-**Best For**: Strong trending markets with pullbacks  
-**Timeframe**: 1h, 4h  
+**Type**: Trend Following
+**Best For**: Strong trending markets with pullbacks
+**Timeframe**: 1h, 4h
 
 ### Logic
 Identifies pullback entries in strong trends using EMA alignment and momentum confirmation.
@@ -194,9 +194,9 @@ if 48 <= rsi[-1] <= 52:
 ## 🎯 Strategy 4: Range Break Pop
 
 ### Overview
-**Type**: Breakout  
-**Best For**: Consolidation periods with low volatility  
-**Timeframe**: 15m, 1h  
+**Type**: Breakout
+**Best For**: Consolidation periods with low volatility
+**Timeframe**: 15m, 1h
 
 ### Logic
 Identifies breakouts from tight trading ranges with volume confirmation.
@@ -254,9 +254,9 @@ if range_tightness < 0.02:  # 2% range
 ## 🎯 Strategy 5: Divergence Trap
 
 ### Overview
-**Type**: Divergence  
-**Best For**: Market reversals and trend changes  
-**Timeframe**: 1h, 4h  
+**Type**: Divergence
+**Best For**: Market reversals and trend changes
+**Timeframe**: 1h, 4h
 
 ### Logic
 Identifies hidden bullish divergences where price makes higher lows but RSI makes lower lows.
@@ -396,4 +396,4 @@ backtest_config = {
 **Next Steps**:
 - Read [Signal Engine](./SIGNAL_ENGINE.md) for core analysis engine details
 - Check [API Reference](./API_REFERENCE.md) for signal output format
-- Review [Architecture Overview](./ARCHITECTURE.md) for system design 
+- Review [Architecture Overview](./ARCHITECTURE.md) for system design

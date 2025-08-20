@@ -2,12 +2,13 @@
 Golden Trend Sync strategy for technical analysis.
 """
 
-import pandas as pd
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from ta_bot.strategies.base_strategy import BaseStrategy
+import pandas as pd
+
 from ta_bot.core.indicators import Indicators
-from ta_bot.models.signal import Signal, SignalType
+from ta_bot.models.signal import SignalType
+from ta_bot.strategies.base_strategy import BaseStrategy
 
 
 class GoldenTrendSyncStrategy(BaseStrategy):
@@ -18,14 +19,16 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, indicators: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def analyze(
+        self, df: pd.DataFrame, indicators: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Analyze candles for Golden Trend Sync signals."""
         if len(df) < 50:
             return None
 
         # Get current values using base strategy methods
         current_values = self._get_current_values(indicators, df)
-        
+
         # Check if we have all required indicators
         required_indicators = ["ema21", "ema50", "close", "open"]
         if not all(indicator in current_values for indicator in required_indicators):

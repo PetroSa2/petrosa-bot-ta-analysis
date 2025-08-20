@@ -155,4 +155,4 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 30
       restartPolicy: Always
-      terminationGracePeriodSeconds: 30 
+      terminationGracePeriodSeconds: 30

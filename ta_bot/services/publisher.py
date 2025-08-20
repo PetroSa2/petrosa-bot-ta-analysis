@@ -3,7 +3,6 @@ Signal publisher service for sending trading signals to Trade Engine.
 """
 
 import json
-import asyncio
 from typing import List
 
 import aiohttp
@@ -29,7 +28,7 @@ class SignalPublisher:
     async def start(self):
         """Start the publisher session."""
         self.session = aiohttp.ClientSession()
-        
+
         # Initialize NATS connection if URL is provided
         if self.nats_url:
             try:
@@ -43,7 +42,7 @@ class SignalPublisher:
         """Stop the publisher session."""
         if self.session:
             await self.session.close()
-        
+
         if self.nats_client:
             await self.nats_client.close()
 
@@ -57,7 +56,7 @@ class SignalPublisher:
 
         # Publish via REST API
         await self._publish_via_rest(signals)
-        
+
         # Publish via NATS
         await self._publish_via_nats(signals)
 
@@ -71,8 +70,10 @@ class SignalPublisher:
             try:
                 # Convert signal to Trade Engine format
                 signal_data = signal.to_dict()
-                
-                logger.info(f"Publishing signal via REST: {signal.strategy_id} - {signal.action}")
+
+                logger.info(
+                    f"Publishing signal via REST: {signal.strategy_id} - {signal.action}"
+                )
 
                 async with self.session.post(
                     self.api_endpoint,
@@ -80,10 +81,14 @@ class SignalPublisher:
                     timeout=aiohttp.ClientTimeout(total=10),
                 ) as response:
                     if response.status == 200:
-                        logger.info(f"Signal published successfully via REST: {signal.strategy_id}")
+                        logger.info(
+                            f"Signal published successfully via REST: {signal.strategy_id}"
+                        )
                     else:
                         response_text = await response.text()
-                        logger.error(f"Failed to publish signal via REST: {response.status} - {response_text}")
+                        logger.error(
+                            f"Failed to publish signal via REST: {response.status} - {response_text}"
+                        )
 
             except Exception as e:
                 logger.error(f"Error publishing signal via REST: {e}")
@@ -98,15 +103,19 @@ class SignalPublisher:
             try:
                 # Convert signal to Trade Engine format
                 signal_data = signal.to_dict()
-                
+
                 # Publish to NATS subject that Trade Engine listens to
                 subject = "signals.trading"
                 message = json.dumps(signal_data).encode()
-                
-                logger.info(f"Publishing signal via NATS: {signal.strategy_id} - {signal.action}")
-                
+
+                logger.info(
+                    f"Publishing signal via NATS: {signal.strategy_id} - {signal.action}"
+                )
+
                 await self.nats_client.publish(subject, message)
-                logger.info(f"Signal published successfully via NATS: {signal.strategy_id}")
+                logger.info(
+                    f"Signal published successfully via NATS: {signal.strategy_id}"
+                )
 
             except Exception as e:
                 logger.error(f"Error publishing signal via NATS: {e}")
@@ -121,7 +130,7 @@ class SignalPublisher:
 
         # Publish via REST API
         await self._publish_batch_via_rest(signals)
-        
+
         # Publish via NATS
         await self._publish_batch_via_nats(signals)
 
@@ -141,10 +150,14 @@ class SignalPublisher:
                 timeout=aiohttp.ClientTimeout(total=30),
             ) as response:
                 if response.status == 200:
-                    logger.info(f"Batch published successfully via REST: {len(signals)} signals")
+                    logger.info(
+                        f"Batch published successfully via REST: {len(signals)} signals"
+                    )
                 else:
                     response_text = await response.text()
-                    logger.error(f"Failed to publish batch via REST: {response.status} - {response_text}")
+                    logger.error(
+                        f"Failed to publish batch via REST: {response.status} - {response_text}"
+                    )
 
         except Exception as e:
             logger.error(f"Error publishing batch via REST: {e}")
@@ -157,13 +170,15 @@ class SignalPublisher:
 
         try:
             subject = "signals.trading"
-            
+
             for signal in signals:
                 signal_data = signal.to_dict()
                 message = json.dumps(signal_data).encode()
                 await self.nats_client.publish(subject, message)
-                
-            logger.info(f"Batch published successfully via NATS: {len(signals)} signals")
+
+            logger.info(
+                f"Batch published successfully via NATS: {len(signals)} signals"
+            )
 
         except Exception as e:
             logger.error(f"Error publishing batch via NATS: {e}")

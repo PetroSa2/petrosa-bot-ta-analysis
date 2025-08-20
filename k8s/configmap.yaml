@@ -15,4 +15,4 @@ data:
   adx_period: "14"
   bb_period: "20"
   bb_std: "2.0"
-  atr_period: "14" 
+  atr_period: "14"

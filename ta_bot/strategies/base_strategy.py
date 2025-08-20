@@ -2,9 +2,10 @@
 Base strategy class for technical analysis strategies.
 """
 
-import pandas as pd
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import pandas as pd
 
 from ta_bot.models.signal import Signal
 
@@ -42,23 +43,31 @@ class BaseStrategy:
             if isinstance(indicator_series, pd.Series):
                 if not indicator_series.empty and len(indicator_series) > 0:
                     try:
-                        current_values[indicator_name] = float(indicator_series.iloc[-1])
+                        current_values[indicator_name] = float(
+                            indicator_series.iloc[-1]
+                        )
                     except (ValueError, IndexError) as e:
-                        logger.debug(f"Failed to get current value for {indicator_name}: {e}")
+                        logger.debug(
+                            f"Failed to get current value for {indicator_name}: {e}"
+                        )
                         continue
             # Handle list type
             elif isinstance(indicator_series, list) and len(indicator_series) > 0:
                 try:
                     current_values[indicator_name] = float(indicator_series[-1])
                 except (ValueError, IndexError) as e:
-                    logger.debug(f"Failed to get current value for {indicator_name}: {e}")
+                    logger.debug(
+                        f"Failed to get current value for {indicator_name}: {e}"
+                    )
                     continue
             # Handle scalar values
             elif indicator_series is not None:
                 try:
                     current_values[indicator_name] = float(indicator_series)
                 except (ValueError, TypeError) as e:
-                    logger.debug(f"Failed to get current value for {indicator_name}: {e}")
+                    logger.debug(
+                        f"Failed to get current value for {indicator_name}: {e}"
+                    )
                     continue
 
         # Add current price data
@@ -85,23 +94,31 @@ class BaseStrategy:
             if isinstance(indicator_series, pd.Series):
                 if not indicator_series.empty and len(indicator_series) > 1:
                     try:
-                        previous_values[indicator_name] = float(indicator_series.iloc[-2])
+                        previous_values[indicator_name] = float(
+                            indicator_series.iloc[-2]
+                        )
                     except (ValueError, IndexError) as e:
-                        logger.debug(f"Failed to get previous value for {indicator_name}: {e}")
+                        logger.debug(
+                            f"Failed to get previous value for {indicator_name}: {e}"
+                        )
                         continue
             # Handle list type
             elif isinstance(indicator_series, list) and len(indicator_series) > 1:
                 try:
                     previous_values[indicator_name] = float(indicator_series[-2])
                 except (ValueError, IndexError) as e:
-                    logger.debug(f"Failed to get previous value for {indicator_name}: {e}")
+                    logger.debug(
+                        f"Failed to get previous value for {indicator_name}: {e}"
+                    )
                     continue
             # Handle scalar values (use same value for previous)
             elif indicator_series is not None:
                 try:
                     previous_values[indicator_name] = float(indicator_series)
                 except (ValueError, TypeError) as e:
-                    logger.debug(f"Failed to get previous value for {indicator_name}: {e}")
+                    logger.debug(
+                        f"Failed to get previous value for {indicator_name}: {e}"
+                    )
                     continue
 
         # Add previous price data

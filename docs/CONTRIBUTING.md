@@ -59,10 +59,10 @@ Follow the coding standards:
 # Use type hints
 def calculate_indicator(data: pd.DataFrame) -> float:
     """Calculate technical indicator.
-    
+
     Args:
         data: OHLCV data
-        
+
     Returns:
         Calculated indicator value
     """
@@ -78,7 +78,7 @@ from ta_bot.your_module import YourFunction
 
 class TestYourFeature:
     """Test cases for your feature."""
-    
+
     def test_your_function(self):
         """Test your function."""
         result = YourFunction()
@@ -228,13 +228,13 @@ Use Google-style docstrings:
 ```python
 def calculate_macd(data: pd.DataFrame) -> Dict[str, float]:
     """Calculate MACD indicator.
-    
+
     Args:
         data: DataFrame with OHLCV data
-        
+
     Returns:
         Dictionary containing MACD, signal, and histogram values
-        
+
     Raises:
         ValueError: If data is empty or missing required columns
     """
@@ -259,17 +259,17 @@ from ta_bot.your_module import YourClass
 
 class TestYourClass:
     """Test cases for YourClass."""
-    
+
     @pytest.fixture
     def instance(self):
         """Create instance for testing."""
         return YourClass()
-    
+
     def test_normal_operation(self, instance):
         """Test normal operation."""
         result = instance.method()
         assert result is not None
-    
+
     def test_edge_case(self, instance):
         """Test edge case."""
         with pytest.raises(ValueError):
@@ -300,25 +300,25 @@ class TestYourClass:
 ```python
 class SignalEngine:
     """Core signal generation engine.
-    
+
     The SignalEngine coordinates all trading strategies and generates
     trading signals based on technical analysis.
-    
+
     Attributes:
         strategies: List of trading strategies
         indicators: Technical indicators calculator
         confidence: Confidence calculation engine
     """
-    
+
     def process_candle(self, data: pd.DataFrame) -> List[Signal]:
         """Process candle data through all strategies.
-        
+
         Args:
             data: OHLCV candle data
-            
+
         Returns:
             List of generated signals
-            
+
         Raises:
             ValueError: If data is invalid or empty
         """
@@ -431,13 +431,13 @@ Great work on the implementation!
 def test_performance():
     """Test performance requirements."""
     start_time = time.time()
-    
+
     # Run operation
     result = function_to_test()
-    
+
     end_time = time.time()
     duration = end_time - start_time
-    
+
     # Assert performance requirements
     assert duration < 0.1  # 100ms
     assert memory_usage < 100 * 1024 * 1024  # 100MB
@@ -512,4 +512,4 @@ def test_performance():
 
 **Thank you for contributing to Petrosa TA Bot!** 🚀
 
-Your contributions help make this project better for everyone in the trading community. 
+Your contributions help make this project better for everyone in the trading community.

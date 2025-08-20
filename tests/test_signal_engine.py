@@ -2,13 +2,13 @@
 Tests for the TA Bot Signal Engine.
 """
 
-import pytest
-import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 
+import numpy as np
+import pandas as pd
+import pytest
+
 from ta_bot.core.signal_engine import SignalEngine
-from ta_bot.models.signal import SignalType
 
 
 @pytest.fixture
@@ -135,10 +135,16 @@ class TestSignalEngine:
         indicators = signal_engine._calculate_indicators(sample_candles)
 
         # Test each strategy
-        current_price = float(sample_candles['close'].iloc[-1])
+        current_price = float(sample_candles["close"].iloc[-1])
         for strategy_name, strategy in signal_engine.strategies.items():
             signal = signal_engine._run_strategy(
-                strategy, strategy_name, sample_candles, "BTCUSDT", "15m", indicators, current_price
+                strategy,
+                strategy_name,
+                sample_candles,
+                "BTCUSDT",
+                "15m",
+                indicators,
+                current_price,
             )
 
             # Signal should be None or a valid Signal object

@@ -41,4 +41,4 @@ spec:
         periodSeconds: 15
       - type: Pods
         value: 2
-        periodSeconds: 15 
+        periodSeconds: 15
