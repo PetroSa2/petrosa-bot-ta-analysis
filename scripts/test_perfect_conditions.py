@@ -16,6 +16,8 @@ import pandas as pd
 # Add project root to path
 sys.path.insert(0, ".")
 
+# Local imports after path modification
+from ta_bot.core.indicators import Indicators
 from ta_bot.core.signal_engine import SignalEngine
 
 # Configure logging
@@ -97,9 +99,6 @@ class PerfectConditionsTester:
 
         try:
             # Calculate indicators manually to see what we get
-            from ta_bot.
-from ta_bot.core.indicators import Indicators
-
             indicators = Indicators()
 
             # Calculate MACD
