@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 
 from ta_bot.core.indicators import Indicators
-from ta_bot.models.signal import SignalType
+from ta_bot.models.signal import Signal
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 logger = logging.getLogger(__name__)
@@ -22,12 +22,17 @@ class BandFadeReversalStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(
-        self, df: pd.DataFrame, indicators: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
         """Analyze candles for Band Fade Reversal signals."""
         if len(df) < 20:
             return None
+
+        # Extract indicators from metadata (now passed directly)
+        indicators = {
+            k: v for k, v in metadata.items() if k not in ["symbol", "timeframe"]
+        }
+        symbol = metadata.get("symbol", "UNKNOWN")
+        timeframe = metadata.get("timeframe", "15m")
 
         # Get current values using base strategy methods
         current_values = self._get_current_values(indicators, df)
@@ -70,15 +75,22 @@ class BandFadeReversalStrategy(BaseStrategy):
             reversal_pattern = False
 
         if near_lower_band and below_middle and reversal_pattern:
-            return {
-                "signal_type": SignalType.BUY,
-                "metadata": {
+            # Create and return Signal object
+            return Signal(
+                strategy_id="band_fade_reversal",
+                symbol=symbol,
+                action="buy",
+                confidence=0.72,  # Base confidence for band fade reversal
+                current_price=close,
+                price=close,
+                timeframe=timeframe,
+                metadata={
                     "bb_lower": current_bb_lower,
                     "bb_middle": current_bb_middle,
                     "bb_upper": current_bb_upper,
                     "distance_from_lower": (close - current_bb_lower)
                     / current_bb_lower,
                 },
-            }
+            )
 
         return None

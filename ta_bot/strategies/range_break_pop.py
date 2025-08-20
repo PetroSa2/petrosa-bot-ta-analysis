@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 
 from ta_bot.core.indicators import Indicators
-from ta_bot.models.signal import SignalType
+from ta_bot.models.signal import Signal
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 
@@ -28,12 +28,17 @@ class RangeBreakPopStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(
-        self, df: pd.DataFrame, indicators: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
         """Analyze candles for Range Break Pop signals."""
         if len(df) < 20:
             return None
+
+        # Extract indicators from metadata (now passed directly)
+        indicators = {
+            k: v for k, v in metadata.items() if k not in ["symbol", "timeframe"]
+        }
+        symbol = metadata.get("symbol", "UNKNOWN")
+        timeframe = metadata.get("timeframe", "15m")
 
         # Get current values using base strategy methods
         current_values = self._get_current_values(indicators, df)
@@ -67,14 +72,21 @@ class RangeBreakPopStrategy(BaseStrategy):
             momentum = False
 
         if range_breakout and volume_confirmation and momentum:
-            return {
-                "signal_type": SignalType.BUY,
-                "metadata": {
+            # Create and return Signal object
+            return Signal(
+                strategy_id="range_break_pop",
+                symbol=symbol,
+                action="buy",
+                confidence=0.68,  # Base confidence for range break pop
+                current_price=close,
+                price=close,
+                timeframe=timeframe,
+                metadata={
                     "atr": current_atr,
                     "range_size": range_size,
                     "volume": volume,
                     "momentum": momentum,
                 },
-            }
+            )
 
         return None

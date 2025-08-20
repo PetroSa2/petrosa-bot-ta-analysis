@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 
 from ta_bot.core.indicators import Indicators
-from ta_bot.models.signal import SignalType
+from ta_bot.models.signal import Signal
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 
@@ -19,12 +19,17 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(
-        self, df: pd.DataFrame, indicators: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
         """Analyze candles for Golden Trend Sync signals."""
         if len(df) < 50:
             return None
+
+        # Extract indicators from metadata (now passed directly)
+        indicators = {
+            k: v for k, v in metadata.items() if k not in ["symbol", "timeframe"]
+        }
+        symbol = metadata.get("symbol", "UNKNOWN")
+        timeframe = metadata.get("timeframe", "15m")
 
         # Get current values using base strategy methods
         current_values = self._get_current_values(indicators, df)
@@ -49,14 +54,21 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         bullish_candle = close > current_values["open"]
 
         if golden_cross and pullback_to_ema21 and bullish_candle:
-            return {
-                "signal_type": SignalType.BUY,
-                "metadata": {
+            # Create and return Signal object
+            return Signal(
+                strategy_id="golden_trend_sync",
+                symbol=symbol,
+                action="buy",
+                confidence=0.70,  # Base confidence for golden trend sync
+                current_price=close,
+                price=close,
+                timeframe=timeframe,
+                metadata={
                     "ema21": current_ema21,
                     "ema50": current_ema50,
                     "pullback_distance": abs(close - current_ema21) / current_ema21,
                 },
-            }
+            )
 
         return None
 

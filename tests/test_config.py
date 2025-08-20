@@ -38,6 +38,12 @@ class TestConfig:
             "golden_trend_sync",
             "range_break_pop",
             "divergence_trap",
+            "volume_surge_breakout",
+            "mean_reversion_scalper",
+            "ichimoku_cloud_momentum",
+            "liquidity_grab_reversal",
+            "multi_timeframe_trend_continuation",
+            "order_flow_imbalance",
         ]
 
         assert config.enabled_strategies == expected_strategies

@@ -100,6 +100,19 @@ class Signal:
         signal_dict["strength"] = self.strength.value
         signal_dict["order_type"] = self.order_type.value
         signal_dict["time_in_force"] = self.time_in_force.value
+
+        # Convert numpy types in metadata to native Python types
+        if signal_dict.get("metadata"):
+            metadata = {}
+            for key, value in signal_dict["metadata"].items():
+                if hasattr(value, "item"):  # numpy scalar
+                    metadata[key] = value.item()
+                elif hasattr(value, "dtype"):  # numpy array/bool
+                    metadata[key] = bool(value) if value.dtype == bool else float(value)
+                else:
+                    metadata[key] = value
+            signal_dict["metadata"] = metadata
+
         return signal_dict
 
     def validate(self) -> bool:

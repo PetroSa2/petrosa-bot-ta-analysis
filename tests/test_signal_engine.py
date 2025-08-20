@@ -73,7 +73,7 @@ class TestSignalEngine:
         """Test that signal engine initializes correctly."""
         assert signal_engine is not None
         assert hasattr(signal_engine, "strategies")
-        assert len(signal_engine.strategies) == 5  # 5 strategies
+        assert len(signal_engine.strategies) == 11  # 11 strategies
 
     def test_analyze_candles_with_sufficient_data(self, signal_engine, sample_candles):
         """Test signal analysis with sufficient data."""
