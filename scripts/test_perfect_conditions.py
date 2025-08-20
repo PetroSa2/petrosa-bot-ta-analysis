@@ -16,8 +16,9 @@ import pandas as pd
 # Add project root to path
 sys.path.insert(0, ".")
 
-from ta_bot.core.signal_engine import SignalEngine
+# Local imports after path modification
 from ta_bot.core.indicators import Indicators
+from ta_bot.core.signal_engine import SignalEngine
 
 # Configure logging
 logging.basicConfig(
