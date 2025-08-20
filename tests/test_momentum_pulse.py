@@ -27,7 +27,7 @@ class TestMomentumPulseStrategy:
         )  # Only 1 row
         indicators = {"macd_hist": [0.1], "rsi": [55], "adx": [25]}
 
-        metadata = {"indicators": indicators}
+        metadata = {**indicators}
         result = self.strategy.analyze(df, metadata)
         assert result is None
 
@@ -48,7 +48,7 @@ class TestMomentumPulseStrategy:
             # Missing adx, ema21, ema50
         }
 
-        metadata = {"indicators": indicators}
+        metadata = {**indicators}
         result = self.strategy.analyze(df, metadata)
         assert result is None
 
@@ -72,7 +72,7 @@ class TestMomentumPulseStrategy:
             "close": [100, 101, 102],
         }
 
-        metadata = {"indicators": indicators}
+        metadata = {**indicators}
         result = self.strategy.analyze(df, metadata)
         assert result is None
 
@@ -168,7 +168,7 @@ class TestMomentumPulseStrategy:
             "macd_signal": pd.Series([0.05, 0.06, 0.07]),
         }
 
-        metadata = {"indicators": indicators, "symbol": "BTCUSDT", "timeframe": "15m"}
+        metadata = {**indicators, "symbol": "BTCUSDT", "timeframe": "15m"}
         result = self.strategy.analyze(df, metadata)
 
         assert (
@@ -205,7 +205,7 @@ class TestMomentumPulseStrategy:
             "volume": pd.Series([1000, 1100, 1200]),
         }
 
-        metadata = {"indicators": indicators, "symbol": "ETHUSDT", "timeframe": "5m"}
+        metadata = {**indicators, "symbol": "ETHUSDT", "timeframe": "5m"}
         result = self.strategy.analyze(df, metadata)
 
         assert result is not None and result.symbol == "ETHUSDT"
@@ -230,7 +230,7 @@ class TestMomentumPulseStrategy:
             "close": pd.Series([100, 101, 102]),
         }
 
-        metadata = {"indicators": indicators}
+        metadata = {**indicators}
         result = self.strategy.analyze(df, metadata)
         assert result is not None
 
@@ -254,7 +254,7 @@ class TestMomentumPulseStrategy:
             "close": pd.Series([100, 101, 102]),
         }
 
-        metadata = {"indicators": indicators}
+        metadata = {**indicators}
         result = self.strategy.analyze(df, metadata)
         assert result is not None
 
@@ -278,7 +278,7 @@ class TestMomentumPulseStrategy:
             "close": pd.Series([100, 101, 102]),
         }
 
-        metadata = {"indicators": indicators}
+        metadata = {**indicators}
         result = self.strategy.analyze(df, metadata)
         assert result is not None
 
@@ -303,7 +303,7 @@ class TestMomentumPulseStrategy:
             # Missing macd_signal
         }
 
-        metadata = {"indicators": indicators}
+        metadata = {**indicators}
         result = self.strategy.analyze(df, metadata)
         assert result is not None
         assert result.metadata["macd_signal"] == 0  # Default value
@@ -328,7 +328,7 @@ class TestMomentumPulseStrategy:
             "close": pd.Series([100, 101, 102]),
         }
 
-        metadata = {"indicators": indicators}
+        metadata = {**indicators}
         result = self.strategy.analyze(df, metadata)
         assert result is not None
         assert result.metadata["volume"] == 1200  # Should use actual volume value

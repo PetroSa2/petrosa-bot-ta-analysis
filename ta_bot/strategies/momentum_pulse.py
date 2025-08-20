@@ -31,8 +31,10 @@ class MomentumPulseStrategy(BaseStrategy):
         if len(df) < 2:
             return None
 
-        # Extract indicators from metadata
-        indicators = metadata.get("indicators", {})
+        # Extract indicators from metadata (now passed directly)
+        indicators = {
+            k: v for k, v in metadata.items() if k not in ["symbol", "timeframe"]
+        }
         symbol = metadata.get("symbol", "UNKNOWN")
         timeframe = metadata.get("timeframe", "15m")
 

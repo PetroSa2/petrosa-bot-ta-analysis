@@ -12,8 +12,16 @@ from ta_bot.models.signal import Signal, SignalStrength, SignalType
 from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy
 from ta_bot.strategies.divergence_trap import DivergenceTrapStrategy
 from ta_bot.strategies.golden_trend_sync import GoldenTrendSyncStrategy
+from ta_bot.strategies.ichimoku_cloud_momentum import IchimokuCloudMomentumStrategy
+from ta_bot.strategies.liquidity_grab_reversal import LiquidityGrabReversalStrategy
+from ta_bot.strategies.mean_reversion_scalper import MeanReversionScalperStrategy
 from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
+from ta_bot.strategies.multi_timeframe_trend_continuation import (
+    MultiTimeframeTrendContinuationStrategy,
+)
+from ta_bot.strategies.order_flow_imbalance import OrderFlowImbalanceStrategy
 from ta_bot.strategies.range_break_pop import RangeBreakPopStrategy
+from ta_bot.strategies.volume_surge_breakout import VolumeSurgeBreakoutStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +37,12 @@ class SignalEngine:
             "golden_trend_sync": GoldenTrendSyncStrategy(),
             "range_break_pop": RangeBreakPopStrategy(),
             "divergence_trap": DivergenceTrapStrategy(),
+            "volume_surge_breakout": VolumeSurgeBreakoutStrategy(),
+            "mean_reversion_scalper": MeanReversionScalperStrategy(),
+            "ichimoku_cloud_momentum": IchimokuCloudMomentumStrategy(),
+            "liquidity_grab_reversal": LiquidityGrabReversalStrategy(),
+            "multi_timeframe_trend_continuation": MultiTimeframeTrendContinuationStrategy(),
+            "order_flow_imbalance": OrderFlowImbalanceStrategy(),
         }
         self.indicators = Indicators()
 
@@ -119,8 +133,8 @@ class SignalEngine:
     ) -> Optional[Signal]:
         """Run a single strategy and return signal if valid."""
         try:
-            # Prepare metadata for strategy
-            metadata = {"indicators": indicators, "symbol": symbol, "timeframe": period}
+            # Prepare metadata for strategy - pass indicators directly
+            metadata = {**indicators, "symbol": symbol, "timeframe": period}
             # Run strategy analysis
             signal = strategy.analyze(df, metadata)
 

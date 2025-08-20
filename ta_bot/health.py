@@ -107,7 +107,7 @@ async def start_health_server(nats_url: str, api_endpoint: str, port: int = 8000
     logger.info(f"Starting FastAPI health server on port {port}")
 
     # Create server configuration
-    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")  # nosec B104
     server = uvicorn.Server(config)
 
     return HealthServerRunner(server)
