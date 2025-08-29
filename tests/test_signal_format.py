@@ -43,12 +43,21 @@ def test_signal_creation():
     logger.info(f"Stop Loss: {signal.stop_loss}")
     logger.info(f"Take Profit: {signal.take_profit}")
 
-    return signal
+    assert signal.strategy_id == "test_strategy_15m"
+    assert signal.action == "buy"
+    assert signal.confidence == 0.75
+    # Store signal for use by other tests
+    test_signal_creation.signal = signal
 
 
-def test_signal_serialization(signal):
+def test_signal_serialization():
     """Test signal serialization to JSON format."""
     logger.info("=== Testing Signal Serialization ===")
+
+    # Get signal from previous test
+    signal = getattr(test_signal_creation, "signal", None)
+    if signal is None:
+        assert False, "No signal available from test_signal_creation"
 
     # Convert to dictionary
     signal_dict = signal.to_dict()
@@ -77,25 +86,35 @@ def test_signal_serialization(signal):
     missing_fields = [field for field in required_fields if field not in signal_dict]
     if missing_fields:
         logger.error(f"Missing required fields: {missing_fields}")
-        return False
+        assert False, f"Missing required fields: {missing_fields}"
     else:
         logger.info("✅ All required fields present")
-        return True
+        assert True
 
 
-def test_signal_validation(signal):
+def test_signal_validation():
     """Test signal validation."""
     logger.info("=== Testing Signal Validation ===")
+
+    # Get signal from previous test
+    signal = getattr(test_signal_creation, "signal", None)
+    if signal is None:
+        assert False, "No signal available from test_signal_creation"
 
     is_valid = signal.validate()
     logger.info(f"Signal validation: {'✅ Valid' if is_valid else '❌ Invalid'}")
 
-    return is_valid
+    assert is_valid, "Signal should be valid"
 
 
-def test_trade_engine_compatibility(signal):
+def test_trade_engine_compatibility():
     """Test compatibility with Trade Engine signal format."""
     logger.info("=== Testing Trade Engine Compatibility ===")
+
+    # Get signal from previous test
+    signal = getattr(test_signal_creation, "signal", None)
+    if signal is None:
+        assert False, "No signal available from test_signal_creation"
 
     # Import Trade Engine Signal model
     try:
@@ -114,15 +133,15 @@ def test_trade_engine_compatibility(signal):
             logger.info(f"  Trade Engine Signal ID: {te_signal.strategy_id}")
             logger.info(f"  Action: {te_signal.action}")
             logger.info(f"  Strategy Mode: {te_signal.strategy_mode}")
-            return True
+            assert True
 
         except Exception as e:
             logger.error(f"❌ Incompatible with Trade Engine - {e}")
-            return False
+            assert False, f"Incompatible with Trade Engine - {e}"
 
     except ImportError:
         logger.warning("Trade Engine not available for compatibility testing")
-        return True
+        assert True  # Pass if Trade Engine not available
 
 
 def main():
@@ -131,21 +150,18 @@ def main():
 
     try:
         # Test signal creation
-        signal = test_signal_creation()
+        test_signal_creation()
 
         # Test signal serialization
-        serialization_ok = test_signal_serialization(signal)
+        test_signal_serialization()
 
         # Test signal validation
-        validation_ok = test_signal_validation(signal)
+        test_signal_validation()
 
         # Test Trade Engine compatibility
-        compatibility_ok = test_trade_engine_compatibility(signal)
+        test_trade_engine_compatibility()
 
-        if serialization_ok and validation_ok and compatibility_ok:
-            logger.info("✅ Signal Format Test Completed Successfully")
-        else:
-            logger.error("❌ Signal Format Test Failed")
+        logger.info("✅ Signal Format Test Completed Successfully")
 
     except Exception as e:
         logger.error(f"❌ Signal Format Test Failed: {e}")

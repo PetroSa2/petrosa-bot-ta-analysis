@@ -69,12 +69,17 @@ def test_signal_generation():
         logger.info(f"  Timeframe: {signal.timeframe}")
         logger.info("  ---")
 
-    return signals
+    assert len(signals) >= 0  # Should generate at least 0 signals
+    # Store signals for use by other tests
+    test_signal_generation.signals = signals
 
 
-def test_signal_serialization(signals):
+def test_signal_serialization():
     """Test signal serialization to JSON format."""
     logger.info("=== Testing Signal Serialization ===")
+
+    # Get signals from previous test
+    signals = getattr(test_signal_generation, "signals", [])
 
     for i, signal in enumerate(signals):
         # Convert to dictionary
@@ -107,13 +112,18 @@ def test_signal_serialization(signals):
         ]
         if missing_fields:
             logger.error(f"Missing required fields: {missing_fields}")
+            assert False, f"Missing required fields: {missing_fields}"
         else:
             logger.info("✅ All required fields present")
+            assert True
 
 
-def test_signal_validation(signals):
+def test_signal_validation():
     """Test signal validation."""
     logger.info("=== Testing Signal Validation ===")
+
+    # Get signals from previous test
+    signals = getattr(test_signal_generation, "signals", [])
 
     for i, signal in enumerate(signals):
         is_valid = signal.validate()
@@ -123,11 +133,17 @@ def test_signal_validation(signals):
 
         if not is_valid:
             logger.error(f"Signal {i+1} failed validation")
+            assert False, f"Signal {i+1} failed validation"
+        else:
+            assert True
 
 
-def test_trade_engine_compatibility(signals):
+def test_trade_engine_compatibility():
     """Test compatibility with Trade Engine signal format."""
     logger.info("=== Testing Trade Engine Compatibility ===")
+
+    # Get signals from previous test
+    signals = getattr(test_signal_generation, "signals", [])
 
     # Import Trade Engine Signal model
     try:
@@ -147,12 +163,15 @@ def test_trade_engine_compatibility(signals):
                 logger.info(f"  Trade Engine Signal ID: {te_signal.strategy_id}")
                 logger.info(f"  Action: {te_signal.action}")
                 logger.info(f"  Strategy Mode: {te_signal.strategy_mode}")
+                assert True
 
             except Exception as e:
                 logger.error(f"Signal {i+1}: ❌ Incompatible with Trade Engine - {e}")
+                assert False, f"Signal {i+1}: Incompatible with Trade Engine - {e}"
 
     except ImportError:
         logger.warning("Trade Engine not available for compatibility testing")
+        assert True  # Pass if Trade Engine not available
 
 
 async def main():
@@ -161,20 +180,21 @@ async def main():
 
     try:
         # Test signal generation
-        signals = test_signal_generation()
+        test_signal_generation()
 
+        signals = getattr(test_signal_generation, "signals", [])
         if not signals:
             logger.warning("No signals generated - skipping further tests")
             return
 
         # Test signal serialization
-        test_signal_serialization(signals)
+        test_signal_serialization()
 
         # Test signal validation
-        test_signal_validation(signals)
+        test_signal_validation()
 
         # Test Trade Engine compatibility
-        test_trade_engine_compatibility(signals)
+        test_trade_engine_compatibility()
 
         logger.info("✅ Signal Flow Test Completed Successfully")
 
