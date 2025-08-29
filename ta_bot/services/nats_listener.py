@@ -73,9 +73,10 @@ class NATSListener:
     async def _subscribe_to_candle_data(self):
         """Subscribe to candle data subjects."""
         # Subscribe to both development and production subjects
+        # Updated to match the actual subjects published by the data extractor
         subjects = [
-            f"{self.nats_subject_prefix}.klines.*.*",
-            f"{self.nats_subject_prefix_production}.klines.*.*",
+            f"{self.nats_subject_prefix}.klines.*.*",  # binance.klines.*.*
+            f"{self.nats_subject_prefix_production}.klines.*.*",  # binance.production.klines.*.*
         ]
 
         for subject in subjects:
