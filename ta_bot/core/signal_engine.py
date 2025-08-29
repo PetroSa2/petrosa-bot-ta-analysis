@@ -10,17 +10,40 @@ import pandas as pd
 from ta_bot.core.indicators import Indicators
 from ta_bot.models.signal import Signal, SignalStrength, SignalType
 from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy
+
+# Additional Quantzed-adapted strategies
+from ta_bot.strategies.bear_trap_buy import BearTrapBuyStrategy
+from ta_bot.strategies.bear_trap_sell import BearTrapSellStrategy
+
+# Quantzed-adapted strategies
+from ta_bot.strategies.bollinger_breakout_signals import (
+    BollingerBreakoutSignalsStrategy,
+)
+from ta_bot.strategies.bollinger_squeeze_alert import BollingerSqueezeAlertStrategy
 from ta_bot.strategies.divergence_trap import DivergenceTrapStrategy
+from ta_bot.strategies.doji_reversal import DojiReversalStrategy
+from ta_bot.strategies.ema_alignment_bearish import EMAAlignmentBearishStrategy
+from ta_bot.strategies.ema_alignment_bullish import EMAAlignmentBullishStrategy
+from ta_bot.strategies.ema_momentum_reversal import EMAMomentumReversalStrategy
+from ta_bot.strategies.ema_pullback_continuation import EMAPullbackContinuationStrategy
+from ta_bot.strategies.ema_slope_reversal_sell import EMASlopeReversalSellStrategy
+from ta_bot.strategies.fox_trap_reversal import FoxTrapReversalStrategy
 from ta_bot.strategies.golden_trend_sync import GoldenTrendSyncStrategy
+from ta_bot.strategies.hammer_reversal_pattern import HammerReversalPatternStrategy
 from ta_bot.strategies.ichimoku_cloud_momentum import IchimokuCloudMomentumStrategy
+from ta_bot.strategies.inside_bar_breakout import InsideBarBreakoutStrategy
+from ta_bot.strategies.inside_bar_sell import InsideBarSellStrategy
 from ta_bot.strategies.liquidity_grab_reversal import LiquidityGrabReversalStrategy
 from ta_bot.strategies.mean_reversion_scalper import MeanReversionScalperStrategy
+from ta_bot.strategies.minervini_trend_template import MinerviniTrendTemplateStrategy
 from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
 from ta_bot.strategies.multi_timeframe_trend_continuation import (
     MultiTimeframeTrendContinuationStrategy,
 )
 from ta_bot.strategies.order_flow_imbalance import OrderFlowImbalanceStrategy
 from ta_bot.strategies.range_break_pop import RangeBreakPopStrategy
+from ta_bot.strategies.rsi_extreme_reversal import RSIExtremeReversalStrategy
+from ta_bot.strategies.shooting_star_reversal import ShootingStarReversalStrategy
 from ta_bot.strategies.volume_surge_breakout import VolumeSurgeBreakoutStrategy
 
 logger = logging.getLogger(__name__)
@@ -32,6 +55,7 @@ class SignalEngine:
     def __init__(self):
         """Initialize the signal engine with all strategies."""
         self.strategies = {
+            # Original Petrosa strategies
             "momentum_pulse": MomentumPulseStrategy(),
             "band_fade_reversal": BandFadeReversalStrategy(),
             "golden_trend_sync": GoldenTrendSyncStrategy(),
@@ -43,6 +67,25 @@ class SignalEngine:
             "liquidity_grab_reversal": LiquidityGrabReversalStrategy(),
             "multi_timeframe_trend_continuation": MultiTimeframeTrendContinuationStrategy(),
             "order_flow_imbalance": OrderFlowImbalanceStrategy(),
+            # Quantzed-adapted strategies
+            "ema_alignment_bullish": EMAAlignmentBullishStrategy(),
+            "bollinger_squeeze_alert": BollingerSqueezeAlertStrategy(),
+            "bollinger_breakout_signals": BollingerBreakoutSignalsStrategy(),
+            "rsi_extreme_reversal": RSIExtremeReversalStrategy(),
+            "inside_bar_breakout": InsideBarBreakoutStrategy(),
+            "ema_pullback_continuation": EMAPullbackContinuationStrategy(),
+            "ema_momentum_reversal": EMAMomentumReversalStrategy(),
+            "fox_trap_reversal": FoxTrapReversalStrategy(),
+            "hammer_reversal_pattern": HammerReversalPatternStrategy(),
+            # Additional Quantzed-adapted strategies
+            "bear_trap_buy": BearTrapBuyStrategy(),
+            "inside_bar_sell": InsideBarSellStrategy(),
+            "shooting_star_reversal": ShootingStarReversalStrategy(),
+            "doji_reversal": DojiReversalStrategy(),
+            "ema_alignment_bearish": EMAAlignmentBearishStrategy(),
+            "ema_slope_reversal_sell": EMASlopeReversalSellStrategy(),
+            "minervini_trend_template": MinerviniTrendTemplateStrategy(),
+            "bear_trap_sell": BearTrapSellStrategy(),
         }
         self.indicators = Indicators()
 
