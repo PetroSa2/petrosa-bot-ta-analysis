@@ -44,7 +44,7 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: petrosa-common-config
-              key: environment
+              key: ENVIRONMENT
         - name: SUPPORTED_SYMBOLS
           valueFrom:
             configMapKeyRef:
