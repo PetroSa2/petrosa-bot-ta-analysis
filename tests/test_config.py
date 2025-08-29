@@ -33,6 +33,7 @@ class TestConfig:
         config = Config()
 
         expected_strategies = [
+            # Original Petrosa strategies
             "momentum_pulse",
             "band_fade_reversal",
             "golden_trend_sync",
@@ -44,6 +45,25 @@ class TestConfig:
             "liquidity_grab_reversal",
             "multi_timeframe_trend_continuation",
             "order_flow_imbalance",
+            # Quantzed-adapted strategies
+            "ema_alignment_bullish",
+            "bollinger_squeeze_alert",
+            "bollinger_breakout_signals",
+            "rsi_extreme_reversal",
+            "inside_bar_breakout",
+            "ema_pullback_continuation",
+            "ema_momentum_reversal",
+            "fox_trap_reversal",
+            "hammer_reversal_pattern",
+            # Additional Quantzed-adapted strategies
+            "bear_trap_buy",
+            "inside_bar_sell",
+            "shooting_star_reversal",
+            "doji_reversal",
+            "ema_alignment_bearish",
+            "ema_slope_reversal_sell",
+            "minervini_trend_template",
+            "bear_trap_sell",
         ]
 
         assert config.enabled_strategies == expected_strategies
