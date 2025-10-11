@@ -3,7 +3,8 @@ fastapi>=0.104.0
 
 # Technical Analysis
 # ta-lib>=0.4.0  # Commented out - requires system dependencies
-git+https://github.com/twopirllc/pandas-ta.git@main
+# Using aarigs fork since original repo (twopirllc/pandas-ta) no longer exists
+git+https://github.com/aarigs/pandas-ta.git
 
 # Health checks
 healthcheck>=1.3.0
