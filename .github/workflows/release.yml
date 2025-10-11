@@ -431,7 +431,7 @@ jobs:
         echo "✅ Verifying deployment on MicroK8s..."
 
         # Wait for deployments to be ready
-        kubectl wait --for=condition=available --timeout=300s deployment -l app=petrosa-ta-bot -n petrosa-apps --insecure-skip-tls-verify 2>/dev/null || echo "No deployments to wait for"
+        kubectl wait --for=condition=available --timeout=600s deployment -l app=petrosa-ta-bot -n petrosa-apps --insecure-skip-tls-verify 2>/dev/null || echo "No deployments to wait for"
 
         # Show deployment status
         echo "📊 Deployment status:"
