@@ -1,0 +1,60 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ta-bot-mysql-migration-timeframe
+  namespace: petrosa-apps
+  labels:
+    app: petrosa-ta-bot
+    component: database-migration
+    migration: add-timeframe-column
+spec:
+  ttlSecondsAfterFinished: 3600  # Clean up after 1 hour
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: petrosa-ta-bot
+        component: database-migration
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: mysql-migration
+        image: yurisa2/petrosa-ta-bot:v1.0.50
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            set -e
+            echo "Starting MySQL migration - Add timeframe column"
+
+            # Parse MYSQL_URI to get connection details
+            # Expected format: mysql://user:pass@host:port/database
+            MYSQL_HOST=$(echo $MYSQL_URI | sed -n 's|.*@\([^:]*\):.*|\1|p')
+            MYSQL_PORT=$(echo $MYSQL_URI | sed -n 's|.*:\([0-9]*\)/.*|\1|p')
+            MYSQL_USER=$(echo $MYSQL_URI | sed -n 's|mysql://\([^:]*\):.*|\1|p')
+            MYSQL_PASSWORD=$(echo $MYSQL_URI | sed -n 's|mysql://[^:]*:\([^@]*\)@.*|\1|p')
+            MYSQL_DATABASE=$(echo $MYSQL_URI | sed -n 's|.*/\([^?]*\).*|\1|p')
+
+            export MYSQL_HOST MYSQL_PORT MYSQL_USER MYSQL_PASSWORD MYSQL_DATABASE
+
+            echo "Database: $MYSQL_DATABASE"
+            echo "Host: $MYSQL_HOST:$MYSQL_PORT"
+            echo "User: $MYSQL_USER"
+
+            # Run the migration script
+            python3 /app/scripts/run_mysql_migration.py
+
+            echo "Migration completed successfully!"
+        env:
+          - name: MYSQL_URI
+            valueFrom:
+              secretKeyRef:
+                name: petrosa-sensitive-credentials
+                key: MYSQL_URI
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi

@@ -36,12 +36,13 @@ class EMAAlignmentBearishStrategy(BaseStrategy):
         )
         self.min_periods = 125  # Need sufficient data for EMA80
 
-    def analyze(self, data: pd.DataFrame) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict) -> Optional[Signal]:
         """
         Analyze market data for bearish EMA alignment opportunities.
 
         Args:
             data: OHLCV DataFrame with datetime index
+            metadata: Dictionary containing symbol, timeframe, and technical indicators
 
         Returns:
             Signal object if conditions are met, None otherwise
@@ -50,6 +51,9 @@ class EMAAlignmentBearishStrategy(BaseStrategy):
             return None
 
         try:
+            # Extract symbol from metadata
+            symbol = metadata.get("symbol", "UNKNOWN")
+
             # Calculate EMAs
             ema8 = self.indicators.ema(data["close"], 8)
             ema80 = self.indicators.ema(data["close"], 80)
@@ -113,7 +117,7 @@ class EMAAlignmentBearishStrategy(BaseStrategy):
                 )
 
                 return Signal(
-                    symbol=data.attrs.get("symbol", "UNKNOWN"),
+                    symbol=symbol,
                     strategy=self.name,
                     signal_type=SignalType.SELL,
                     strength=SignalStrength.HIGH,  # Strong trend confirmation
