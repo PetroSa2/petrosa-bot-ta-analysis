@@ -42,12 +42,13 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
         )
         self.min_periods = 265  # Need 260+ periods for 52-week calculations
 
-    def analyze(self, data: pd.DataFrame) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict) -> Optional[Signal]:
         """
         Analyze market data using Minervini's Trend Template criteria.
 
         Args:
             data: OHLCV DataFrame with datetime index
+            metadata: Dictionary containing symbol, timeframe, and technical indicators
 
         Returns:
             Signal object if conditions are met, None otherwise
@@ -56,6 +57,9 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
             return None
 
         try:
+            # Extract symbol from metadata
+            symbol = metadata.get("symbol", "UNKNOWN")
+
             closes = data["close"].astype(float)
             current_close = closes.iloc[-1]
             current_high = float(data["high"].iloc[-1])
@@ -164,7 +168,7 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
                 )
 
                 return Signal(
-                    symbol=data.attrs.get("symbol", "UNKNOWN"),
+                    symbol=symbol,
                     strategy=self.name,
                     signal_type=SignalType.BUY,
                     strength=SignalStrength.HIGH,  # Comprehensive institutional-grade setup

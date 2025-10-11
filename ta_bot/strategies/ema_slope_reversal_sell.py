@@ -34,12 +34,13 @@ class EMASlopeReversalSellStrategy(BaseStrategy):
         self.description = "Identifies bearish reversals when EMA9 slope changes from positive to negative"
         self.min_periods = 60  # Need sufficient data for EMA9 and slope analysis
 
-    def analyze(self, data: pd.DataFrame) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict) -> Optional[Signal]:
         """
         Analyze market data for EMA slope reversal sell opportunities.
 
         Args:
             data: OHLCV DataFrame with datetime index
+            metadata: Dictionary containing symbol, timeframe, and technical indicators
 
         Returns:
             Signal object if conditions are met, None otherwise
@@ -48,6 +49,9 @@ class EMASlopeReversalSellStrategy(BaseStrategy):
             return None
 
         try:
+            # Extract symbol from metadata
+            symbol = metadata.get("symbol", "UNKNOWN")
+
             # Calculate EMA9
             ema9 = self.indicators.ema(data["close"], 9)
 
@@ -96,7 +100,7 @@ class EMASlopeReversalSellStrategy(BaseStrategy):
                 )  # Distance from EMA
 
                 return Signal(
-                    symbol=data.attrs.get("symbol", "UNKNOWN"),
+                    symbol=symbol,
                     strategy=self.name,
                     signal_type=SignalType.SELL,
                     strength=SignalStrength.MEDIUM,
