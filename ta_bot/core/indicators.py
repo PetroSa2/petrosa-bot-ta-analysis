@@ -5,7 +5,7 @@ Technical indicators wrapper using pandas-ta.
 from typing import Tuple
 
 import pandas as pd
-import pandas_ta as ta
+import pandas_ta_classic as ta
 
 # Ensure pandas DataFrame has ta attribute
 pd.DataFrame.ta = ta
@@ -30,10 +30,22 @@ class Indicators:
             # Return empty series for insufficient data
             empty_series = pd.Series(dtype=float)
             return empty_series, empty_series, empty_series
+        # Handle different column naming conventions between pandas-ta versions
+        macd_col = f"MACD_{fast}_{slow}_{signal}"
+        macds_col = (
+            f"MACDS_{fast}_{slow}_{signal}"
+            if f"MACDS_{fast}_{slow}_{signal}" in macd_result.columns
+            else f"MACDs_{fast}_{slow}_{signal}"
+        )
+        macdh_col = (
+            f"MACDH_{fast}_{slow}_{signal}"
+            if f"MACDH_{fast}_{slow}_{signal}" in macd_result.columns
+            else f"MACDh_{fast}_{slow}_{signal}"
+        )
         return (
-            macd_result["MACD_12_26_9"],
-            macd_result["MACDs_12_26_9"],
-            macd_result["MACDh_12_26_9"],
+            macd_result[macd_col],
+            macd_result[macds_col],
+            macd_result[macdh_col],
         )
 
     @staticmethod
@@ -55,7 +67,23 @@ class Indicators:
         if bb_result is None or bb_result.empty:
             empty_series = pd.Series(dtype=float)
             return empty_series, empty_series, empty_series
-        return bb_result["BBL_20_2.0"], bb_result["BBM_20_2.0"], bb_result["BBU_20_2.0"]
+        # Handle different column naming conventions between pandas-ta versions
+        bbl_col = (
+            f"BBL_{period}_{std}"
+            if f"BBL_{period}_{std}" in bb_result.columns
+            else f"BBL_{period}"
+        )
+        bbm_col = (
+            f"BBM_{period}_{std}"
+            if f"BBM_{period}_{std}" in bb_result.columns
+            else f"BBM_{period}"
+        )
+        bbu_col = (
+            f"BBU_{period}_{std}"
+            if f"BBU_{period}_{std}" in bb_result.columns
+            else f"BBU_{period}"
+        )
+        return bb_result[bbl_col], bb_result[bbm_col], bb_result[bbu_col]
 
     @staticmethod
     def ema(df: pd.DataFrame, period: int) -> pd.Series:
