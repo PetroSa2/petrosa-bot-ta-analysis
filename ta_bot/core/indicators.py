@@ -5,7 +5,7 @@ Technical indicators wrapper using pandas-ta.
 from typing import Tuple
 
 import pandas as pd
-import pandas_ta as ta
+import pandas_ta_classic as ta
 
 # Ensure pandas DataFrame has ta attribute
 pd.DataFrame.ta = ta

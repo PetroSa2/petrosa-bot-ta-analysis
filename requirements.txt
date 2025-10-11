@@ -3,13 +3,14 @@ fastapi>=0.104.0
 
 # Technical Analysis
 # ta-lib>=0.4.0  # Commented out - requires system dependencies
-# Using aarigs fork since original repo (twopirllc/pandas-ta) no longer exists
-git+https://github.com/aarigs/pandas-ta.git
+# Using xgboosted/pandas-ta-classic fork (pandas 2.x compatible, 200+ indicators)
+# Original repo (twopirllc/pandas-ta) no longer exists
+git+https://github.com/xgboosted/pandas-ta-classic.git
 
 # Health checks
 healthcheck>=1.3.0
 nats-py>=2.0.0
-numpy<2.0.0
+numpy>=2.0.0
 # Core dependencies
 pandas>=2.0.0
 prometheus-client>=0.17.0
