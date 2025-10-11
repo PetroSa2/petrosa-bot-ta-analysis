@@ -30,10 +30,22 @@ class Indicators:
             # Return empty series for insufficient data
             empty_series = pd.Series(dtype=float)
             return empty_series, empty_series, empty_series
+        # Handle different column naming conventions between pandas-ta versions
+        macd_col = f"MACD_{fast}_{slow}_{signal}"
+        macds_col = (
+            f"MACDS_{fast}_{slow}_{signal}"
+            if f"MACDS_{fast}_{slow}_{signal}" in macd_result.columns
+            else f"MACDs_{fast}_{slow}_{signal}"
+        )
+        macdh_col = (
+            f"MACDH_{fast}_{slow}_{signal}"
+            if f"MACDH_{fast}_{slow}_{signal}" in macd_result.columns
+            else f"MACDh_{fast}_{slow}_{signal}"
+        )
         return (
-            macd_result["MACD_12_26_9"],
-            macd_result["MACDs_12_26_9"],
-            macd_result["MACDh_12_26_9"],
+            macd_result[macd_col],
+            macd_result[macds_col],
+            macd_result[macdh_col],
         )
 
     @staticmethod
