@@ -7,6 +7,8 @@ Main entry point for the TA bot microservice.
 import asyncio
 import logging
 
+# Import OpenTelemetry initialization early
+import otel_init  # noqa: F401
 from ta_bot.config import Config
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.health import start_health_server

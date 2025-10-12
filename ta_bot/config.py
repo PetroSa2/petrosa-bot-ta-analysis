@@ -89,3 +89,11 @@ class Config:
     # Risk management
     max_positions: int = 10
     position_sizes: List[int] = field(default_factory=lambda: [100, 200, 500, 1000])
+
+    # OpenTelemetry Configuration
+    otel_service_name: str = os.getenv("OTEL_SERVICE_NAME", "ta-bot")
+    otel_service_version: str = os.getenv("OTEL_SERVICE_VERSION", "1.0.0")
+    otel_exporter_otlp_endpoint: str = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+    enable_metrics: bool = os.getenv("ENABLE_METRICS", "true").lower() == "true"
+    enable_traces: bool = os.getenv("ENABLE_TRACES", "true").lower() == "true"
+    enable_logs: bool = os.getenv("ENABLE_LOGS", "true").lower() == "true"
