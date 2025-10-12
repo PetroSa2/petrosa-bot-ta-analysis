@@ -41,6 +41,8 @@ RUN pip install opentelemetry-distro opentelemetry-exporter-otlp-proto-grpc \
 # Copy application code
 COPY ta_bot/ ./ta_bot/
 COPY tests/ ./tests/
+COPY scripts/ ./scripts/
+COPY otel_init.py ./
 
 # Force rebuild timestamp
 RUN echo "Build timestamp: $(date)" > /app/build_timestamp.txt
