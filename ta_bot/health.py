@@ -10,9 +10,36 @@ from typing import Any, Dict
 
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 
 logger = logging.getLogger(__name__)
+
+# Prometheus metrics
+TA_ANALYSIS_REQUESTS = Counter(
+    "ta_analysis_requests_total", "Total TA analysis requests", ["symbol", "timeframe"]
+)
+TA_ANALYSIS_DURATION = Histogram(
+    "ta_analysis_duration_seconds", "TA analysis duration", ["symbol", "timeframe"]
+)
+TA_INDICATORS_CALCULATED = Counter(
+    "ta_indicators_calculated_total", "Total TA indicators calculated", ["indicator"]
+)
+TA_SIGNALS_GENERATED = Counter(
+    "ta_signals_generated_total",
+    "Total trading signals generated",
+    ["symbol", "signal_type"],
+)
+NATS_MESSAGES_PROCESSED = Counter(
+    "nats_messages_processed_total", "Total NATS messages processed"
+)
+SERVICE_UPTIME = Gauge("service_uptime_seconds", "Service uptime in seconds")
 
 # Global variables for health status
 start_time = time.time()
@@ -87,6 +114,23 @@ async def liveness_check():
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
     )
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    try:
+        # Update gauge metrics
+        uptime_seconds = time.time() - start_time
+        SERVICE_UPTIME.set(uptime_seconds)
+
+        # Generate Prometheus-format metrics
+        metrics_output = generate_latest()
+
+        return Response(content=metrics_output, media_type=CONTENT_TYPE_LATEST)
+    except Exception as e:
+        logger.error(f"Failed to generate metrics: {e}")
+        return Response(content=f"# Error generating metrics: {e}\n", status_code=500)
 
 
 @app.get("/")

@@ -16,6 +16,10 @@ spec:
       labels:
         app: petrosa-ta-bot
         version: VERSION_PLACEHOLDER
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
       - name: ta-bot
@@ -45,6 +49,39 @@ spec:
             configMapKeyRef:
               name: petrosa-common-config
               key: ENVIRONMENT
+        # OpenTelemetry Configuration
+        - name: ENABLE_OTEL
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: ENABLE_OTEL
+        - name: OTEL_SERVICE_VERSION
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_SERVICE_VERSION
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_EXPORTER_OTLP_ENDPOINT
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.name=ta-bot,service.version=VERSION_PLACEHOLDER
+        - name: OTEL_METRICS_EXPORTER
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_METRICS_EXPORTER
+        - name: OTEL_TRACES_EXPORTER
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_TRACES_EXPORTER
+        - name: OTEL_LOGS_EXPORTER
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_LOGS_EXPORTER
         - name: SUPPORTED_SYMBOLS
           valueFrom:
             configMapKeyRef:
