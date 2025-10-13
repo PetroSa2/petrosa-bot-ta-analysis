@@ -43,3 +43,13 @@ spec:
     - port: 8000
       protocol: TCP
     to: []
+  # OpenTelemetry (Grafana Alloy)
+  - ports:
+    - port: 4317
+      protocol: TCP
+    - port: 4318
+      protocol: TCP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: observability
