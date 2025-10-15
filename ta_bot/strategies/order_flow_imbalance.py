@@ -75,10 +75,16 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             confidence += 0.05
 
         # Prepare metadata for signal
+        # Calculate volume ratio safely
+        volume_sma = current.get("volume_sma")
+        if volume_sma and volume_sma > 0:
+            volume_ratio = current["volume"] / volume_sma
+        else:
+            volume_ratio = None
+
         signal_metadata = {
             "rsi": current["rsi"],
-            "volume_ratio": current.get("volume_sma", 0)
-            and current["volume"] / current["volume_sma"],
+            "volume_ratio": volume_ratio,
             "signal_type": signal_type,
             "order_flow_imbalance": True,
             "volume_confirmed": volume_confirmed,

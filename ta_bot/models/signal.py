@@ -2,6 +2,7 @@
 Signal data model for trading signals.
 """
 
+import math
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
@@ -52,6 +53,21 @@ class TimeInForce(str, Enum):
     IOC = "IOC"
     FOK = "FOK"
     GTX = "GTX"
+
+
+def sanitize_json_value(value: Any) -> Any:
+    """
+    Sanitize a value for JSON serialization.
+    Converts NaN, Infinity, and -Infinity to None.
+    """
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+    elif isinstance(value, dict):
+        return {k: sanitize_json_value(v) for k, v in value.items()}
+    elif isinstance(value, (list, tuple)):
+        return [sanitize_json_value(v) for v in value]
+    return value
 
 
 @dataclass
@@ -106,11 +122,17 @@ class Signal:
             metadata = {}
             for key, value in signal_dict["metadata"].items():
                 if hasattr(value, "item"):  # numpy scalar
-                    metadata[key] = value.item()
+                    converted_value = value.item()
                 elif hasattr(value, "dtype"):  # numpy array/bool
-                    metadata[key] = bool(value) if value.dtype == bool else float(value)
+                    converted_value = (
+                        bool(value) if value.dtype == bool else float(value)
+                    )
                 else:
-                    metadata[key] = value
+                    converted_value = value
+
+                # Sanitize the value to remove NaN/Inf
+                metadata[key] = sanitize_json_value(converted_value)
+
             signal_dict["metadata"] = metadata
 
         return signal_dict

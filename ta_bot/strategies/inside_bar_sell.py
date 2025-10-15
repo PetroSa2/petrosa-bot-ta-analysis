@@ -12,11 +12,13 @@ Inside bars represent consolidation and indecision, and when they occur
 in a bearish context, they often precede further downward movement.
 """
 
-from typing import Optional
+import logging
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from ta_bot.models.signal import Signal, SignalStrength, SignalType
+from ta_bot.core.indicators import Indicators
+from ta_bot.models.signal import Signal, SignalStrength
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 
@@ -35,13 +37,16 @@ class InsideBarSellStrategy(BaseStrategy):
             "Identifies bearish continuation when inside bar forms in downtrend context"
         )
         self.min_periods = 125  # Need sufficient data for EMAs
+        self.logger = logging.getLogger(__name__)
+        self.indicators = Indicators()
 
-    def analyze(self, data: pd.DataFrame) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
         """
         Analyze market data for inside bar sell opportunities.
 
         Args:
             data: OHLCV DataFrame with datetime index
+            metadata: Dictionary containing symbol, timeframe, and technical indicators
 
         Returns:
             Signal object if conditions are met, None otherwise
@@ -95,15 +100,17 @@ class InsideBarSellStrategy(BaseStrategy):
                 )
 
                 return Signal(
-                    symbol=data.attrs.get("symbol", "UNKNOWN"),
-                    strategy=self.name,
-                    signal_type=SignalType.SELL,
-                    strength=SignalStrength.MEDIUM,
+                    strategy_id="inside_bar_sell",
+                    symbol=metadata.get("symbol", "UNKNOWN"),
+                    action="sell",
                     confidence=confidence,
-                    entry_price=entry_price,
+                    current_price=current_close,
+                    price=entry_price,
+                    timeframe=metadata.get("timeframe", "15m"),
+                    strength=SignalStrength.MEDIUM,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=data.index[-1],
+                    timestamp=str(data.index[-1]),
                     metadata={
                         "ema8": current_ema8,
                         "ema80": current_ema80,
@@ -112,6 +119,7 @@ class InsideBarSellStrategy(BaseStrategy):
                         "bearish_context_strength": bearish_strength,
                         "risk_reward_ratio": 2.0,
                         "pattern": "inside_bar_bearish_continuation",
+                        "entry_price": entry_price,
                     },
                 )
 

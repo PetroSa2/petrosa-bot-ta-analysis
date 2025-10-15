@@ -12,11 +12,13 @@ This captures the moment when bullish momentum starts to fade
 and bearish momentum begins to take control.
 """
 
+import logging
 from typing import Optional
 
 import pandas as pd
 
-from ta_bot.models.signal import Signal, SignalStrength, SignalType
+from ta_bot.core.indicators import Indicators
+from ta_bot.models.signal import Signal, SignalStrength
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 
@@ -33,6 +35,8 @@ class EMASlopeReversalSellStrategy(BaseStrategy):
         self.name = "EMA Slope Reversal Sell"
         self.description = "Identifies bearish reversals when EMA9 slope changes from positive to negative"
         self.min_periods = 60  # Need sufficient data for EMA9 and slope analysis
+        self.logger = logging.getLogger(__name__)
+        self.indicators = Indicators()
 
     def analyze(self, data: pd.DataFrame, metadata: dict) -> Optional[Signal]:
         """
@@ -53,7 +57,7 @@ class EMASlopeReversalSellStrategy(BaseStrategy):
             symbol = metadata.get("symbol", "UNKNOWN")
 
             # Calculate EMA9
-            ema9 = self.indicators.ema(data["close"], 9)
+            ema9 = self.indicators.ema(data, 9)
 
             if ema9.empty:
                 return None
@@ -100,15 +104,17 @@ class EMASlopeReversalSellStrategy(BaseStrategy):
                 )  # Distance from EMA
 
                 return Signal(
+                    strategy_id="ema_slope_reversal_sell",
                     symbol=symbol,
-                    strategy=self.name,
-                    signal_type=SignalType.SELL,
-                    strength=SignalStrength.MEDIUM,
+                    action="sell",
                     confidence=confidence,
-                    entry_price=entry_price,
+                    current_price=current_close,
+                    price=entry_price,
+                    timeframe=metadata.get("timeframe", "15m"),
+                    strength=SignalStrength.MEDIUM,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=data.index[-1],
+                    timestamp=str(data.index[-1]),
                     metadata={
                         "ema9": current_ema9,
                         "current_inclination": current_inclination,
@@ -118,6 +124,7 @@ class EMASlopeReversalSellStrategy(BaseStrategy):
                         "normalized_slope_change": normalized_slope_change,
                         "risk_reward_ratio": 2.0,
                         "pattern": "ema9_slope_reversal_bearish",
+                        "entry_price": entry_price,
                     },
                 )
 
