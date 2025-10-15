@@ -13,11 +13,12 @@ The shooting star is a bearish reversal pattern that appears after an uptrend,
 showing that buyers pushed price higher but sellers ultimately took control.
 """
 
-from typing import Optional
+import logging
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from ta_bot.models.signal import Signal, SignalStrength, SignalType
+from ta_bot.models.signal import Signal, SignalStrength
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 
@@ -36,13 +37,15 @@ class ShootingStarReversalStrategy(BaseStrategy):
             "Identifies bearish reversals using shooting star candlestick patterns"
         )
         self.min_periods = 10  # Minimal data needed for candlestick analysis
+        self.logger = logging.getLogger(__name__)
 
-    def analyze(self, data: pd.DataFrame) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
         """
         Analyze market data for shooting star reversal opportunities.
 
         Args:
             data: OHLCV DataFrame with datetime index
+            metadata: Dictionary containing symbol, timeframe, and technical indicators
 
         Returns:
             Signal object if conditions are met, None otherwise
@@ -94,15 +97,17 @@ class ShootingStarReversalStrategy(BaseStrategy):
                 final_confidence = min(0.80, confidence + trend_strength)
 
                 return Signal(
-                    symbol=data.attrs.get("symbol", "UNKNOWN"),
-                    strategy=self.name,
-                    signal_type=SignalType.SELL,
-                    strength=SignalStrength.MEDIUM,
+                    strategy_id="shooting_star_reversal",
+                    symbol=metadata.get("symbol", "UNKNOWN"),
+                    action="sell",
                     confidence=final_confidence,
-                    entry_price=entry_price,
+                    current_price=current_close,
+                    price=entry_price,
+                    timeframe=metadata.get("timeframe", "15m"),
+                    strength=SignalStrength.MEDIUM,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=data.index[-1],
+                    timestamp=str(data.index[-1]),
                     metadata={
                         "body_size": body_size,
                         "upper_shadow": upper_shadow,
@@ -111,6 +116,7 @@ class ShootingStarReversalStrategy(BaseStrategy):
                         "pattern_strength": pattern_strength,
                         "risk_reward_ratio": 1.5,
                         "pattern": "shooting_star_bearish_reversal",
+                        "entry_price": entry_price,
                     },
                 )
 

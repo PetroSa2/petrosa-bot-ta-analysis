@@ -20,7 +20,8 @@ spec:
       restartPolicy: Never
       containers:
       - name: mysql-migration
-        image: yurisa2/petrosa-ta-bot:v1.0.50
+        image: yurisa2/petrosa-ta-bot:v1.0.51
+        imagePullPolicy: Always
         command: ["/bin/sh", "-c"]
         args:
           - |

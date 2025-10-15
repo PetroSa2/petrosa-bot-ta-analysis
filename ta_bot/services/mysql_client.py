@@ -4,6 +4,7 @@ MySQL client for fetching candle data and persisting signals.
 
 import json
 import logging
+import math
 import os
 from typing import Any, Dict, List
 from urllib.parse import urlparse
@@ -172,6 +173,22 @@ class MySQLClient:
                 logger.error(f"Failed to reconnect: {reconnect_error}")
             return pd.DataFrame()
 
+    def _deep_sanitize_for_json(self, obj: Any) -> Any:
+        """
+        Recursively sanitize an object for JSON serialization.
+        Converts NaN, Infinity, and -Infinity to None.
+        """
+        if isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+            return obj
+        elif isinstance(obj, dict):
+            return {k: self._deep_sanitize_for_json(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._deep_sanitize_for_json(v) for v in obj]
+        else:
+            return obj
+
     async def persist_signal(self, signal_data: Dict[str, Any]) -> bool:
         """Persist a single signal to MySQL."""
         if not self.connection:
@@ -187,21 +204,44 @@ class MySQLClient:
                 await self.connect()
 
             sql = """
-                INSERT INTO signals (symbol, timeframe, action, confidence, strategy, metadata, timestamp, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                INSERT INTO signals (symbol, timeframe, period, signal_type, confidence, strategy, metadata, timestamp, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
             """
 
-            metadata_json = json.dumps(signal_data.get("metadata", {}))
+            # Get metadata and ALWAYS sanitize for JSON
+            metadata = signal_data.get("metadata", {})
+
+            # Pre-sanitize to remove NaN/Inf values BEFORE json.dumps
+            sanitized_metadata = self._deep_sanitize_for_json(metadata)
+
+            try:
+                metadata_json = json.dumps(sanitized_metadata, allow_nan=False)
+            except (TypeError, ValueError) as e:
+                logger.error(f"Failed to serialize even after sanitization: {e}")
+                # Fallback: convert everything to strings
+                metadata_json = json.dumps(
+                    {k: str(v) for k, v in sanitized_metadata.items()}
+                )
+
+            # Map new field names to old database columns
+            signal_type = signal_data.get(
+                "action", signal_data.get("signal_type", "hold")
+            )
+            strategy = signal_data.get(
+                "strategy", signal_data.get("strategy_id", "unknown")
+            )
+            timeframe = signal_data.get("timeframe", "15m")
 
             with self.connection.cursor() as cursor:
                 cursor.execute(
                     sql,
                     (
                         signal_data["symbol"],
-                        signal_data["timeframe"],
-                        signal_data["action"],
+                        timeframe,
+                        timeframe,  # period column (legacy)
+                        signal_type,
                         signal_data["confidence"],
-                        signal_data["strategy"],
+                        strategy,
                         metadata_json,
                         signal_data["timestamp"],
                     ),
@@ -240,25 +280,61 @@ class MySQLClient:
                 await self.connect()
 
             sql = """
-                INSERT INTO signals (symbol, timeframe, action, confidence, strategy, metadata, timestamp, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                INSERT INTO signals (symbol, timeframe, period, signal_type, confidence, strategy, metadata, timestamp, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
             """
 
             values = []
-            for signal_data in signals:
-                metadata_json = json.dumps(signal_data.get("metadata", {}))
+            for idx, signal_data in enumerate(signals):
+                # Get metadata and ALWAYS sanitize it before JSON serialization
+                metadata = signal_data.get("metadata", {})
+
+                # Pre-sanitize to remove NaN/Inf values BEFORE json.dumps
+                sanitized_metadata = self._deep_sanitize_for_json(metadata)
+
+                # Now dump with allow_nan=False for extra safety
+                try:
+                    metadata_json = json.dumps(sanitized_metadata, allow_nan=False)
+                except (TypeError, ValueError) as e:
+                    logger.error(
+                        f"Signal {idx}: Failed to serialize even after sanitization: {e}"
+                    )
+                    logger.error(f"Signal {idx}: Metadata: {sanitized_metadata}")
+                    # Fallback: convert everything to strings
+                    metadata_json = json.dumps(
+                        {k: str(v) for k, v in sanitized_metadata.items()}
+                    )
+
+                # Map new field names to old database columns
+                signal_type = signal_data.get(
+                    "action", signal_data.get("signal_type", "hold")
+                )
+                strategy = signal_data.get(
+                    "strategy", signal_data.get("strategy_id", "unknown")
+                )
+                timeframe = signal_data.get("timeframe", "15m")
+
+                # Log this signal's metadata for debugging
+                logger.info(
+                    f"Signal {idx}: {signal_data.get('symbol')} {signal_data.get('strategy_id')}: "
+                    f"metadata_json len={len(metadata_json)}, content={metadata_json}"
+                )
+
                 values.append(
                     (
                         signal_data["symbol"],
-                        signal_data["timeframe"],
-                        signal_data["action"],
+                        timeframe,
+                        timeframe,  # period column (legacy)
+                        signal_type,
                         signal_data["confidence"],
-                        signal_data["strategy"],
+                        strategy,
                         metadata_json,
                         signal_data["timestamp"],
                     )
                 )
 
+            # Execute the batch insert
+            logger.info(f"Executing batch insert for {len(signals)} signals")
             with self.connection.cursor() as cursor:
                 cursor.executemany(sql, values)
 

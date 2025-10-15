@@ -13,11 +13,12 @@ signaling that the current trend may be losing momentum and
 a reversal could be imminent.
 """
 
-from typing import Optional
+import logging
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from ta_bot.models.signal import Signal, SignalStrength, SignalType
+from ta_bot.models.signal import Signal, SignalStrength
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 
@@ -36,13 +37,15 @@ class DojiReversalStrategy(BaseStrategy):
             "Identifies potential reversals using doji candlestick patterns"
         )
         self.min_periods = 20  # Need some context for trend determination
+        self.logger = logging.getLogger(__name__)
 
-    def analyze(self, data: pd.DataFrame) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
         """
         Analyze market data for doji reversal opportunities.
 
         Args:
             data: OHLCV DataFrame with datetime index
+            metadata: Dictionary containing symbol, timeframe, and technical indicators
 
         Returns:
             Signal object if conditions are met, None otherwise
@@ -82,7 +85,7 @@ class DojiReversalStrategy(BaseStrategy):
 
                 if trend_bullish:
                     # In uptrend, doji suggests potential bearish reversal
-                    signal_type = SignalType.SELL
+                    action = "sell"
                     entry_price = current_low
                     stop_loss = current_high
                     risk_amount = stop_loss - entry_price
@@ -90,7 +93,7 @@ class DojiReversalStrategy(BaseStrategy):
 
                 elif trend_bearish:
                     # In downtrend, doji suggests potential bullish reversal
-                    signal_type = SignalType.BUY
+                    action = "buy"
                     entry_price = current_high
                     stop_loss = current_low
                     risk_amount = entry_price - stop_loss
@@ -109,15 +112,17 @@ class DojiReversalStrategy(BaseStrategy):
                 confidence = min(0.70, 0.40 + (doji_quality * 0.20) + trend_strength)
 
                 return Signal(
-                    symbol=data.attrs.get("symbol", "UNKNOWN"),
-                    strategy=self.name,
-                    signal_type=signal_type,
-                    strength=SignalStrength.LOW,  # Doji is more of a warning than strong signal
+                    strategy_id="doji_reversal",
+                    symbol=metadata.get("symbol", "UNKNOWN"),
+                    action=action,
                     confidence=confidence,
-                    entry_price=entry_price,
+                    current_price=current_close,
+                    price=entry_price,
+                    timeframe=metadata.get("timeframe", "15m"),
+                    strength=SignalStrength.LOW,  # Doji is more of a warning than strong signal
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=data.index[-1],
+                    timestamp=str(data.index[-1]),
                     metadata={
                         "body_size": body_size,
                         "total_range": price_range,
@@ -127,6 +132,7 @@ class DojiReversalStrategy(BaseStrategy):
                         "sma10": current_sma10,
                         "risk_reward_ratio": 1.2,
                         "pattern": "doji_reversal",
+                        "entry_price": entry_price,
                     },
                 )
 
