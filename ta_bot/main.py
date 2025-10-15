@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 async def main():
     """Main entry point for the TA bot."""
     try:
+        # Attach OTLP logging handler for log export
+        otel_init.attach_logging_handler_simple()
+
         # Initialize components
         config = Config()
         signal_engine = SignalEngine()
