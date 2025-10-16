@@ -23,12 +23,19 @@ spec:
     spec:
       containers:
       - name: ta-bot
-        image: yurisa2/petrosa-ta-bot:VERSION_PLACEHOLDER
+        image: yurisa2/petrosa-ta-bot:v1.0.66
         imagePullPolicy: Always
+        command:
+          - opentelemetry-instrument
+          - python
+          - '-m'
+          - ta_bot.main
         ports:
         - containerPort: 8000
           name: http
         env:
+        - name: OTEL_NO_AUTO_INIT
+          value: "1"
         - name: NATS_URL
           valueFrom:
             configMapKeyRef:
@@ -82,6 +89,26 @@ spec:
             configMapKeyRef:
               name: petrosa-common-config
               key: OTEL_LOGS_EXPORTER
+        - name: OTEL_EXPORTER_OTLP_HEADERS
+          valueFrom:
+            secretKeyRef:
+              name: petrosa-sensitive-credentials
+              key: OTEL_EXPORTER_OTLP_HEADERS
+        - name: ENABLE_LOGS
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: ENABLE_LOGS
+        - name: ENABLE_METRICS
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: ENABLE_METRICS
+        - name: ENABLE_TRACES
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: ENABLE_TRACES
         - name: SUPPORTED_SYMBOLS
           valueFrom:
             configMapKeyRef:
