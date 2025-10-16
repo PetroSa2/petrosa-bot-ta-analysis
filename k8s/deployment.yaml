@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: ta-bot
-        image: yurisa2/petrosa-ta-bot:v1.0.66
+        image: yurisa2/petrosa-ta-bot:v1.0.67
         imagePullPolicy: Always
         command:
           - opentelemetry-instrument
