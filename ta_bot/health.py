@@ -47,9 +47,9 @@ app = FastAPI(title="TA Bot Health API", version="1.0.0")
 
 # Instrument FastAPI for OpenTelemetry traces
 try:
-    from otel_init import instrument_app
+    from otel_init import instrument_fastapi_app
 
-    instrument_app(app)
+    instrument_fastapi_app(app)
 except Exception as e:
     logger.warning(f"Could not instrument FastAPI for traces: {e}")
 
