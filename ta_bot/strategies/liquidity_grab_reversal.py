@@ -68,8 +68,8 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
             if volume_ratio > 2.0:
                 confidence += 0.05
 
-        # RSI divergence check
-        rsi_divergence = self._check_rsi_divergence(df, action)
+        # RSI divergence check - pass RSI series from indicators
+        rsi_divergence = self._check_rsi_divergence(df, action, indicators.get("rsi"))
         if rsi_divergence:
             confidence += 0.05
 
@@ -175,13 +175,23 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
 
         return False
 
-    def _check_rsi_divergence(self, df: pd.DataFrame, action: str) -> bool:
+    def _check_rsi_divergence(
+        self, df: pd.DataFrame, action: str, rsi_series: Optional[pd.Series] = None
+    ) -> bool:
         """Check for RSI divergence."""
         if len(df) < 10:
             return False
 
+        # Check if RSI series is provided
+        if rsi_series is None or not isinstance(rsi_series, pd.Series):
+            return False
+
+        # Ensure RSI series has enough data
+        if len(rsi_series) < 10:
+            return False
+
         # Get RSI values
-        rsi_values = df["rsi"].iloc[-10:]
+        rsi_values = rsi_series.iloc[-10:]
         price_values = df["close"].iloc[-10:]
 
         # Find peaks and troughs

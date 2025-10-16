@@ -18,16 +18,33 @@ logger = structlog.get_logger()
 class SignalPublisher:
     """Publish trading signals to Trade Engine via REST API and NATS."""
 
-    def __init__(self, api_endpoint: str, nats_url: str = None):
-        """Initialize the signal publisher."""
+    def __init__(
+        self,
+        api_endpoint: str,
+        nats_url: str = None,
+        enable_rest_publishing: bool = False,
+    ):
+        """Initialize the signal publisher.
+
+        Args:
+            api_endpoint: HTTP endpoint for REST API publishing
+            nats_url: NATS server URL for NATS publishing
+            enable_rest_publishing: Enable REST API publishing (default: False to prevent duplicates)
+        """
         self.api_endpoint = api_endpoint
         self.nats_url = nats_url
+        self.enable_rest_publishing = enable_rest_publishing
         self.session = None
         self.nats_client = None
 
     async def start(self):
         """Start the publisher session."""
-        self.session = aiohttp.ClientSession()
+        # Only create HTTP session if REST publishing is enabled
+        if self.enable_rest_publishing:
+            self.session = aiohttp.ClientSession()
+            logger.info("REST API publishing enabled")
+        else:
+            logger.info("REST API publishing disabled (NATS-only mode)")
 
         # Initialize NATS connection if URL is provided
         if self.nats_url:
@@ -54,8 +71,11 @@ class SignalPublisher:
 
         logger.info(f"Publishing {len(signals)} signals to Trade Engine")
 
-        # Publish via REST API
-        await self._publish_via_rest(signals)
+        # Publish via REST API (only if enabled)
+        if self.enable_rest_publishing:
+            await self._publish_via_rest(signals)
+        else:
+            logger.debug("REST API publishing skipped (disabled)")
 
         # Publish via NATS
         await self._publish_via_nats(signals)
@@ -128,8 +148,11 @@ class SignalPublisher:
 
         logger.info(f"Publishing batch of {len(signals)} signals")
 
-        # Publish via REST API
-        await self._publish_batch_via_rest(signals)
+        # Publish via REST API (only if enabled)
+        if self.enable_rest_publishing:
+            await self._publish_batch_via_rest(signals)
+        else:
+            logger.debug("REST API batch publishing skipped (disabled)")
 
         # Publish via NATS
         await self._publish_batch_via_nats(signals)

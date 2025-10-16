@@ -7,6 +7,10 @@ metadata:
     app: petrosa-ta-bot
     version: VERSION_PLACEHOLDER
 data:
+  # Signal Publishing Configuration
+  # ENABLE_REST_PUBLISHING: Set to "false" to prevent duplicate signals (NATS-only mode)
+  # Set to "true" only if you need REST API publishing for backward compatibility
+  enable_rest_publishing: "false"
   api_endpoint: "http://petrosa-tradeengine-service/trade/signal"
   rsi_period: "14"
   macd_fast: "12"
