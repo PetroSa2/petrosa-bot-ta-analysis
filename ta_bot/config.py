@@ -26,6 +26,13 @@ class Config:
         os.getenv("TA_BOT_API_ENDPOINT", "http://localhost:8080/signals"),
     )
 
+    # Signal Publishing Configuration
+    # Control whether to publish signals via REST API (disabled by default to prevent duplicates)
+    # Signals are always published via NATS when nats_enabled is true
+    enable_rest_publishing: bool = (
+        os.getenv("ENABLE_REST_PUBLISHING", "false").lower() == "true"
+    )
+
     # Optional settings with defaults
     log_level: str = os.getenv("LOG_LEVEL", os.getenv("TA_BOT_LOG_LEVEL", "INFO"))
     environment: str = os.getenv(

@@ -36,6 +36,7 @@ async def main():
         publisher = SignalPublisher(
             api_endpoint=config.api_endpoint,
             nats_url=config.nats_url if config.nats_enabled else None,
+            enable_rest_publishing=config.enable_rest_publishing,
         )
 
         # Parse supported symbols and timeframes
