@@ -91,6 +91,26 @@ class VolumeSurgeBreakoutStrategy(BaseStrategy):
         if volume_ratio > 7:
             confidence += 0.05
 
+        # Calculate stop loss and take profit (breakout strategy)
+        if action == "buy":
+            # For upward breakout
+            recent_highs = df["high"].iloc[-20:-1]
+            breakout_level = recent_highs.max()
+            stop_loss = breakout_level * 0.98  # SL below breakout level
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] + (
+                risk * 2.5
+            )  # 2.5:1 R:R for strong breakouts
+        else:
+            # For downward breakout
+            recent_lows = df["low"].iloc[-20:-1]
+            breakout_level = recent_lows.min()
+            stop_loss = breakout_level * 1.02  # SL above breakout level
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] - (
+                risk * 2.5
+            )  # 2.5:1 R:R for strong breakouts
+
         # Prepare metadata for signal
         signal_metadata = {
             "volume_ratio": volume_ratio,
@@ -99,6 +119,9 @@ class VolumeSurgeBreakoutStrategy(BaseStrategy):
             "macd_signal": current["macd_signal"],
             "breakout_type": breakout_type,
             "volume_surge": True,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "risk_reward_ratio": 2.5,
         }
 
         # Create and return Signal object
@@ -110,6 +133,8 @@ class VolumeSurgeBreakoutStrategy(BaseStrategy):
             current_price=current["close"],
             price=current["close"],
             timeframe=timeframe,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=signal_metadata,
         )
 

@@ -114,6 +114,16 @@ class BollingerBreakoutSignalsStrategy(BaseStrategy):
             else 0.5
         )
 
+        # Calculate stop loss and take profit (mean reversion strategy)
+        if signal_action == "buy":
+            # Buy at lower band - mean revert to middle
+            stop_loss = lower_band * 0.98  # 2% below lower band
+            take_profit = middle_band  # Target middle band (mean reversion)
+        else:
+            # Sell at upper band - mean revert to middle
+            stop_loss = upper_band * 1.02  # 2% above upper band
+            take_profit = middle_band  # Target middle band (mean reversion)
+
         # Prepare metadata for signal
         signal_metadata = {
             "bb_upper": upper_band,
@@ -127,6 +137,9 @@ class BollingerBreakoutSignalsStrategy(BaseStrategy):
             )
             / close,
             "strategy_origin": f"quantzed_screening_{'04' if below_lower_band else '05'}",
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "target": "middle_band",
         }
 
         return Signal(
@@ -137,5 +150,7 @@ class BollingerBreakoutSignalsStrategy(BaseStrategy):
             current_price=close,
             price=close,
             timeframe=timeframe,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=signal_metadata,
         )

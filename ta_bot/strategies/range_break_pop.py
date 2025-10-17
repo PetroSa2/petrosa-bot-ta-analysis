@@ -72,6 +72,14 @@ class RangeBreakPopStrategy(BaseStrategy):
             momentum = False
 
         if range_breakout and volume_confirmation and momentum:
+            # Calculate stop loss and take profit (breakout strategy)
+            # Stop loss below recent range low
+            recent_lows = df["low"].iloc[-10:]
+            range_low = recent_lows.min()
+            stop_loss = range_low * 0.99  # 1% below range low
+            risk = abs(close - stop_loss)
+            take_profit = close + (risk * 2.0)  # 2:1 R:R for range breakouts
+
             # Create and return Signal object
             return Signal(
                 strategy_id="range_break_pop",
@@ -81,11 +89,16 @@ class RangeBreakPopStrategy(BaseStrategy):
                 current_price=close,
                 price=close,
                 timeframe=timeframe,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
                 metadata={
                     "atr": current_atr,
                     "range_size": range_size,
                     "volume": volume,
                     "momentum": momentum,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
+                    "risk_reward_ratio": 2.0,
                 },
             )
 

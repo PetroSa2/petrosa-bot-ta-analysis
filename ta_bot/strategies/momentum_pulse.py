@@ -77,12 +77,21 @@ class MomentumPulseStrategy(BaseStrategy):
         if not all_confirmations:
             return None
 
+        # Calculate stop loss and take profit (momentum/trend strategy)
+        # Stop loss at EMA50 (key support in uptrend)
+        stop_loss = current["ema50"]
+        risk = abs(current["close"] - stop_loss)
+        take_profit = current["close"] + (risk * 2.5)  # 2.5:1 R:R for momentum trades
+
         # Prepare metadata for signal
         signal_metadata = {
             "macd_hist": current["macd_hist"],
             "macd_signal": current.get("macd_signal", 0),
             "rsi": current["rsi"],
             "volume": current.get("volume", 0),
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "risk_reward_ratio": 2.5,
         }
 
         # Create and return Signal object
@@ -94,5 +103,7 @@ class MomentumPulseStrategy(BaseStrategy):
             current_price=current["close"],
             price=current["close"],
             timeframe=timeframe,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=signal_metadata,
         )

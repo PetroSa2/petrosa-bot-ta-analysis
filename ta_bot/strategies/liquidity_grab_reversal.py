@@ -73,6 +73,20 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
         if rsi_divergence:
             confidence += 0.05
 
+        # Calculate stop loss and take profit (reversal strategy)
+        if action == "buy":
+            # For bullish liquidity grab - SL below the grabbed level
+            support_level = df["low"].iloc[-20:-5].min()
+            stop_loss = support_level * 0.995  # 0.5% below support
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] + (risk * 2.0)  # 2:1 R:R
+        else:
+            # For bearish liquidity grab - SL above the grabbed level
+            resistance_level = df["high"].iloc[-20:-5].max()
+            stop_loss = resistance_level * 1.005  # 0.5% above resistance
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] - (risk * 2.0)  # 2:1 R:R
+
         # Prepare metadata for signal
         signal_metadata = {
             "rsi": current["rsi"],
@@ -81,6 +95,9 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
             "signal_type": signal_type,
             "liquidity_grab": True,
             "rsi_divergence": rsi_divergence,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "risk_reward_ratio": 2.0,
         }
 
         # Create and return Signal object
@@ -92,6 +109,8 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
             current_price=current["close"],
             price=current["close"],
             timeframe=timeframe,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=signal_metadata,
         )
 

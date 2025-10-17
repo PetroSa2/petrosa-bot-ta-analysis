@@ -82,6 +82,24 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
         else:
             volume_ratio = None
 
+        # Calculate stop loss and take profit (accumulation/distribution strategy)
+        if action == "buy":
+            # For accumulation - SL below recent support
+            support_level = df["low"].iloc[-20:-10].min()
+            stop_loss = support_level * 0.99  # 1% below support
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] + (
+                risk * 2.5
+            )  # 2.5:1 R:R for institutional moves
+        else:
+            # For distribution - SL above recent resistance
+            resistance_level = df["high"].iloc[-20:-10].max()
+            stop_loss = resistance_level * 1.01  # 1% above resistance
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] - (
+                risk * 2.5
+            )  # 2.5:1 R:R for institutional moves
+
         signal_metadata = {
             "rsi": current["rsi"],
             "volume_ratio": volume_ratio,
@@ -89,6 +107,9 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             "order_flow_imbalance": True,
             "volume_confirmed": volume_confirmed,
             "rsi_confirmed": rsi_confirmed,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "risk_reward_ratio": 2.5,
         }
 
         # Create and return Signal object
@@ -100,6 +121,8 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             current_price=current["close"],
             price=current["close"],
             timeframe=timeframe,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=signal_metadata,
         )
 

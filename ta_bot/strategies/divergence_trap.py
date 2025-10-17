@@ -91,6 +91,14 @@ class DivergenceTrapStrategy(BaseStrategy):
             momentum = False
 
         if hidden_bullish_divergence and oversold and momentum:
+            # Calculate stop loss and take profit (reversal strategy)
+            # Stop loss at recent swing low
+            recent_lows = df["low"].iloc[-10:]
+            swing_low = recent_lows.min()
+            stop_loss = swing_low * 0.99  # 1% below swing low
+            risk = abs(close - stop_loss)
+            take_profit = close + (risk * 2.0)  # 2:1 R:R for divergence reversals
+
             # Create and return Signal object
             return Signal(
                 strategy_id="divergence_trap",
@@ -100,11 +108,16 @@ class DivergenceTrapStrategy(BaseStrategy):
                 current_price=close,
                 price=close,
                 timeframe=timeframe,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
                 metadata={
                     "rsi": current_rsi,
                     "divergence_type": "hidden_bullish",
                     "oversold": oversold,
                     "momentum": momentum,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
+                    "risk_reward_ratio": 2.0,
                 },
             )
 
