@@ -13,24 +13,81 @@ logger = logging.getLogger(__name__)
 
 
 class BaseStrategy:
-    """Base class for all trading strategies."""
+    """
+    Base class for all trading strategies.
 
-    def __init__(self):
-        """Initialize the strategy."""
-        pass
+    Supports runtime configuration management while maintaining
+    backward compatibility with existing implementations.
+    """
+
+    def __init__(self, config_manager=None):
+        """
+        Initialize the strategy.
+
+        Args:
+            config_manager: Optional StrategyConfigManager for runtime configuration.
+                           If None, strategies use hardcoded defaults (backward compatible).
+        """
+        self.config_manager = config_manager
+        self.strategy_id = self.__class__.__name__.lower().replace("strategy", "")
 
     def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
         """
         Analyze candles and return a trading signal.
 
+        This method maintains backward compatibility. Strategies can optionally
+        use self.config_manager to load runtime configuration if available.
+
         Args:
             df: DataFrame with OHLCV data
             metadata: Additional metadata (symbol, period, etc.)
+                     May include 'config' key with pre-loaded configuration
 
         Returns:
             Signal object if conditions are met, None otherwise
         """
         raise NotImplementedError("Subclasses must implement analyze method")
+
+    def _get_config(self, metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Get configuration for this strategy.
+
+        Checks metadata['config'] first (pre-loaded), then returns None
+        if not available. This allows backward compatibility.
+
+        Args:
+            metadata: Strategy metadata that may contain config
+
+        Returns:
+            Configuration dict or None if not available
+        """
+        return metadata.get("config")
+
+    def _add_config_to_signal(
+        self, signal: Signal, config: Optional[Dict[str, Any]]
+    ) -> Signal:
+        """
+        Add configuration metadata to signal for position tracking.
+
+        Args:
+            signal: Signal to enhance
+            config: Configuration used to generate signal
+
+        Returns:
+            Enhanced signal with config metadata
+        """
+        if config and signal:
+            if not signal.metadata:
+                signal.metadata = {}
+
+            signal.metadata["strategy_config"] = {
+                "version": config.get("version", 1),
+                "parameters": config.get("parameters", {}),
+                "source": config.get("source", "default"),
+                "is_override": config.get("is_override", False),
+            }
+
+        return signal
 
     def _get_current_values(
         self, indicators: Dict[str, Any], df: pd.DataFrame
