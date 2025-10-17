@@ -58,7 +58,10 @@ async def main():
 
         # Start health server in background
         health_server = await start_health_server(
-            nats_url=config.nats_url, api_endpoint=config.api_endpoint, port=8000
+            nats_url=config.nats_url,
+            api_endpoint=config.api_endpoint,
+            port=8000,
+            publisher=publisher,
         )
 
         # Start the health server in a separate task
@@ -69,6 +72,19 @@ async def main():
             logger.info("NATS is enabled, starting NATS listener...")
             # Start NATS listener in a separate task
             nats_task = asyncio.create_task(nats_listener.start())
+
+            # CRITICAL: Wait briefly for publisher to initialize, then verify NATS connection
+            await asyncio.sleep(2)  # Give publisher time to connect
+            if publisher.nats_client is None:
+                logger.error(
+                    "CRITICAL: Publisher failed to connect to NATS at %s",
+                    config.nats_url,
+                )
+                raise RuntimeError(
+                    "Signal publishing will not work - NATS connection failed. "
+                    "Check NATS_URL configuration and network connectivity."
+                )
+            logger.info("✅ Publisher NATS connection verified successfully")
 
             # Wait for both health server and NATS listener
             await asyncio.gather(health_task, nats_task)

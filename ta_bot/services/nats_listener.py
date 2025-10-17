@@ -170,7 +170,11 @@ class NATSListener:
                     )
 
                 # Publish signals to Trade Engine regardless of DB persistence outcome
+                logger.info(
+                    f"🚀 PUBLISHING {len(signals)} signals to Trade Engine via publisher"
+                )
                 await self.publisher.publish_signals(signals)
+                logger.info(f"✅ Publisher call completed for {len(signals)} signals")
 
             else:
                 logger.info(

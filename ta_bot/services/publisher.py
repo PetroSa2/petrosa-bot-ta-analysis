@@ -69,7 +69,11 @@ class SignalPublisher:
             logger.info("No signals to publish")
             return
 
-        logger.info(f"Publishing {len(signals)} signals to Trade Engine")
+        logger.info(
+            f"📤 PUBLISH REQUEST: {len(signals)} signals | "
+            f"NATS Connected: {self.nats_client is not None} | "
+            f"REST Enabled: {self.enable_rest_publishing}"
+        )
 
         # Publish via REST API (only if enabled)
         if self.enable_rest_publishing:
@@ -79,6 +83,8 @@ class SignalPublisher:
 
         # Publish via NATS
         await self._publish_via_nats(signals)
+
+        logger.info(f"✅ PUBLISH COMPLETE: {len(signals)} signals dispatched")
 
     async def _publish_via_rest(self, signals: List[Signal]):
         """Publish signals via REST API."""
@@ -116,7 +122,10 @@ class SignalPublisher:
     async def _publish_via_nats(self, signals: List[Signal]):
         """Publish signals via NATS."""
         if not self.nats_client:
-            logger.warning("NATS client not connected")
+            logger.error(
+                "❌ CRITICAL: Cannot publish to NATS - client not connected. "
+                "Signals will be LOST! Check NATS_URL and connectivity."
+            )
             return
 
         for signal in signals:
