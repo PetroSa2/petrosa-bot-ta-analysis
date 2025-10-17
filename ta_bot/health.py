@@ -72,9 +72,25 @@ def get_uptime() -> str:
 @app.get("/health")
 async def health_check():
     """Get detailed health status."""
+    # Check NATS publisher connection
+    nats_publisher_status = "unknown"
+    if hasattr(app.state, "publisher") and app.state.publisher:
+        if app.state.publisher.nats_client is not None:
+            nats_publisher_status = "connected"
+        else:
+            nats_publisher_status = "disconnected"
+
+    # Determine overall health status
+    status = "healthy"
+    if (
+        nats_publisher_status == "disconnected"
+        and os.getenv("NATS_ENABLED", "true").lower() == "true"
+    ):
+        status = "degraded"
+
     return JSONResponse(
         {
-            "status": "healthy",
+            "status": status,
             "version": os.getenv("VERSION", "1.0.0"),
             "build_info": {
                 "commit_sha": os.getenv("COMMIT_SHA", "unknown"),
@@ -86,6 +102,7 @@ async def health_check():
                 if os.getenv("NATS_ENABLED", "true").lower() == "true"
                 else "disabled",
                 "publisher": "ready",
+                "nats_publisher": nats_publisher_status,
             },
             "uptime": get_uptime(),
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -154,9 +171,16 @@ async def root():
     )
 
 
-async def start_health_server(nats_url: str, api_endpoint: str, port: int = 8000):
+async def start_health_server(
+    nats_url: str, api_endpoint: str, port: int = 8000, publisher=None
+):
     """Start the FastAPI health server."""
     logger.info(f"Starting FastAPI health server on port {port}")
+
+    # Store publisher reference in app state for health checks
+    if publisher:
+        app.state.publisher = publisher
+        logger.info("Publisher reference stored in health server app state")
 
     # Create server configuration
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")  # nosec B104
