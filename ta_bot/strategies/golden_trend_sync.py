@@ -54,6 +54,13 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         bullish_candle = close > current_values["open"]
 
         if golden_cross and pullback_to_ema21 and bullish_candle:
+            # Calculate stop loss and take profit
+            # Stop loss at EMA50 (as per strategy documentation)
+            stop_loss = current_ema50
+            # Take profit at 2:1 risk-reward ratio
+            risk = abs(close - stop_loss)
+            take_profit = close + (risk * 2.0)
+
             # Create and return Signal object
             return Signal(
                 strategy_id="golden_trend_sync",
@@ -63,10 +70,15 @@ class GoldenTrendSyncStrategy(BaseStrategy):
                 current_price=close,
                 price=close,
                 timeframe=timeframe,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
                 metadata={
                     "ema21": current_ema21,
                     "ema50": current_ema50,
                     "pullback_distance": abs(close - current_ema21) / current_ema21,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
+                    "risk_reward_ratio": 2.0,
                 },
             )
 

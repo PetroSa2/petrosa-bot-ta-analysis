@@ -83,6 +83,18 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
             if volume_ratio > 1.5:
                 confidence += 0.05
 
+        # Calculate stop loss and take profit
+        if bullish_signal:
+            # For bullish: stop loss at kijun_sen, take profit at 2:1 risk-reward
+            stop_loss = current_ichimoku["kijun_sen"]
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] + (risk * 2.0)
+        else:
+            # For bearish: stop loss at kijun_sen, take profit at 2:1 risk-reward
+            stop_loss = current_ichimoku["kijun_sen"]
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] - (risk * 2.0)
+
         # Prepare metadata for signal
         signal_metadata = {
             "tenkan_sen": current_ichimoku["tenkan_sen"],
@@ -92,6 +104,9 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
             "chikou_span": current_ichimoku["chikou_span"],
             "signal_type": signal_type,
             "ichimoku_momentum": True,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "risk_reward_ratio": 2.0,
         }
 
         # Create and return Signal object
@@ -103,6 +118,8 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
             current_price=current["close"],
             price=current["close"],
             timeframe=timeframe,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=signal_metadata,
         )
 
