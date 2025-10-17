@@ -75,6 +75,12 @@ class BandFadeReversalStrategy(BaseStrategy):
             reversal_pattern = False
 
         if near_lower_band and below_middle and reversal_pattern:
+            # Calculate stop loss and take profit (mean reversion strategy)
+            # Stop loss below lower band
+            stop_loss = current_bb_lower * 0.98  # 2% below lower band
+            # Take profit at middle band (mean reversion target)
+            take_profit = current_bb_middle
+
             # Create and return Signal object
             return Signal(
                 strategy_id="band_fade_reversal",
@@ -84,12 +90,17 @@ class BandFadeReversalStrategy(BaseStrategy):
                 current_price=close,
                 price=close,
                 timeframe=timeframe,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
                 metadata={
                     "bb_lower": current_bb_lower,
                     "bb_middle": current_bb_middle,
                     "bb_upper": current_bb_upper,
                     "distance_from_lower": (close - current_bb_lower)
                     / current_bb_lower,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
+                    "target": "middle_band",
                 },
             )
 

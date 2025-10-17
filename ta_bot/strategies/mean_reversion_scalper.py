@@ -101,6 +101,16 @@ class MeanReversionScalperStrategy(BaseStrategy):
         if deviation > 0.04:  # 4% deviation
             confidence += 0.05
 
+        # Calculate stop loss and take profit (mean reversion/scalping strategy)
+        if action == "buy":
+            # Buy oversold - mean revert to EMA21
+            stop_loss = bb_lower * 0.985  # 1.5% below lower band
+            take_profit = ema21  # Target EMA21 (mean reversion)
+        else:
+            # Sell overbought - mean revert to EMA21
+            stop_loss = bb_upper * 1.015  # 1.5% above upper band
+            take_profit = ema21  # Target EMA21 (mean reversion)
+
         # Prepare metadata for signal
         signal_metadata = {
             "deviation_from_ema": deviation,
@@ -110,6 +120,9 @@ class MeanReversionScalperStrategy(BaseStrategy):
             "bb_upper": bb_upper,
             "signal_type": signal_type,
             "mean_reversion": True,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "target": "ema21",
         }
 
         # Create and return Signal object
@@ -121,5 +134,7 @@ class MeanReversionScalperStrategy(BaseStrategy):
             current_price=close,
             price=close,
             timeframe=timeframe,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=signal_metadata,
         )

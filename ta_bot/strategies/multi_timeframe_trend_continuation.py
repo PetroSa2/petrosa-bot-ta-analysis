@@ -83,6 +83,22 @@ class MultiTimeframeTrendContinuationStrategy(BaseStrategy):
         trend_strength = self._calculate_trend_strength(df, trend_direction)
         confidence += trend_strength * 0.1
 
+        # Calculate stop loss and take profit (trend continuation strategy)
+        if action == "buy":
+            # For bullish trend continuation
+            stop_loss = current["ema50"]  # SL at EMA50
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] + (
+                risk * 3.0
+            )  # 3:1 R:R for multi-TF alignment
+        else:
+            # For bearish trend continuation
+            stop_loss = current["ema50"]  # SL at EMA50
+            risk = abs(current["close"] - stop_loss)
+            take_profit = current["close"] - (
+                risk * 3.0
+            )  # 3:1 R:R for multi-TF alignment
+
         # Prepare metadata for signal
         signal_metadata = {
             "trend_direction": trend_direction,
@@ -94,6 +110,9 @@ class MultiTimeframeTrendContinuationStrategy(BaseStrategy):
             "ema200": current["ema200"],
             "signal_type": signal_type,
             "multi_timeframe": True,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "risk_reward_ratio": 3.0,
         }
 
         # Create and return Signal object
@@ -105,6 +124,8 @@ class MultiTimeframeTrendContinuationStrategy(BaseStrategy):
             current_price=current["close"],
             price=current["close"],
             timeframe=timeframe,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=signal_metadata,
         )
 

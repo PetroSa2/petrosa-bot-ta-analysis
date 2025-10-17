@@ -132,6 +132,12 @@ class EMAAlignmentBullishStrategy(BaseStrategy):
             0.95, base_confidence + strength_adjustment + distance_adjustment
         )
 
+        # Calculate stop loss and take profit (trend following strategy)
+        # Stop loss at EMA80 (key support in uptrend)
+        stop_loss = ema80
+        risk = abs(close - stop_loss)
+        take_profit = close + (risk * 2.5)  # 2.5:1 R:R for strong trend alignment
+
         # Prepare metadata for signal
         signal_metadata = {
             "ema8": ema8,
@@ -141,6 +147,9 @@ class EMAAlignmentBullishStrategy(BaseStrategy):
             "ema8_momentum": ema8_momentum,
             "ema80_momentum": ema80_momentum,
             "strategy_origin": "quantzed_screening_01",
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "risk_reward_ratio": 2.5,
         }
 
         # Create and return Signal object
@@ -152,5 +161,7 @@ class EMAAlignmentBullishStrategy(BaseStrategy):
             current_price=close,
             price=close,
             timeframe=timeframe,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=signal_metadata,
         )
