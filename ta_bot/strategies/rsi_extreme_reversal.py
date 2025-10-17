@@ -36,12 +36,39 @@ class RSIExtremeReversalStrategy(BaseStrategy):
         metadata: Dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for RSI extreme reversal signals."""
-        if len(df) < 78:  # Need sufficient data as per Quantzed requirement
-            return None
-
         # Extract metadata
         symbol = metadata.get("symbol", "UNKNOWN")
         timeframe = metadata.get("timeframe", "15m")
+
+        # Get configuration (pre-loaded or use defaults)
+        config = self._get_config(metadata)
+        if config:
+            params = config.get("parameters", {})
+            min_data_points = params.get("min_data_points", 78)
+            oversold_threshold = params.get("oversold_threshold", 25)
+            extreme_threshold = params.get("extreme_threshold", 2)
+            base_confidence = params.get("base_confidence", 0.65)
+            extreme_confidence = params.get("extreme_confidence", 0.82)
+            oversold_confidence = params.get("oversold_confidence", 0.72)
+            momentum_adjustment_factor = params.get("momentum_adjustment_factor", 0.02)
+            momentum_threshold = params.get("momentum_threshold", -2)
+            momentum_boost = params.get("momentum_boost", 0.08)
+            momentum_penalty = params.get("momentum_penalty", -0.05)
+        else:
+            # Backward compatibility: use hardcoded defaults
+            min_data_points = 78
+            oversold_threshold = 25
+            extreme_threshold = 2
+            base_confidence = 0.65
+            extreme_confidence = 0.82
+            oversold_confidence = 0.72
+            momentum_adjustment_factor = 0.02
+            momentum_threshold = -2
+            momentum_boost = 0.08
+            momentum_penalty = -0.05
+
+        if len(df) < min_data_points:
+            return None
 
         # Quantzed restriction: avoid minute timeframes (too noisy)
         if (
@@ -88,25 +115,25 @@ class RSIExtremeReversalStrategy(BaseStrategy):
         rsi_value = current["rsi_2"]
         close = current["close"]
 
-        # Quantzed conditions
-        extremely_oversold = rsi_value < 2  # Screening 08: RSI(2) < 2
-        oversold = rsi_value < 25  # Screening 09: RSI(2) < 25
+        # Quantzed conditions (now using config parameters)
+        extremely_oversold = rsi_value < extreme_threshold  # Screening 08: RSI(2) < 2
+        oversold = rsi_value < oversold_threshold  # Screening 09: RSI(2) < 25
 
         signal_action = None
         signal_strength = None
-        base_confidence = 0.65  # Alert-level confidence
+        final_base_confidence = base_confidence
 
         if extremely_oversold:
             # Extremely rare condition - high probability reversal
             signal_action = "buy"
             signal_strength = "extreme"
-            base_confidence = 0.82  # Higher confidence for extreme condition
+            final_base_confidence = extreme_confidence
 
         elif oversold:
             # More common oversold condition
             signal_action = "buy"
             signal_strength = "strong"
-            base_confidence = 0.72
+            final_base_confidence = oversold_confidence
         else:
             return None
 
@@ -116,15 +143,21 @@ class RSIExtremeReversalStrategy(BaseStrategy):
         if "rsi_2" in previous:
             rsi_momentum = current["rsi_2"] - previous["rsi_2"]
 
-        # Adjust confidence based on RSI momentum
+        # Adjust confidence based on RSI momentum (using config parameters)
         # If RSI is starting to turn up from extreme levels, higher confidence
         momentum_adjustment = 0
         if rsi_momentum > 0:  # RSI turning up
-            momentum_adjustment = min(0.08, rsi_momentum * 0.02)
-        elif rsi_momentum < -2:  # RSI still falling fast (reduce confidence)
-            momentum_adjustment = -0.05
+            momentum_adjustment = min(
+                momentum_boost, rsi_momentum * momentum_adjustment_factor
+            )
+        elif (
+            rsi_momentum < momentum_threshold
+        ):  # RSI still falling fast (reduce confidence)
+            momentum_adjustment = momentum_penalty
 
-        final_confidence = max(0.55, min(0.90, base_confidence + momentum_adjustment))
+        final_confidence = max(
+            0.55, min(0.90, final_base_confidence + momentum_adjustment)
+        )
 
         # Calculate how extreme the RSI reading is
         extremeness = max(0, (25 - rsi_value) / 25) if rsi_value < 25 else 0
@@ -139,7 +172,7 @@ class RSIExtremeReversalStrategy(BaseStrategy):
             "strategy_origin": f"quantzed_screening_{'08' if extremely_oversold else '09'}",
         }
 
-        return Signal(
+        signal = Signal(
             strategy_id="rsi_extreme_reversal",
             symbol=symbol,
             action=signal_action,
@@ -149,3 +182,6 @@ class RSIExtremeReversalStrategy(BaseStrategy):
             timeframe=timeframe,
             metadata=signal_metadata,
         )
+
+        # Add configuration metadata to signal for position tracking
+        return self._add_config_to_signal(signal, config)
