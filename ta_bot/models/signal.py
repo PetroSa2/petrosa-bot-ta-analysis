@@ -117,6 +117,14 @@ class Signal:
         signal_dict["order_type"] = self.order_type.value
         signal_dict["time_in_force"] = self.time_in_force.value
 
+        # CRITICAL FIX: Convert ALL top-level numpy types to native Python types
+        # This ensures stop_loss, take_profit, and other numeric fields serialize correctly
+        for key, value in list(signal_dict.items()):
+            if value is not None and hasattr(value, "item"):  # numpy scalar
+                signal_dict[key] = value.item()
+            elif value is not None and hasattr(value, "dtype"):  # numpy array/bool
+                signal_dict[key] = float(value) if value.dtype != bool else bool(value)
+
         # Convert numpy types in metadata to native Python types
         if signal_dict.get("metadata"):
             metadata = {}
@@ -134,6 +142,9 @@ class Signal:
                 metadata[key] = sanitize_json_value(converted_value)
 
             signal_dict["metadata"] = metadata
+
+        # Sanitize all fields to ensure no NaN/Inf values
+        signal_dict = sanitize_json_value(signal_dict)
 
         return signal_dict
 

@@ -124,6 +124,12 @@ class SignalPublisher:
                 # Convert signal to Trade Engine format
                 signal_data = signal.to_dict()
 
+                # DEBUG: Log the signal data including stop_loss/take_profit
+                logger.info(
+                    f"🔍 DEBUG SIGNAL DATA: {signal.strategy_id} | "
+                    f"SL: {signal_data.get('stop_loss')} | TP: {signal_data.get('take_profit')}"
+                )
+
                 # Publish to NATS subject that Trade Engine listens to
                 subject = "signals.trading"
                 message = json.dumps(signal_data).encode()
