@@ -147,7 +147,14 @@ class SignalPublisher:
                     f"Publishing signal via NATS: {signal.strategy_id} - {signal.action}"
                 )
 
+                logger.info(
+                    f"🔍 NATS PUBLISH DETAILS: Subject={subject} | "
+                    f"Message size={len(message)} bytes | "
+                    f"NATS client connected={self.nats_client.is_connected if self.nats_client else False}"
+                )
+
                 await self.nats_client.publish(subject, message)
+
                 logger.info(
                     f"Signal published successfully via NATS: {signal.strategy_id}"
                 )
