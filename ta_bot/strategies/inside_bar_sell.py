@@ -13,6 +13,7 @@ in a bearish context, they often precede further downward movement.
 """
 
 import logging
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 import pandas as pd
@@ -110,7 +111,7 @@ class InsideBarSellStrategy(BaseStrategy):
                     strength=SignalStrength.MEDIUM,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=str(data.index[-1]),
+                    timestamp=datetime.utcnow().isoformat(),
                     metadata={
                         "ema8": current_ema8,
                         "ema80": current_ema80,
