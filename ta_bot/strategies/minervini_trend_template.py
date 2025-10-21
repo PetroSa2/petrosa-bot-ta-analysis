@@ -18,6 +18,7 @@ This is a comprehensive trend-following strategy that identifies assets
 with institutional-quality momentum characteristics.
 """
 
+from datetime import datetime
 from typing import Optional
 
 import pandas as pd
@@ -176,7 +177,7 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
                     entry_price=entry_price,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=data.index[-1],
+                    timestamp=datetime.utcnow().isoformat(),
                     metadata={
                         "sma50": current_sma50,
                         "sma150": current_sma150,

@@ -13,6 +13,7 @@ This is the opposite of the Bear Trap Buy - here bulls get trapped
 in long positions as the price fails to sustain above key resistance.
 """
 
+from datetime import datetime
 from typing import Optional
 
 import pandas as pd
@@ -114,7 +115,7 @@ class BearTrapSellStrategy(BaseStrategy):
                     entry_price=entry_price,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=data.index[-1],
+                    timestamp=datetime.utcnow().isoformat(),
                     metadata={
                         "ema80": current_ema80,
                         "false_breakout_height": false_breakout_height,

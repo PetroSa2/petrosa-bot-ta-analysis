@@ -12,6 +12,7 @@ This is the bearish counterpart to the EMA Alignment Bullish strategy,
 confirming strong downtrend conditions with multiple EMA confirmations.
 """
 
+from datetime import datetime
 from typing import Optional
 
 import pandas as pd
@@ -125,7 +126,7 @@ class EMAAlignmentBearishStrategy(BaseStrategy):
                     entry_price=entry_price,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=data.index[-1],
+                    timestamp=datetime.utcnow().isoformat(),
                     metadata={
                         "ema8": current_ema8,
                         "ema80": current_ema80,
