@@ -129,6 +129,11 @@ class MongoDBClient:
                 [("changed_at", -1)]  # Descending for recent-first queries
             )
 
+            # Application config audit trail: index on changed_at
+            await self.database.app_config_audit.create_index(
+                [("changed_at", -1)]  # Descending for recent-first queries
+            )
+
             logger.info("MongoDB indexes created successfully")
 
         except Exception as e:
@@ -474,4 +479,140 @@ class MongoDBClient:
             return sorted(symbols)
         except Exception as e:
             logger.error(f"Error listing symbol overrides for {strategy_id}: {e}")
+            return []
+
+    # -------------------------------------------------------------------------
+    # Application Configuration Methods
+    # -------------------------------------------------------------------------
+
+    async def get_app_config(self) -> Optional[Dict[str, Any]]:
+        """
+        Get application configuration.
+
+        Returns:
+            Configuration document or None if not found
+        """
+        if not self._connected:
+            return None
+
+        try:
+            # Single document approach - get the first (and only) config
+            config = await self.database.app_config.find_one()
+            return config
+        except Exception as e:
+            logger.error(f"Error fetching app config: {e}")
+            return None
+
+    async def upsert_app_config(
+        self, config: Dict[str, Any], metadata: Dict[str, Any]
+    ) -> Optional[str]:
+        """
+        Create or update application configuration.
+
+        Args:
+            config: Configuration values
+            metadata: Additional metadata (created_by, reason, etc.)
+
+        Returns:
+            Configuration ID or None on failure
+        """
+        if not self._connected:
+            return None
+
+        try:
+            now = datetime.utcnow()
+
+            # Get existing to check version
+            existing = await self.get_app_config()
+
+            doc = {
+                "enabled_strategies": config.get("enabled_strategies", []),
+                "symbols": config.get("symbols", []),
+                "candle_periods": config.get("candle_periods", []),
+                "min_confidence": config.get("min_confidence", 0.6),
+                "max_confidence": config.get("max_confidence", 0.95),
+                "max_positions": config.get("max_positions", 10),
+                "position_sizes": config.get("position_sizes", [100, 200, 500, 1000]),
+                "updated_at": now,
+                "metadata": metadata,
+            }
+
+            if existing:
+                doc["version"] = existing.get("version", 1) + 1
+                doc["created_at"] = existing.get("created_at", now)
+                doc_id = existing.get("_id")
+            else:
+                doc["version"] = 1
+                doc["created_at"] = now
+                doc_id = None
+
+            if doc_id:
+                # Update existing
+                result = await self.database.app_config.update_one(
+                    {"_id": doc_id}, {"$set": doc}
+                )
+                logger.info("Updated application config")
+                return str(doc_id)
+            else:
+                # Insert new
+                result = await self.database.app_config.insert_one(doc)
+                logger.info("Created application config")
+                return str(result.inserted_id)
+
+        except Exception as e:
+            logger.error(f"Error upserting app config: {e}")
+            return None
+
+    async def create_app_audit_record(
+        self, audit_data: Dict[str, Any]
+    ) -> Optional[str]:
+        """
+        Create audit trail record for application configuration change.
+
+        Args:
+            audit_data: Audit information (action, old/new config, changed_by, etc.)
+
+        Returns:
+            Audit record ID or None on failure
+        """
+        if not self._connected:
+            return None
+
+        try:
+            audit_data["changed_at"] = datetime.utcnow()
+            result = await self.database.app_config_audit.insert_one(audit_data)
+            logger.info(
+                "Created app config audit record",
+                extra={"action": audit_data.get("action")},
+            )
+            return str(result.inserted_id)
+        except Exception as e:
+            logger.error(f"Error creating app config audit record: {e}")
+            return None
+
+    async def get_app_audit_trail(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Get application configuration change history.
+
+        Args:
+            limit: Maximum number of records to return
+
+        Returns:
+            List of audit records (most recent first)
+        """
+        if not self._connected:
+            return []
+
+        try:
+            cursor = (
+                self.database.app_config_audit.find()
+                .sort("changed_at", -1)
+                .limit(limit)
+            )
+
+            records = await cursor.to_list(length=limit)
+            return records
+
+        except Exception as e:
+            logger.error(f"Error fetching app config audit trail: {e}")
             return []

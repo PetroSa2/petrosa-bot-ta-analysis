@@ -90,9 +90,28 @@ class SignalEngine:
         self.indicators = Indicators()
 
     def analyze_candles(
-        self, df: pd.DataFrame, symbol: str, period: str
+        self,
+        df: pd.DataFrame,
+        symbol: str,
+        period: str,
+        enabled_strategies: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        max_confidence: Optional[float] = None,
     ) -> List[Signal]:
-        """Analyze candle data and generate trading signals."""
+        """
+        Analyze candle data and generate trading signals.
+
+        Args:
+            df: DataFrame with OHLCV data
+            symbol: Trading symbol (e.g., 'BTCUSDT')
+            period: Timeframe (e.g., '5m', '15m')
+            enabled_strategies: Optional list of strategy IDs to run (filters strategies)
+            min_confidence: Optional minimum confidence threshold for signals
+            max_confidence: Optional maximum confidence threshold for signals
+
+        Returns:
+            List of trading signals
+        """
         if df is None or len(df) == 0:
             logger.warning("No candle data provided for analysis")
             return []
@@ -108,15 +127,42 @@ class SignalEngine:
         current_price = float(df["close"].iloc[-1])
         logger.info(f"Current price: {current_price}")
 
+        # Determine which strategies to run
+        strategies_to_run = self.strategies
+        if enabled_strategies:
+            # Filter to only enabled strategies
+            strategies_to_run = {
+                name: strategy
+                for name, strategy in self.strategies.items()
+                if name in enabled_strategies
+            }
+            logger.info(
+                f"Running {len(strategies_to_run)} enabled strategies (out of {len(self.strategies)} total)"
+            )
+        else:
+            logger.info(f"Running all {len(strategies_to_run)} strategies")
+
         signals = []
 
         # Run each strategy
-        for strategy_name, strategy in self.strategies.items():
+        for strategy_name, strategy in strategies_to_run.items():
             logger.info(f"--- Running {strategy_name} strategy ---")
             signal = self._run_strategy(
                 strategy, strategy_name, df, symbol, period, indicators, current_price
             )
             if signal:
+                # Apply confidence filtering if specified
+                if min_confidence is not None and signal.confidence < min_confidence:
+                    logger.info(
+                        f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} < min {min_confidence:.2f})"
+                    )
+                    continue
+                if max_confidence is not None and signal.confidence > max_confidence:
+                    logger.info(
+                        f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} > max {max_confidence:.2f})"
+                    )
+                    continue
+
                 signals.append(signal)
                 logger.info(
                     f"✅ {strategy_name}: SIGNAL GENERATED - {signal.action} with {signal.confidence:.2f} confidence"

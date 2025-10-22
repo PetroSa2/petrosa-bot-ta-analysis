@@ -2,15 +2,7 @@
 # Ensures code quality, security, and consistency across all services
 
 repos:
-  # Black code formatter
-  - repo: https://github.com/psf/black
-    rev: 23.12.1
-    hooks:
-      - id: black
-        language_version: python3.11
-        args: [--line-length=88]
-
-  # Ruff linter (faster than flake8)
+  # Ruff linter and formatter (faster than flake8 and black)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.15
     hooks:

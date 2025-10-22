@@ -10,6 +10,7 @@ from typing import Any, List
 from nats.aio.client import Client as NATS
 
 from ta_bot.core.signal_engine import SignalEngine
+from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.leader_election import LeaderElection
 from ta_bot.services.mysql_client import MySQLClient
 from ta_bot.services.publisher import SignalPublisher
@@ -29,8 +30,21 @@ class NATSListener:
         nats_subject_prefix_production: str = "binance.extraction.production",
         supported_symbols: list[str] | None = None,
         supported_timeframes: list[str] | None = None,
+        app_config_manager: AppConfigManager | None = None,
     ):
-        """Initialize the NATS listener."""
+        """
+        Initialize the NATS listener.
+
+        Args:
+            nats_url: NATS server URL
+            signal_engine: SignalEngine instance for analyzing candles
+            publisher: SignalPublisher for publishing signals
+            nats_subject_prefix: NATS subject prefix
+            nats_subject_prefix_production: NATS subject prefix for production
+            supported_symbols: Default symbols (fallback if no runtime config)
+            supported_timeframes: Default timeframes (fallback if no runtime config)
+            app_config_manager: Optional AppConfigManager for runtime configuration
+        """
         self.nats_url = nats_url
         self.signal_engine = signal_engine
         self.publisher = publisher
@@ -38,6 +52,7 @@ class NATSListener:
         self.nats_subject_prefix_production = nats_subject_prefix_production
         self.supported_symbols = supported_symbols or ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
         self.supported_timeframes = supported_timeframes or ["15m", "1h"]
+        self.app_config_manager = app_config_manager
         self.nc = NATS()
         self.subscriptions: List[Any] = []
         self.leader_election = None
@@ -124,13 +139,41 @@ class NATSListener:
                 )
                 return
 
+            # Load runtime configuration if available
+            runtime_config = None
+            if self.app_config_manager:
+                try:
+                    runtime_config = await self.app_config_manager.get_config()
+                    logger.debug(
+                        f"Loaded runtime config version {runtime_config.get('version', 0)}"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load runtime config, using defaults: {e}"
+                    )
+
+            # Determine symbols and timeframes from runtime config or defaults
+            if runtime_config and runtime_config.get("symbols"):
+                active_symbols = runtime_config["symbols"]
+            else:
+                active_symbols = self.supported_symbols
+
+            if runtime_config and runtime_config.get("candle_periods"):
+                active_timeframes = runtime_config["candle_periods"]
+            else:
+                active_timeframes = self.supported_timeframes
+
             # Check if symbol and timeframe are supported
-            if symbol not in self.supported_symbols:
-                logger.debug(f"Skipping unsupported symbol: {symbol}")
+            if symbol not in active_symbols:
+                logger.debug(
+                    f"Skipping unsupported symbol: {symbol} (active: {active_symbols})"
+                )
                 return
 
-            if period not in self.supported_timeframes:
-                logger.debug(f"Skipping unsupported timeframe: {period}")
+            if period not in active_timeframes:
+                logger.debug(
+                    f"Skipping unsupported timeframe: {period} (active: {active_timeframes})"
+                )
                 return
 
             logger.info(f"Processing extraction completion for {symbol} {period}")
@@ -144,8 +187,25 @@ class NATSListener:
 
             logger.info(f"Fetched {len(df)} candles for {symbol} {period}")
 
-            # Analyze all strategies on the candle data
-            signals = self.signal_engine.analyze_candles(df, symbol, period)
+            # Extract runtime configuration parameters
+            enabled_strategies = None
+            min_confidence = None
+            max_confidence = None
+
+            if runtime_config:
+                enabled_strategies = runtime_config.get("enabled_strategies")
+                min_confidence = runtime_config.get("min_confidence")
+                max_confidence = runtime_config.get("max_confidence")
+
+            # Analyze candles with runtime configuration
+            signals = self.signal_engine.analyze_candles(
+                df=df,
+                symbol=symbol,
+                period=period,
+                enabled_strategies=enabled_strategies,
+                min_confidence=min_confidence,
+                max_confidence=max_confidence,
+            )
 
             if signals:
                 logger.info(f"Generated {len(signals)} signals for {symbol} {period}")

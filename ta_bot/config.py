@@ -1,5 +1,19 @@
 """
 Configuration module for the TA Bot.
+
+This module provides startup configuration loaded from environment variables.
+For runtime configuration changes, use the Application Configuration API:
+- GET /api/v1/config/application - View current runtime config
+- POST /api/v1/config/application - Update runtime config
+
+Runtime configuration changes take effect within 60 seconds (cache TTL) and
+apply on the next NATS message processed. Changes are persisted to MongoDB
+and tracked in the audit trail.
+
+Startup configuration (this file) is used when:
+1. No runtime configuration exists in the database
+2. Initializing the application for the first time
+3. As fallback if database is unavailable
 """
 
 import os
@@ -9,7 +23,26 @@ from typing import List
 
 @dataclass
 class Config:
-    """Configuration settings for the TA Bot."""
+    """
+    Configuration settings for the TA Bot loaded at startup.
+
+    These settings are loaded from environment variables when the application starts.
+    Most of these settings can be overridden at runtime via the Application Configuration API.
+
+    Runtime-configurable settings (via API):
+    - enabled_strategies: Which trading strategies are active
+    - symbols: Which trading pairs to monitor
+    - candle_periods: Which timeframes to analyze
+    - min_confidence/max_confidence: Signal confidence thresholds
+    - max_positions: Maximum concurrent positions
+    - position_sizes: Available position sizes
+
+    Startup-only settings (require pod restart):
+    - NATS connection settings
+    - API endpoints
+    - OpenTelemetry settings
+    - Logging configuration
+    """
 
     # NATS Configuration
     nats_url: str = os.getenv("NATS_URL", "nats://localhost:4222")

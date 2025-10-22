@@ -9,9 +9,12 @@ import logging
 
 # Import OpenTelemetry initialization early
 import otel_init  # noqa: F401
+from ta_bot.api import config_routes
 from ta_bot.config import Config
 from ta_bot.core.signal_engine import SignalEngine
+from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.health import start_health_server
+from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.nats_listener import NATSListener
 from ta_bot.services.publisher import SignalPublisher
 
@@ -33,16 +36,68 @@ async def main():
         config = Config()
         signal_engine = SignalEngine()
 
+        # Initialize MongoDB client for configuration persistence
+        mongodb_client = MongoDBClient()
+        await mongodb_client.connect()
+        logger.info("MongoDB client initialized")
+
+        # Initialize Application Configuration Manager
+        app_config_manager = AppConfigManager(
+            mongodb_client=mongodb_client,
+            cache_ttl_seconds=60,  # 60 second cache TTL
+        )
+        await app_config_manager.start()
+        logger.info("Application configuration manager initialized")
+
+        # Register configuration manager with API routes
+        config_routes.set_app_config_manager(app_config_manager)
+        logger.info("Configuration manager registered with API routes")
+
+        # Try to load runtime configuration, fallback to startup config
+        runtime_config = await app_config_manager.get_config()
+        if runtime_config.get("version", 0) > 0:
+            logger.info(
+                f"Loaded runtime configuration version {runtime_config['version']} from database"
+            )
+            # Use runtime config as defaults
+            supported_symbols = runtime_config.get(
+                "symbols", [s.strip() for s in config.symbols]
+            )
+            supported_timeframes = runtime_config.get(
+                "candle_periods", [t.strip() for t in config.candle_periods]
+            )
+        else:
+            logger.info("No runtime configuration found, using startup defaults")
+            # Use startup config
+            supported_symbols = [s.strip() for s in config.symbols]
+            supported_timeframes = [t.strip() for t in config.candle_periods]
+
+            # Optionally persist startup config as initial runtime config
+            initial_config = {
+                "enabled_strategies": config.enabled_strategies,
+                "symbols": supported_symbols,
+                "candle_periods": supported_timeframes,
+                "min_confidence": config.min_confidence,
+                "max_confidence": config.max_confidence,
+                "max_positions": config.max_positions,
+                "position_sizes": config.position_sizes,
+            }
+            success, _, errors = await app_config_manager.set_config(
+                config=initial_config,
+                changed_by="system_startup",
+                reason="Initial configuration from environment variables",
+            )
+            if success:
+                logger.info("Persisted startup configuration to database")
+            else:
+                logger.warning(f"Failed to persist startup configuration: {errors}")
+
         # Initialize publisher with both REST API and NATS capabilities
         publisher = SignalPublisher(
             api_endpoint=config.api_endpoint,
             nats_url=config.nats_url if config.nats_enabled else None,
             enable_rest_publishing=config.enable_rest_publishing,
         )
-
-        # Parse supported symbols and timeframes
-        supported_symbols = [s.strip() for s in config.symbols]
-        supported_timeframes = [t.strip() for t in config.candle_periods]
 
         nats_listener = NATSListener(
             nats_url=config.nats_url,
@@ -52,6 +107,7 @@ async def main():
             nats_subject_prefix_production=config.nats_subject_prefix_production,
             supported_symbols=supported_symbols,
             supported_timeframes=supported_timeframes,
+            app_config_manager=app_config_manager,  # Pass runtime config manager
         )
 
         logger.info("Starting TA Bot...")
