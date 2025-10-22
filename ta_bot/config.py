@@ -130,6 +130,20 @@ class Config:
     max_positions: int = 10
     position_sizes: List[int] = field(default_factory=lambda: [100, 200, 500, 1000])
 
+    # TP/SL Configuration (used when strategies don't define their own)
+    # Default stop loss percentage (2% for buy, added for sell)
+    default_stop_loss_pct: float = float(os.getenv("DEFAULT_STOP_LOSS_PCT", "0.02"))
+    # Default take profit percentage (5% for buy, subtracted for sell)
+    default_take_profit_pct: float = float(os.getenv("DEFAULT_TAKE_PROFIT_PCT", "0.05"))
+    # ATR multiplier for stop loss (if ATR is available)
+    atr_stop_loss_multiplier: float = float(
+        os.getenv("ATR_STOP_LOSS_MULTIPLIER", "2.0")
+    )
+    # ATR multiplier for take profit (if ATR is available)
+    atr_take_profit_multiplier: float = float(
+        os.getenv("ATR_TAKE_PROFIT_MULTIPLIER", "3.0")
+    )
+
     # OpenTelemetry Configuration
     otel_service_name: str = os.getenv("OTEL_SERVICE_NAME", "ta-bot")
     otel_service_version: str = os.getenv("OTEL_SERVICE_VERSION", "1.0.0")
