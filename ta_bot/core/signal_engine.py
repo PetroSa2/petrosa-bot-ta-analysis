@@ -236,6 +236,42 @@ class SignalEngine:
             if signal.metadata:
                 logger.info(f"  {strategy_name}: Metadata: {signal.metadata}")
 
+            # CRITICAL FIX: Ensure all signals have stop_loss and take_profit
+            # If strategy didn't set them, calculate using risk management
+            if signal.stop_loss is None or signal.take_profit is None:
+                logger.info(
+                    f"  {strategy_name}: Calculating missing TP/SL using risk management"
+                )
+
+                # Map signal action to SignalType for risk management calculation
+                signal_type = (
+                    SignalType.BUY if signal.action == "buy" else SignalType.SELL
+                )
+
+                # Calculate TP/SL based on ATR and price action
+                stop_loss, take_profit = self._calculate_risk_management(
+                    current_price, indicators, signal_type
+                )
+
+                # Update signal with calculated values
+                signal.stop_loss = stop_loss
+                signal.take_profit = take_profit
+
+                # Also add to metadata for transparency
+                if signal.metadata is None:
+                    signal.metadata = {}
+                signal.metadata["stop_loss_calculated"] = True
+                signal.metadata["stop_loss"] = stop_loss
+                signal.metadata["take_profit"] = take_profit
+
+                logger.info(
+                    f"  {strategy_name}: Calculated TP/SL - SL: {stop_loss:.2f}, TP: {take_profit:.2f}"
+                )
+            else:
+                logger.info(
+                    f"  {strategy_name}: Using strategy-defined TP/SL - SL: {signal.stop_loss:.2f}, TP: {signal.take_profit:.2f}"
+                )
+
             # Validate signal
             if not signal.validate():
                 logger.warning(
