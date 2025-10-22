@@ -13,12 +13,16 @@ from fastapi import APIRouter, HTTPException, Path, Query, status
 
 from ta_bot.api.response_models import (
     APIResponse,
+    AppAuditTrailItem,
+    AppConfigResponse,
+    AppConfigUpdateRequest,
     AuditTrailItem,
     ConfigResponse,
     ConfigUpdateRequest,
     ParameterSchemaItem,
     StrategyListItem,
 )
+from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
 from ta_bot.strategies.defaults import get_parameter_schema, get_strategy_defaults
 
@@ -27,24 +31,41 @@ logger = logging.getLogger(__name__)
 # Router for configuration endpoints
 router = APIRouter()
 
-# Global config manager instance (should be initialized on app startup)
+# Global config manager instances (should be initialized on app startup)
 _config_manager: StrategyConfigManager | None = None
+_app_config_manager: AppConfigManager | None = None
 
 
 def set_config_manager(manager: StrategyConfigManager) -> None:
-    """Set the global config manager instance."""
+    """Set the global strategy config manager instance."""
     global _config_manager
     _config_manager = manager
 
 
 def get_config_manager() -> StrategyConfigManager:
-    """Get the global config manager instance."""
+    """Get the global strategy config manager instance."""
     if _config_manager is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Configuration manager not initialized",
+            detail="Strategy configuration manager not initialized",
         )
     return _config_manager
+
+
+def set_app_config_manager(manager: AppConfigManager) -> None:
+    """Set the global application config manager instance."""
+    global _app_config_manager
+    _app_config_manager = manager
+
+
+def get_app_config_manager() -> AppConfigManager:
+    """Get the global application config manager instance."""
+    if _app_config_manager is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Application configuration manager not initialized",
+        )
+    return _app_config_manager
 
 
 @router.get(
@@ -814,6 +835,360 @@ async def refresh_cache():
         )
     except Exception as e:
         logger.error(f"Error refreshing cache: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
+# -------------------------------------------------------------------------
+# Application Configuration Routes
+# -------------------------------------------------------------------------
+
+
+@router.get(
+    "/config/application",
+    response_model=APIResponse[AppConfigResponse],
+    summary="Get application configuration",
+    description="""
+    **For LLM Agents**: Use this to retrieve the current application-level configuration.
+
+    Application configuration includes:
+    - Enabled strategies (which strategies are running)
+    - Trading symbols (which pairs are monitored)
+    - Timeframes (which candle periods are analyzed)
+    - Confidence thresholds (min/max signal confidence)
+    - Risk management (max positions, position sizes)
+
+    The response indicates:
+    - Current configuration values
+    - Configuration version (increments with each update)
+    - Source (mongodb, mysql, or default)
+    - When it was created/updated
+
+    **Example Request**: `GET /api/v1/config/application`
+
+    **Example Response**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "enabled_strategies": ["momentum_pulse", "rsi_extreme_reversal"],
+        "symbols": ["BTCUSDT", "ETHUSDT"],
+        "candle_periods": ["5m", "15m"],
+        "min_confidence": 0.6,
+        "max_confidence": 0.95,
+        "max_positions": 10,
+        "position_sizes": [100, 200, 500, 1000],
+        "version": 2,
+        "source": "mongodb",
+        "created_at": "2025-10-17T10:00:00Z",
+        "updated_at": "2025-10-21T14:00:00Z"
+      },
+      "metadata": {"cache_hit": true}
+    }
+    ```
+    """,
+    tags=["application-config"],
+)
+async def get_application_config():
+    """Get current application configuration."""
+    try:
+        manager = get_app_config_manager()
+        config = await manager.get_config()
+
+        response_data = AppConfigResponse(
+            enabled_strategies=config.get("enabled_strategies", []),
+            symbols=config.get("symbols", []),
+            candle_periods=config.get("candle_periods", []),
+            min_confidence=config.get("min_confidence", 0.6),
+            max_confidence=config.get("max_confidence", 0.95),
+            max_positions=config.get("max_positions", 10),
+            position_sizes=config.get("position_sizes", [100, 200, 500, 1000]),
+            version=config.get("version", 0),
+            source=config.get("source", "default"),
+            created_at=config.get("created_at", ""),
+            updated_at=config.get("updated_at", ""),
+        )
+
+        return APIResponse(
+            success=True,
+            data=response_data,
+            metadata={
+                "cache_hit": config.get("cache_hit", False),
+                "load_time_ms": config.get("load_time_ms", 0),
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error fetching application config: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
+@router.post(
+    "/config/application",
+    response_model=APIResponse[AppConfigResponse],
+    summary="Update application configuration",
+    description="""
+    **For LLM Agents**: Use this to modify the application-level configuration at runtime.
+
+    **IMPORTANT**:
+    - All fields are optional - only provide fields you want to update
+    - Changes take effect within 60 seconds (cache TTL) for the next NATS message processed
+    - Configuration is validated before saving
+    - All changes are audited for tracking
+
+    **Validation Rules**:
+    - enabled_strategies: Must be non-empty list of valid strategy IDs
+    - symbols: Must be uppercase, valid format (e.g., BTCUSDT, ETHUSDT)
+    - candle_periods: Must be valid Binance timeframes (5m, 15m, 1h, etc.)
+    - min_confidence: 0.0 <= value < max_confidence <= 1.0
+    - max_positions: Must be >= 1
+    - position_sizes: List of positive integers
+
+    **Example Request**:
+    ```json
+    POST /api/v1/config/application
+    {
+      "enabled_strategies": ["momentum_pulse", "rsi_extreme_reversal"],
+      "symbols": ["BTCUSDT", "ETHUSDT"],
+      "candle_periods": ["5m", "15m"],
+      "min_confidence": 0.6,
+      "max_confidence": 0.9,
+      "max_positions": 5,
+      "position_sizes": [100, 200, 500],
+      "changed_by": "llm_agent_v1",
+      "reason": "Optimizing for volatile market conditions",
+      "validate_only": false
+    }
+    ```
+
+    **Dry Run**: Set `validate_only: true` to test configuration without saving.
+    """,
+    tags=["application-config"],
+    status_code=status.HTTP_200_OK,
+)
+async def update_application_config(request: AppConfigUpdateRequest):
+    """Update application configuration."""
+    try:
+        manager = get_app_config_manager()
+
+        # Get current config to merge with updates
+        current_config = await manager.get_config()
+
+        # Build updated config (only include provided fields)
+        updated_config = {}
+        if request.enabled_strategies is not None:
+            updated_config["enabled_strategies"] = request.enabled_strategies
+        else:
+            updated_config["enabled_strategies"] = current_config.get(
+                "enabled_strategies", []
+            )
+
+        if request.symbols is not None:
+            updated_config["symbols"] = request.symbols
+        else:
+            updated_config["symbols"] = current_config.get("symbols", [])
+
+        if request.candle_periods is not None:
+            updated_config["candle_periods"] = request.candle_periods
+        else:
+            updated_config["candle_periods"] = current_config.get("candle_periods", [])
+
+        if request.min_confidence is not None:
+            updated_config["min_confidence"] = request.min_confidence
+        else:
+            updated_config["min_confidence"] = current_config.get("min_confidence", 0.6)
+
+        if request.max_confidence is not None:
+            updated_config["max_confidence"] = request.max_confidence
+        else:
+            updated_config["max_confidence"] = current_config.get(
+                "max_confidence", 0.95
+            )
+
+        if request.max_positions is not None:
+            updated_config["max_positions"] = request.max_positions
+        else:
+            updated_config["max_positions"] = current_config.get("max_positions", 10)
+
+        if request.position_sizes is not None:
+            updated_config["position_sizes"] = request.position_sizes
+        else:
+            updated_config["position_sizes"] = current_config.get(
+                "position_sizes", [100, 200, 500, 1000]
+            )
+
+        success, config, errors = await manager.set_config(
+            config=updated_config,
+            changed_by=request.changed_by,
+            reason=request.reason,
+            validate_only=request.validate_only,
+        )
+
+        if not success:
+            return APIResponse(
+                success=False,
+                error={
+                    "code": "VALIDATION_ERROR",
+                    "message": "Configuration validation failed",
+                    "details": {"errors": errors},
+                },
+            )
+
+        if request.validate_only:
+            return APIResponse(
+                success=True,
+                data=None,
+                metadata={
+                    "validation": "passed",
+                    "message": "Configuration is valid but not saved (validate_only=true)",
+                },
+            )
+
+        response_data = AppConfigResponse(
+            enabled_strategies=config.enabled_strategies,
+            symbols=config.symbols,
+            candle_periods=config.candle_periods,
+            min_confidence=config.min_confidence,
+            max_confidence=config.max_confidence,
+            max_positions=config.max_positions,
+            position_sizes=config.position_sizes,
+            version=config.version,
+            source="mongodb",
+            created_at=config.created_at.isoformat(),
+            updated_at=config.updated_at.isoformat(),
+        )
+
+        return APIResponse(
+            success=True,
+            data=response_data,
+            metadata={
+                "action": "updated" if config.version > 1 else "created",
+                "changes_applied": True,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error updating application config: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
+@router.get(
+    "/config/application/audit",
+    response_model=APIResponse[List[AppAuditTrailItem]],
+    summary="Get application configuration change history",
+    description="""
+    **For LLM Agents**: Use this to see the complete history of application configuration changes.
+
+    The audit trail shows:
+    - What changed (old vs new configuration values)
+    - Who made the change
+    - When it was changed
+    - Why it was changed (if reason was provided)
+
+    This is useful for:
+    - Tracking performance impact of configuration changes
+    - Understanding configuration evolution
+    - Debugging issues related to config changes
+    - Compliance and auditing
+
+    **Example Request**: `GET /api/v1/config/application/audit?limit=50`
+
+    **Example Response**:
+    ```json
+    {
+      "success": true,
+      "data": [
+        {
+          "id": "507f1f77bcf86cd799439013",
+          "action": "UPDATE",
+          "old_config": {
+            "enabled_strategies": ["momentum_pulse"],
+            "min_confidence": 0.7
+          },
+          "new_config": {
+            "enabled_strategies": ["momentum_pulse", "rsi_extreme_reversal"],
+            "min_confidence": 0.6
+          },
+          "changed_by": "llm_agent_v1",
+          "changed_at": "2025-10-21T14:45:00Z",
+          "reason": "Adding RSI strategy for diversification"
+        }
+      ]
+    }
+    ```
+    """,
+    tags=["application-config"],
+)
+async def get_application_audit_trail(
+    limit: int = Query(100, description="Maximum number of audit records to return"),
+):
+    """Get application configuration change history."""
+    try:
+        manager = get_app_config_manager()
+        audit_records = await manager.get_audit_trail(limit=limit)
+
+        response_items = [
+            AppAuditTrailItem(
+                id=record.id,
+                action=record.action,
+                old_config=record.old_config,
+                new_config=record.new_config,
+                changed_by=record.changed_by,
+                changed_at=record.changed_at.isoformat(),
+                reason=record.reason,
+            )
+            for record in audit_records
+        ]
+
+        return APIResponse(
+            success=True,
+            data=response_items,
+            metadata={"total_records": len(response_items), "limit": limit},
+        )
+    except Exception as e:
+        logger.error(f"Error fetching application audit trail: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
+@router.post(
+    "/config/application/cache/refresh",
+    response_model=APIResponse[dict],
+    summary="Force refresh application configuration cache",
+    description="""
+    **For LLM Agents**: Use this to immediately clear the application configuration cache.
+
+    Normally, configuration changes take up to 60 seconds to propagate due to caching.
+    Call this endpoint after making configuration changes to force immediate refresh.
+
+    **When to use**:
+    - After updating application configuration
+    - When you need changes to take effect immediately
+    - For testing configuration changes
+
+    **Example Request**: `POST /api/v1/config/application/cache/refresh`
+    """,
+    tags=["application-config"],
+)
+async def refresh_app_cache():
+    """Force refresh of application configuration cache."""
+    try:
+        manager = get_app_config_manager()
+        await manager.refresh_cache()
+
+        return APIResponse(
+            success=True,
+            data={"message": "Application configuration cache refreshed successfully"},
+            metadata={
+                "note": "Configuration will be reloaded from database on next access"
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error refreshing application config cache: {e}")
         return APIResponse(
             success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
         )

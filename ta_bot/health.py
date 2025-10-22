@@ -45,6 +45,15 @@ SERVICE_UPTIME = Gauge("service_uptime_seconds", "Service uptime in seconds")
 start_time = time.time()
 app = FastAPI(title="TA Bot Health API", version="1.0.0")
 
+# Register configuration API routes
+try:
+    from ta_bot.api.config_routes import router as config_router
+
+    app.include_router(config_router, prefix="/api/v1")
+    logger.info("Configuration API routes registered at /api/v1")
+except Exception as e:
+    logger.warning(f"Could not register configuration API routes: {e}")
+
 # Instrument FastAPI for OpenTelemetry traces
 try:
     from otel_init import instrument_fastapi_app
@@ -98,9 +107,11 @@ async def health_check():
             },
             "components": {
                 "signal_engine": "running",
-                "nats_listener": "connected"
-                if os.getenv("NATS_ENABLED", "true").lower() == "true"
-                else "disabled",
+                "nats_listener": (
+                    "connected"
+                    if os.getenv("NATS_ENABLED", "true").lower() == "true"
+                    else "disabled"
+                ),
                 "publisher": "ready",
                 "nats_publisher": nats_publisher_status,
             },
@@ -117,9 +128,11 @@ async def readiness_check():
         {
             "status": "ready",
             "checks": {
-                "nats_connection": "ok"
-                if os.getenv("NATS_ENABLED", "true").lower() == "true"
-                else "disabled",
+                "nats_connection": (
+                    "ok"
+                    if os.getenv("NATS_ENABLED", "true").lower() == "true"
+                    else "disabled"
+                ),
                 "api_endpoint": "ok",
                 "signal_engine": "ok",
             },

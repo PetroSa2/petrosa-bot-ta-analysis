@@ -327,3 +327,206 @@ class AuditTrailItem(BaseModel):
                 "reason": "Market volatility adjustment",
             }
         }
+
+
+# -------------------------------------------------------------------------
+# Application Configuration Models
+# -------------------------------------------------------------------------
+
+
+class AppConfigUpdateRequest(BaseModel):
+    """
+    Request model for updating application configuration.
+
+    Use this to modify application-level settings like enabled strategies,
+    symbols, timeframes, confidence thresholds, and risk management parameters.
+    Changes take effect within 60 seconds due to caching. All changes are audited.
+    """
+
+    enabled_strategies: Optional[List[str]] = Field(
+        None,
+        description=(
+            "List of strategy identifiers to enable. Must be non-empty. "
+            "Each strategy must exist in the system. "
+            "Example: ['momentum_pulse', 'rsi_extreme_reversal']"
+        ),
+    )
+    symbols: Optional[List[str]] = Field(
+        None,
+        description=(
+            "List of trading symbols to monitor. Must be uppercase and valid format. "
+            "Example: ['BTCUSDT', 'ETHUSDT', 'ADAUSDT']"
+        ),
+    )
+    candle_periods: Optional[List[str]] = Field(
+        None,
+        description=(
+            "List of timeframes to analyze. Must be valid Binance timeframes. "
+            "Example: ['5m', '15m', '1h']"
+        ),
+    )
+    min_confidence: Optional[float] = Field(
+        None,
+        description=(
+            "Minimum confidence threshold for signals (0.0 to 1.0). "
+            "Must be less than max_confidence. Example: 0.6"
+        ),
+    )
+    max_confidence: Optional[float] = Field(
+        None,
+        description=(
+            "Maximum confidence threshold for signals (0.0 to 1.0). "
+            "Must be greater than min_confidence. Example: 0.95"
+        ),
+    )
+    max_positions: Optional[int] = Field(
+        None,
+        description=(
+            "Maximum number of concurrent positions allowed. "
+            "Must be at least 1. Example: 10"
+        ),
+    )
+    position_sizes: Optional[List[int]] = Field(
+        None,
+        description=(
+            "Available position sizes (positive integers). "
+            "Example: [100, 200, 500, 1000]"
+        ),
+    )
+    changed_by: str = Field(
+        ...,
+        description=(
+            "Identifier of who/what is making this change (e.g., 'llm_agent_v1', 'admin'). "
+            "Used for audit trail."
+        ),
+        min_length=1,
+        max_length=100,
+    )
+    reason: Optional[str] = Field(
+        None,
+        description=(
+            "Optional explanation for why this configuration is being changed. "
+            "Helps track the rationale for future analysis."
+        ),
+    )
+    validate_only: bool = Field(
+        False,
+        description=(
+            "If true, validates the configuration without saving. "
+            "Use this for dry-run validation."
+        ),
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "enabled_strategies": [
+                    "momentum_pulse",
+                    "rsi_extreme_reversal",
+                    "bollinger_breakout_signals",
+                ],
+                "symbols": ["BTCUSDT", "ETHUSDT"],
+                "candle_periods": ["5m", "15m"],
+                "min_confidence": 0.6,
+                "max_confidence": 0.9,
+                "max_positions": 5,
+                "position_sizes": [100, 200, 500],
+                "changed_by": "llm_agent_v1",
+                "reason": "Optimizing for volatile market conditions",
+                "validate_only": False,
+            }
+        }
+
+
+class AppConfigResponse(BaseModel):
+    """
+    Response model containing application configuration details.
+
+    Shows the active application-level configuration including all runtime settings.
+    """
+
+    enabled_strategies: List[str] = Field(
+        ..., description="List of currently enabled strategies"
+    )
+    symbols: List[str] = Field(
+        ..., description="List of trading symbols being monitored"
+    )
+    candle_periods: List[str] = Field(
+        ..., description="List of timeframes being analyzed"
+    )
+    min_confidence: float = Field(..., description="Minimum confidence threshold")
+    max_confidence: float = Field(..., description="Maximum confidence threshold")
+    max_positions: int = Field(..., description="Maximum concurrent positions allowed")
+    position_sizes: List[int] = Field(..., description="Available position sizes")
+    version: int = Field(
+        ..., description="Configuration version number. Increments with each update."
+    )
+    source: str = Field(
+        ...,
+        description=(
+            "Source of this configuration: 'mongodb' (primary DB), 'mysql' (fallback DB), "
+            "or 'default' (startup defaults)"
+        ),
+    )
+    created_at: str = Field(
+        ..., description="ISO-8601 timestamp when configuration was first created"
+    )
+    updated_at: str = Field(
+        ..., description="ISO-8601 timestamp of the most recent update"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "enabled_strategies": [
+                    "momentum_pulse",
+                    "rsi_extreme_reversal",
+                    "bollinger_breakout_signals",
+                ],
+                "symbols": ["BTCUSDT", "ETHUSDT", "ADAUSDT"],
+                "candle_periods": ["5m", "15m", "1h"],
+                "min_confidence": 0.6,
+                "max_confidence": 0.95,
+                "max_positions": 10,
+                "position_sizes": [100, 200, 500, 1000],
+                "version": 3,
+                "source": "mongodb",
+                "created_at": "2025-10-17T10:30:00Z",
+                "updated_at": "2025-10-21T14:45:00Z",
+            }
+        }
+
+
+class AppAuditTrailItem(BaseModel):
+    """Single audit trail entry showing an application configuration change."""
+
+    id: str = Field(..., description="Audit record ID")
+    action: str = Field(..., description="Action taken: CREATE, UPDATE, or DELETE")
+    old_config: Optional[Dict[str, Any]] = Field(
+        None, description="Previous configuration values (null for CREATE)"
+    )
+    new_config: Optional[Dict[str, Any]] = Field(
+        None, description="New configuration values (null for DELETE)"
+    )
+    changed_by: str = Field(..., description="Who/what made the change")
+    changed_at: str = Field(..., description="ISO-8601 timestamp of change")
+    reason: Optional[str] = Field(None, description="Reason for the change")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "507f1f77bcf86cd799439013",
+                "action": "UPDATE",
+                "old_config": {
+                    "enabled_strategies": ["momentum_pulse"],
+                    "min_confidence": 0.7,
+                },
+                "new_config": {
+                    "enabled_strategies": ["momentum_pulse", "rsi_extreme_reversal"],
+                    "min_confidence": 0.6,
+                },
+                "changed_by": "llm_agent_v1",
+                "changed_at": "2025-10-21T14:45:00Z",
+                "reason": "Adding RSI strategy and lowering confidence for more signals",
+            }
+        }
