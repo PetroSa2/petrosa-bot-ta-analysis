@@ -1,5 +1,8 @@
 """
 MySQL client for fetching candle data and persisting signals.
+
+This client now supports both direct MySQL connections and Data Manager API
+for data access. Data Manager is the recommended approach for new deployments.
 """
 
 import json
@@ -13,11 +16,25 @@ import pandas as pd
 import pymysql
 from pymysql.cursors import DictCursor
 
+# Import Data Manager client
+try:
+    from .data_manager_client import DataManagerClient
+
+    DATA_MANAGER_AVAILABLE = True
+except ImportError:
+    DATA_MANAGER_AVAILABLE = False
+    DataManagerClient = None
+
 logger = logging.getLogger(__name__)
 
 
 class MySQLClient:
-    """MySQL client for database operations."""
+    """
+    MySQL client for database operations.
+
+    Supports both direct MySQL connections and Data Manager API.
+    Data Manager is the recommended approach for new deployments.
+    """
 
     def __init__(
         self,
@@ -27,8 +44,26 @@ class MySQLClient:
         password: str | None = None,
         database: str | None = None,
         uri: str | None = None,
+        use_data_manager: bool = True,
     ):
-        """Initialize MySQL client."""
+        """
+        Initialize MySQL client.
+
+        Args:
+            use_data_manager: If True, use Data Manager API instead of direct MySQL
+        """
+        self.use_data_manager = use_data_manager and DATA_MANAGER_AVAILABLE
+
+        if self.use_data_manager:
+            # Initialize Data Manager client
+            self.data_manager_client = DataManagerClient()
+            self.connection = None  # No direct MySQL connection needed
+            logger.info("Using Data Manager for data access")
+            return
+
+        # Fallback to direct MySQL connection
+        logger.info("Using direct MySQL connection")
+
         # Try to get URI from environment first
         mysql_uri = os.getenv("MYSQL_URI")
 
@@ -73,38 +108,47 @@ class MySQLClient:
         self.connection: Any = None
 
     async def connect(self):
-        """Connect to MySQL database."""
-        try:
-            logger.info("Attempting to connect to MySQL...")
+        """Connect to MySQL database or Data Manager."""
+        if self.use_data_manager:
+            await self.data_manager_client.connect()
+        else:
+            try:
+                logger.info("Attempting to connect to MySQL...")
 
-            self.connection = pymysql.connect(
-                host=self.host,
-                port=self.port,
-                user=self.user,
-                password=self.password,
-                database=self.database,
-                cursorclass=DictCursor,
-                autocommit=True,
-                connect_timeout=30,
-                read_timeout=30,
-                write_timeout=30,
-                charset="utf8mb4",
-            )
-            logger.info("Connected to MySQL successfully")
-        except Exception as e:
-            logger.error(f"Failed to connect to MySQL: {e}")
-            raise
+                self.connection = pymysql.connect(
+                    host=self.host,
+                    port=self.port,
+                    user=self.user,
+                    password=self.password,
+                    database=self.database,
+                    cursorclass=DictCursor,
+                    autocommit=True,
+                    connect_timeout=30,
+                    read_timeout=30,
+                    write_timeout=30,
+                    charset="utf8mb4",
+                )
+                logger.info("Connected to MySQL successfully")
+            except Exception as e:
+                logger.error(f"Failed to connect to MySQL: {e}")
+                raise
 
     async def disconnect(self):
-        """Disconnect from MySQL database."""
-        if self.connection:
-            self.connection.close()
-            logger.info("Disconnected from MySQL")
+        """Disconnect from MySQL database or Data Manager."""
+        if self.use_data_manager:
+            await self.data_manager_client.disconnect()
+        else:
+            if self.connection:
+                self.connection.close()
+                logger.info("Disconnected from MySQL")
 
     async def fetch_candles(
         self, symbol: str, period: str, limit: int = 100
     ) -> pd.DataFrame:
-        """Fetch candle data from MySQL."""
+        """Fetch candle data from MySQL or Data Manager."""
+        if self.use_data_manager:
+            return await self.data_manager_client.fetch_candles(symbol, period, limit)
+
         if not self.connection:
             logger.error("Not connected to MySQL")
             return pd.DataFrame()
@@ -190,7 +234,10 @@ class MySQLClient:
             return obj
 
     async def persist_signal(self, signal_data: Dict[str, Any]) -> bool:
-        """Persist a single signal to MySQL."""
+        """Persist a single signal to MySQL or Data Manager."""
+        if self.use_data_manager:
+            return await self.data_manager_client.persist_signal(signal_data)
+
         if not self.connection:
             logger.error("Not connected to MySQL")
             return False
@@ -262,7 +309,10 @@ class MySQLClient:
             return False
 
     async def persist_signals_batch(self, signals: List[Dict[str, Any]]) -> bool:
-        """Persist multiple signals to MySQL in a batch."""
+        """Persist multiple signals to MySQL or Data Manager in a batch."""
+        if self.use_data_manager:
+            return await self.data_manager_client.persist_signals_batch(signals)
+
         if not self.connection:
             logger.error("Not connected to MySQL")
             return False

@@ -2,7 +2,7 @@
 
 **Advanced cryptocurrency trading signal generation using 28 proven technical analysis strategies**
 
-A production-ready signal generation system that analyzes historical market data using 28 different technical analysis strategies (11 original + 17 Quantzed-adapted). Processes MySQL kline data, generates high-confidence trading signals, and publishes to NATS for consumption by the Trade Engine.
+A production-ready signal generation system that analyzes historical market data using 28 different technical analysis strategies (11 original + 17 Quantzed-adapted). Processes market data via Data Manager API, generates high-confidence trading signals, and publishes to NATS for consumption by the Trade Engine.
 
 ---
 
@@ -16,7 +16,7 @@ A production-ready signal generation system that analyzes historical market data
 |---------|---------|-------|--------|--------|
 | **petrosa-socket-client** | Real-time WebSocket data ingestion | Binance WebSocket API | NATS: `binance.websocket.data` | Real-time Processing |
 | **petrosa-binance-data-extractor** | Historical data extraction & gap filling | Binance REST API | MySQL (klines, funding rates, trades) | Batch Processing |
-| **petrosa-bot-ta-analysis** | Technical analysis (28 strategies) | MySQL klines data | NATS: `signals.trading` | **YOU ARE HERE** |
+| **petrosa-bot-ta-analysis** | Technical analysis (28 strategies) | Data Manager API | NATS: `signals.trading` | **YOU ARE HERE** |
 | **petrosa-realtime-strategies** | Real-time signal generation | NATS: `binance.websocket.data` | NATS: `signals.trading` | Live Processing |
 | **petrosa-tradeengine** | Order execution & trade management | NATS: `signals.trading` | Binance Orders API, MongoDB audit | Order Execution |
 | **petrosa_k8s** | Centralized infrastructure | Kubernetes manifests | Cluster resources | Infrastructure |
@@ -24,16 +24,15 @@ A production-ready signal generation system that analyzes historical market data
 ### Data Flow Pipeline
 
 ```
-┌─────────────┐
-│   MySQL     │
-│  Database   │
-│             │
-│ • Klines    │
-│   15m, 1h   │
-│ • OHLCV     │
-└──────┬──────┘
-       │ MySQL Query
-       │ SELECT * FROM btcusdt_klines_15m
+┌─────────────────────┐
+│  Data Manager API   │
+│                     │
+│ • Klines 15m, 1h    │
+│ • OHLCV Data        │
+│ • Centralized API   │
+└──────┬──────────────┘
+       │ HTTP API Call
+       │ GET /data/candles
        ▼
 ┌──────────────────────┐
 │   TA Bot             │ ◄── THIS SERVICE
