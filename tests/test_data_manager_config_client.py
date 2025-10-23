@@ -18,7 +18,7 @@ class TestDataManagerConfigClient:
         assert client.base_url == "http://petrosa-data-manager:8000"
         assert client.timeout == 30
         assert client.max_retries == 3
-        assert client._session is None
+        assert client._client is None
 
     def test_initialization_with_custom_params(self):
         """Test client initialization with custom parameters."""
@@ -34,35 +34,34 @@ class TestDataManagerConfigClient:
         """Test successful connection."""
         client = DataManagerConfigClient()
 
-        with patch("aiohttp.ClientSession") as mock_session_class:
-            mock_session = AsyncMock()
-            mock_session_class.return_value = mock_session
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
 
             # Mock successful health check
             mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_session.get.return_value.__aenter__.return_value = mock_response
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"status": "alive"}
+            mock_client.get.return_value = mock_response
 
             await client.connect()
 
-            assert client._session is not None
-            mock_session.get.assert_called_once_with(
-                "http://petrosa-data-manager:8000/health/liveness"
-            )
+            assert client._client is not None
+            mock_client.get.assert_called_once_with("/health/liveness")
 
     @pytest.mark.asyncio
     async def test_connect_failure(self):
         """Test connection failure."""
         client = DataManagerConfigClient()
 
-        with patch("aiohttp.ClientSession") as mock_session_class:
-            mock_session = AsyncMock()
-            mock_session_class.return_value = mock_session
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
 
             # Mock failed health check
             mock_response = AsyncMock()
-            mock_response.status = 500
-            mock_session.get.return_value.__aenter__.return_value = mock_response
+            mock_response.status_code = 500
+            mock_client.get.return_value = mock_response
 
             with pytest.raises(ConnectionError):
                 await client.connect()
@@ -71,28 +70,30 @@ class TestDataManagerConfigClient:
     async def test_disconnect(self):
         """Test disconnection."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock()
+        client._client = AsyncMock()
 
         await client.disconnect()
 
-        client._session.close.assert_called_once()
-        assert client._session is None
+        client._client.aclose.assert_called_once()
+        assert client._client is None
 
     @pytest.mark.asyncio
     async def test_get_app_config_success(self):
         """Test successful app config retrieval."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock()
+        client._client = AsyncMock()
 
         # Mock successful response
         mock_response = AsyncMock()
-        mock_response.status = 200
+        mock_response.status_code = 200
         mock_response.json.return_value = {
-            "enabled_strategies": ["momentum_pulse"],
-            "symbols": ["BTCUSDT"],
-            "version": 1,
+            "data": {
+                "enabled_strategies": ["momentum_pulse"],
+                "symbols": ["BTCUSDT"],
+                "version": 1,
+            }
         }
-        client._session.get.return_value.__aenter__.return_value = mock_response
+        client._client.get.return_value = mock_response
 
         result = await client.get_app_config()
 
@@ -104,49 +105,47 @@ class TestDataManagerConfigClient:
     async def test_get_app_config_failure(self):
         """Test app config retrieval failure."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock()
+        client._client = AsyncMock()
 
         # Mock failed response
         mock_response = AsyncMock()
-        mock_response.status = 500
-        client._session.get.return_value.__aenter__.return_value = mock_response
+        mock_response.status_code = 500
+        client._client.get.return_value = mock_response
 
         result = await client.get_app_config()
 
-        # Should return default config
-        assert result["enabled_strategies"] == []
-        assert result["symbols"] == []
-        assert result["version"] == 0
-        assert result["source"] == "default"
+        # Should return None when service fails
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_set_app_config_success(self):
         """Test successful app config update."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock()
+        client._client = AsyncMock()
 
         # Mock successful response
         mock_response = AsyncMock()
-        mock_response.status = 200
-        client._session.post.return_value.__aenter__.return_value = mock_response
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"success": True}
+        client._client.post.return_value = mock_response
 
         config = {"enabled_strategies": ["momentum_pulse"], "symbols": ["BTCUSDT"]}
 
         result = await client.set_app_config(config, "test_user", "test reason")
 
         assert result is True
-        client._session.post.assert_called_once()
+        client._client.post.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_set_app_config_failure(self):
         """Test app config update failure."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock()
+        client._client = AsyncMock()
 
         # Mock failed response
         mock_response = AsyncMock()
-        mock_response.status = 500
-        client._session.post.return_value.__aenter__.return_value = mock_response
+        mock_response.status_code = 500
+        client._client.post.return_value = mock_response
 
         config = {"enabled_strategies": ["momentum_pulse"], "symbols": ["BTCUSDT"]}
 
@@ -158,16 +157,15 @@ class TestDataManagerConfigClient:
     async def test_get_strategy_config_success(self):
         """Test successful strategy config retrieval."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock()
+        client._client = AsyncMock()
 
         # Mock successful response
         mock_response = AsyncMock()
-        mock_response.status = 200
+        mock_response.status_code = 200
         mock_response.json.return_value = {
-            "parameters": {"rsi_period": 14},
-            "version": 1,
+            "data": {"parameters": {"rsi_period": 14}, "version": 1}
         }
-        client._session.get.return_value.__aenter__.return_value = mock_response
+        client._client.get.return_value = mock_response
 
         result = await client.get_strategy_config("momentum_pulse")
 
@@ -178,36 +176,35 @@ class TestDataManagerConfigClient:
     async def test_get_strategy_config_with_symbol(self):
         """Test strategy config retrieval with symbol."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock()
+        client._client = AsyncMock()
 
         # Mock successful response
         mock_response = AsyncMock()
-        mock_response.status = 200
+        mock_response.status_code = 200
         mock_response.json.return_value = {
-            "parameters": {"rsi_period": 14},
-            "version": 1,
+            "data": {"parameters": {"rsi_period": 14}, "version": 1}
         }
-        client._session.get.return_value.__aenter__.return_value = mock_response
+        client._client.get.return_value = mock_response
 
         await client.get_strategy_config("momentum_pulse", "BTCUSDT")
 
         # Check that the URL includes the symbol parameter
-        call_args = client._session.get.call_args
-        assert "symbol=BTCUSDT" in call_args[0][0]
+        call_args = client._client.get.call_args
+        assert "symbol=BTCUSDT" in call_args[1]["params"]
 
     @pytest.mark.asyncio
     async def test_list_strategy_configs_success(self):
         """Test successful strategy config listing."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock()
+        client._client = AsyncMock()
 
         # Mock successful response
         mock_response = AsyncMock()
-        mock_response.status = 200
+        mock_response.status_code = 200
         mock_response.json.return_value = {
-            "strategy_ids": ["momentum_pulse", "rsi_extreme_reversal"]
+            "data": {"strategy_ids": ["momentum_pulse", "rsi_extreme_reversal"]}
         }
-        client._session.get.return_value.__aenter__.return_value = mock_response
+        client._client.get.return_value = mock_response
 
         result = await client.list_strategy_configs()
 
@@ -217,12 +214,12 @@ class TestDataManagerConfigClient:
     async def test_list_strategy_configs_failure(self):
         """Test strategy config listing failure."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock()
+        client._client = AsyncMock()
 
         # Mock failed response
         mock_response = AsyncMock()
-        mock_response.status = 500
-        client._session.get.return_value.__aenter__.return_value = mock_response
+        mock_response.status_code = 500
+        client._client.get.return_value = mock_response
 
         result = await client.list_strategy_configs()
 
