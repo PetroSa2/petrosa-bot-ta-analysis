@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.app_config import AppConfig, AppConfigAudit
 from ta_bot.services.app_config_validator import validate_app_config
+from ta_bot.services.data_manager_config_client import DataManagerConfigClient
 from ta_bot.services.mysql_client import MySQLClient
 
 logger = logging.getLogger(__name__)
@@ -37,18 +38,21 @@ class AppConfigManager:
         self,
         mongodb_client: Optional[MongoDBClient] = None,
         mysql_client: Optional[MySQLClient] = None,
+        data_manager_client: Optional[DataManagerConfigClient] = None,
         cache_ttl_seconds: int = 60,
     ):
         """
         Initialize application configuration manager.
 
         Args:
-            mongodb_client: MongoDB client (will create if None)
-            mysql_client: MySQL client (will create if None)
+            mongodb_client: MongoDB client (will create if None) - DEPRECATED
+            mysql_client: MySQL client (will create if None) - DEPRECATED
+            data_manager_client: Data Manager client (preferred)
             cache_ttl_seconds: Cache TTL in seconds (default: 60)
         """
         self.mongodb_client = mongodb_client
         self.mysql_client = mysql_client
+        self.data_manager_client = data_manager_client
         self.cache_ttl_seconds = cache_ttl_seconds
 
         # Cache: (config, timestamp)
@@ -125,6 +129,20 @@ class AppConfigManager:
             cached["load_time_ms"] = (time.time() - start_time) * 1000
             return cached
 
+        # Try Data Manager Service (preferred)
+        if self.data_manager_client:
+            try:
+                config_doc = await self.data_manager_client.get_app_config()
+                if config_doc and config_doc.get("version", 0) > 0:
+                    result = self._doc_to_config_result(config_doc, "data_manager")
+                    self._set_cache(result)
+                    result["cache_hit"] = False
+                    result["load_time_ms"] = (time.time() - start_time) * 1000
+                    return result
+            except Exception as e:
+                logger.warning(f"Data Manager service unavailable: {e}")
+
+        # Fallback to direct database access (deprecated)
         # Try MongoDB
         if self.mongodb_client and self.mongodb_client.is_connected:
             config_doc = await self.mongodb_client.get_app_config()
@@ -221,28 +239,46 @@ class AppConfigManager:
         }
 
         config_id = None
-        success_mongo = False
-        success_mysql = False
+        success = False
 
-        # Write to MongoDB (primary)
-        if self.mongodb_client and self.mongodb_client.is_connected:
+        # Try Data Manager Service (preferred)
+        if self.data_manager_client:
             try:
-                config_id = await self.mongodb_client.upsert_app_config(
-                    config, metadata
+                success = await self.data_manager_client.set_app_config(
+                    config, changed_by, reason
                 )
-                success_mongo = config_id is not None
+                if success:
+                    config_id = "data_manager"
+                    logger.info("Configuration updated via Data Manager service")
             except Exception as e:
-                logger.error(f"Failed to write app config to MongoDB: {e}")
+                logger.error(f"Failed to update config via Data Manager: {e}")
 
-        # Write to MySQL (fallback)
-        if self.mysql_client:
-            try:
-                success_mysql = await self._upsert_mysql_config(config, metadata)
-            except Exception as e:
-                logger.error(f"Failed to write app config to MySQL: {e}")
+        # Fallback to direct database access (deprecated)
+        if not success:
+            success_mongo = False
+            success_mysql = False
 
-        if not success_mongo and not success_mysql:
-            return False, None, ["Failed to persist configuration to any database"]
+            # Write to MongoDB (primary)
+            if self.mongodb_client and self.mongodb_client.is_connected:
+                try:
+                    config_id = await self.mongodb_client.upsert_app_config(
+                        config, metadata
+                    )
+                    success_mongo = config_id is not None
+                except Exception as e:
+                    logger.error(f"Failed to write app config to MongoDB: {e}")
+
+            # Write to MySQL (fallback)
+            if self.mysql_client:
+                try:
+                    success_mysql = await self._upsert_mysql_config(config, metadata)
+                except Exception as e:
+                    logger.error(f"Failed to write app config to MySQL: {e}")
+
+            success = success_mongo or success_mysql
+
+        if not success:
+            return False, None, ["Failed to persist configuration to any service"]
 
         # Create audit record
         action = "UPDATE" if existing.get("version", 0) > 0 else "CREATE"

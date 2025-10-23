@@ -36,14 +36,22 @@ async def main():
         config = Config()
         signal_engine = SignalEngine()
 
-        # Initialize MongoDB client for configuration persistence
+        # Initialize Data Manager client for configuration (preferred)
+        from ta_bot.services.data_manager_config_client import DataManagerConfigClient
+
+        data_manager_client = DataManagerConfigClient()
+        await data_manager_client.connect()
+        logger.info("Data Manager client initialized")
+
+        # Initialize MongoDB client for fallback configuration persistence
         mongodb_client = MongoDBClient()
         await mongodb_client.connect()
         logger.info("MongoDB client initialized")
 
         # Initialize Application Configuration Manager
         app_config_manager = AppConfigManager(
-            mongodb_client=mongodb_client,
+            mongodb_client=mongodb_client,  # Fallback
+            data_manager_client=data_manager_client,  # Preferred
             cache_ttl_seconds=60,  # 60 second cache TTL
         )
         await app_config_manager.start()
