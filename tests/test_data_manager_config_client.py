@@ -90,11 +90,12 @@ class TestDataManagerConfigClient:
     async def test_disconnect(self):
         """Test disconnection."""
         client = DataManagerConfigClient()
-        client._session = AsyncMock(spec=ClientSession)
+        mock_session = AsyncMock(spec=ClientSession)
+        client._session = mock_session
 
         await client.disconnect()
 
-        client._session.close.assert_called_once()
+        mock_session.close.assert_called_once()
         assert client._session is None
 
     @pytest.mark.asyncio
@@ -133,8 +134,13 @@ class TestDataManagerConfigClient:
         client = DataManagerConfigClient()
         client._session = AsyncMock(spec=ClientSession)
 
+        # Create a proper OSError for ClientConnectorError
+        os_error = OSError("Connection refused")
+        os_error.errno = 111
+        os_error.strerror = "Connection refused"
+
         client._session.get.side_effect = ClientConnectorError(
-            "Connection refused", os_error=None
+            "Connection refused", os_error=os_error
         )
 
         result = await client.get_app_config()
@@ -185,8 +191,13 @@ class TestDataManagerConfigClient:
         client = DataManagerConfigClient()
         client._session = AsyncMock(spec=ClientSession)
 
+        # Create a proper OSError for ClientConnectorError
+        os_error = OSError("Connection refused")
+        os_error.errno = 111
+        os_error.strerror = "Connection refused"
+
         client._session.post.side_effect = ClientConnectorError(
-            "Connection refused", os_error=None
+            "Connection refused", os_error=os_error
         )
 
         config_data = {"min_confidence": 0.7}
@@ -300,8 +311,13 @@ class TestDataManagerConfigClient:
         client = DataManagerConfigClient()
         client._session = AsyncMock(spec=ClientSession)
 
+        # Create a proper OSError for ClientConnectorError
+        os_error = OSError("Connection refused")
+        os_error.errno = 111
+        os_error.strerror = "Connection refused"
+
         client._session.post.side_effect = ClientConnectorError(
-            "Connection refused", os_error=None
+            "Connection refused", os_error=os_error
         )
 
         parameters = {"rsi_period": 20}
@@ -349,8 +365,13 @@ class TestDataManagerConfigClient:
         client = DataManagerConfigClient()
         client._session = AsyncMock(spec=ClientSession)
 
+        # Create a proper OSError for ClientConnectorError
+        os_error = OSError("Connection refused")
+        os_error.errno = 111
+        os_error.strerror = "Connection refused"
+
         client._session.get.side_effect = ClientConnectorError(
-            "Connection refused", os_error=None
+            "Connection refused", os_error=os_error
         )
 
         result = await client.list_strategy_configs()
