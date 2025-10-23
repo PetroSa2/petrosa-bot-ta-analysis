@@ -35,8 +35,7 @@ opentelemetry-sdk>=1.20.0
 opentelemetry-semantic-conventions>=0.41b0
 # Core dependencies
 pandas>=2.0.0
-# Data Manager Client
-petrosa-data-manager-client>=1.0.0
+# Data Manager Client (using aiohttp directly)
 prometheus-client>=0.17.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0

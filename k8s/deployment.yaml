@@ -187,6 +187,12 @@ spec:
               key: MYSQL_URI
         - name: MYSQL_DATABASE
           value: "petrosa"
+        # Data Manager API configuration
+        - name: DATA_MANAGER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: DATA_MANAGER_URL
         resources:
           requests:
             memory: "256Mi"
