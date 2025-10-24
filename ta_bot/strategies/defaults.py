@@ -6,13 +6,13 @@ These defaults are used when no database configuration exists and are
 automatically persisted to MongoDB on first use.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 # =============================================================================
 # STRATEGY DEFAULT PARAMETERS
 # =============================================================================
 
-STRATEGY_DEFAULTS: Dict[str, Dict[str, Any]] = {
+STRATEGY_DEFAULTS: dict[str, dict[str, Any]] = {
     # -------------------------------------------------------------------------
     # Quantzed-Adapted Strategies
     # -------------------------------------------------------------------------
@@ -250,7 +250,7 @@ STRATEGY_DEFAULTS: Dict[str, Dict[str, Any]] = {
 # PARAMETER SCHEMAS (for validation)
 # =============================================================================
 
-PARAMETER_SCHEMAS: Dict[str, Dict[str, Dict[str, Any]]] = {
+PARAMETER_SCHEMAS: dict[str, dict[str, dict[str, Any]]] = {
     "rsi_extreme_reversal": {
         "rsi_period": {
             "type": "int",
@@ -291,7 +291,7 @@ PARAMETER_SCHEMAS: Dict[str, Dict[str, Dict[str, Any]]] = {
 # STRATEGY METADATA
 # =============================================================================
 
-STRATEGY_METADATA: Dict[str, Dict[str, str]] = {
+STRATEGY_METADATA: dict[str, dict[str, str]] = {
     "rsi_extreme_reversal": {
         "name": "RSI Extreme Reversal",
         "description": "Detects extreme RSI conditions that suggest potential mean reversion opportunities",
@@ -314,7 +314,7 @@ STRATEGY_METADATA: Dict[str, Dict[str, str]] = {
 }
 
 
-def get_strategy_defaults(strategy_id: str) -> Dict[str, Any]:
+def get_strategy_defaults(strategy_id: str) -> dict[str, Any]:
     """
     Get default parameters for a strategy.
 
@@ -327,7 +327,7 @@ def get_strategy_defaults(strategy_id: str) -> Dict[str, Any]:
     return STRATEGY_DEFAULTS.get(strategy_id, {})
 
 
-def get_parameter_schema(strategy_id: str) -> Dict[str, Dict[str, Any]]:
+def get_parameter_schema(strategy_id: str) -> dict[str, dict[str, Any]]:
     """
     Get parameter schema for a strategy.
 
@@ -340,7 +340,7 @@ def get_parameter_schema(strategy_id: str) -> Dict[str, Dict[str, Any]]:
     return PARAMETER_SCHEMAS.get(strategy_id, {})
 
 
-def get_strategy_metadata(strategy_id: str) -> Dict[str, str]:
+def get_strategy_metadata(strategy_id: str) -> dict[str, str]:
     """
     Get metadata for a strategy.
 
@@ -367,7 +367,7 @@ def list_all_strategies() -> list[str]:
 
 
 def validate_parameters(
-    strategy_id: str, parameters: Dict[str, Any]
+    strategy_id: str, parameters: dict[str, Any]
 ) -> tuple[bool, list[str]]:
     """
     Validate parameters against schema.

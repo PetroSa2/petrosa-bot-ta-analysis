@@ -12,7 +12,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.app_config import AppConfig, AppConfigAudit
@@ -36,9 +36,9 @@ class AppConfigManager:
 
     def __init__(
         self,
-        mongodb_client: Optional[MongoDBClient] = None,
-        mysql_client: Optional[MySQLClient] = None,
-        data_manager_client: Optional[DataManagerConfigClient] = None,
+        mongodb_client: MongoDBClient | None = None,
+        mysql_client: MySQLClient | None = None,
+        data_manager_client: DataManagerConfigClient | None = None,
         cache_ttl_seconds: int = 60,
     ):
         """
@@ -56,10 +56,10 @@ class AppConfigManager:
         self.cache_ttl_seconds = cache_ttl_seconds
 
         # Cache: (config, timestamp)
-        self._cache: Optional[Tuple[Dict[str, Any], float]] = None
+        self._cache: tuple[dict[str, Any], float] | None = None
 
         # Background tasks
-        self._cache_refresh_task: Optional[asyncio.Task] = None
+        self._cache_refresh_task: asyncio.Task | None = None
         self._running = False
 
     async def start(self) -> None:
@@ -96,7 +96,7 @@ class AppConfigManager:
 
         logger.info("Application configuration manager stopped")
 
-    async def get_config(self) -> Dict[str, Any]:
+    async def get_config(self) -> dict[str, Any]:
         """
         Get application configuration.
 
@@ -184,11 +184,11 @@ class AppConfigManager:
 
     async def set_config(
         self,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         changed_by: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
         validate_only: bool = False,
-    ) -> Tuple[bool, Optional[AppConfig], List[str]]:
+    ) -> tuple[bool, AppConfig | None, list[str]]:
         """
         Create or update application configuration.
 
@@ -321,7 +321,7 @@ class AppConfigManager:
 
         return True, app_config, []
 
-    async def get_audit_trail(self, limit: int = 100) -> List[AppConfigAudit]:
+    async def get_audit_trail(self, limit: int = 100) -> list[AppConfigAudit]:
         """
         Get application configuration change history.
 
@@ -369,7 +369,7 @@ class AppConfigManager:
     # Private Methods
     # -------------------------------------------------------------------------
 
-    def _get_from_cache(self) -> Optional[Dict[str, Any]]:
+    def _get_from_cache(self) -> dict[str, Any] | None:
         """Get configuration from cache if not expired."""
         if self._cache is None:
             return None
@@ -382,7 +382,7 @@ class AppConfigManager:
 
         return config.copy()
 
-    def _set_cache(self, config: Dict[str, Any]) -> None:
+    def _set_cache(self, config: dict[str, Any]) -> None:
         """Set configuration in cache."""
         self._cache = (config.copy(), time.time())
 
@@ -390,7 +390,7 @@ class AppConfigManager:
         """Invalidate cache."""
         self._cache = None
 
-    def _doc_to_config_result(self, doc: Dict[str, Any], source: str) -> Dict[str, Any]:
+    def _doc_to_config_result(self, doc: dict[str, Any], source: str) -> dict[str, Any]:
         """Convert database document to config result."""
         return {
             "enabled_strategies": doc.get("enabled_strategies", []),
@@ -425,13 +425,13 @@ class AppConfigManager:
     # MySQL Helper Methods (Simplified - Real implementation would use MySQLClient)
     # -------------------------------------------------------------------------
 
-    async def _get_mysql_config(self) -> Optional[Dict[str, Any]]:
+    async def _get_mysql_config(self) -> dict[str, Any] | None:
         """Get config from MySQL."""
         # TODO: Implement MySQL query
         return None
 
     async def _upsert_mysql_config(
-        self, config: Dict[str, Any], metadata: Dict[str, Any]
+        self, config: dict[str, Any], metadata: dict[str, Any]
     ) -> bool:
         """Upsert config to MySQL."""
         # TODO: Implement MySQL upsert

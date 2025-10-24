@@ -7,7 +7,7 @@ including strategies, symbols, timeframes, confidence, and risk management.
 
 import logging
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ AVAILABLE_STRATEGIES = {
 }
 
 
-def validate_app_config(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_app_config(config: dict[str, Any]) -> tuple[bool, list[str]]:
     """
     Validate complete application configuration.
 
@@ -115,7 +115,7 @@ def validate_app_config(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def validate_enabled_strategies(strategies: Any) -> List[str]:
+def validate_enabled_strategies(strategies: Any) -> list[str]:
     """
     Validate enabled_strategies configuration.
 
@@ -161,7 +161,7 @@ def validate_enabled_strategies(strategies: Any) -> List[str]:
     return errors
 
 
-def validate_symbols(symbols: Any) -> List[str]:
+def validate_symbols(symbols: Any) -> list[str]:
     """
     Validate symbols configuration.
 
@@ -212,7 +212,7 @@ def validate_symbols(symbols: Any) -> List[str]:
     return errors
 
 
-def validate_candle_periods(periods: Any) -> List[str]:
+def validate_candle_periods(periods: Any) -> list[str]:
     """
     Validate candle_periods (timeframes) configuration.
 
@@ -254,7 +254,7 @@ def validate_candle_periods(periods: Any) -> List[str]:
 
 def validate_confidence_thresholds(
     min_confidence: Any, max_confidence: Any
-) -> List[str]:
+) -> list[str]:
     """
     Validate confidence threshold configuration.
 
@@ -298,7 +298,7 @@ def validate_confidence_thresholds(
     return errors
 
 
-def validate_max_positions(max_positions: Any) -> List[str]:
+def validate_max_positions(max_positions: Any) -> list[str]:
     """
     Validate max_positions configuration.
 
@@ -328,7 +328,7 @@ def validate_max_positions(max_positions: Any) -> List[str]:
     return errors
 
 
-def validate_position_sizes(position_sizes: Any) -> List[str]:
+def validate_position_sizes(position_sizes: Any) -> list[str]:
     """
     Validate position_sizes configuration.
 

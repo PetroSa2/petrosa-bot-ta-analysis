@@ -33,8 +33,8 @@ _otlp_logging_handler = None
 
 def setup_telemetry(
     service_name: str = "ta-bot",
-    service_version: Optional[str] = None,
-    otlp_endpoint: Optional[str] = None,
+    service_version: str | None = None,
+    otlp_endpoint: str | None = None,
     enable_metrics: bool = True,
     enable_traces: bool = True,
     enable_logs: bool = True,

@@ -9,16 +9,14 @@ sends and tests if the TA Bot can generate signals with perfect market condition
 import asyncio
 import logging
 import sys
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
 # Add project root to path
 sys.path.insert(0, ".")
 
 from ta_bot.core.signal_engine import SignalEngine
-
 from ta_bot.services.mysql_client import MySQLClient
-
 from ta_bot.services.publisher import SignalPublisher
 
 # Configure logging
@@ -60,14 +58,14 @@ class NATSMessageSimulator:
         except Exception as e:
             logger.error(f"❌ Cleanup failed: {e}")
 
-    def create_nats_message(self, symbol: str, period: str) -> Dict[str, Any]:
+    def create_nats_message(self, symbol: str, period: str) -> dict[str, Any]:
         """Create a NATS message in the exact format sent by data extractor."""
         return {
             "event_type": "extraction_completed",
             "extraction_type": "klines",
             "symbol": symbol,
             "period": period,
-            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "timestamp": datetime.now(UTC).replace(tzinfo=None).isoformat() + "Z",
             "success": True,
             "metrics": {
                 "records_fetched": 7,
@@ -79,7 +77,7 @@ class NATSMessageSimulator:
             "errors": [],
         }
 
-    async def process_nats_message(self, message: Dict[str, Any]) -> bool:
+    async def process_nats_message(self, message: dict[str, Any]) -> bool:
         """Process a NATS message exactly like the TA Bot does."""
         try:
             # Extract message information

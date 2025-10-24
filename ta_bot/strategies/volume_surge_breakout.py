@@ -3,7 +3,7 @@ Volume Surge Breakout Strategy
 Detects unusual volume spikes (3x+ average) combined with price breakouts.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -25,8 +25,8 @@ class VolumeSurgeBreakoutStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
-    ) -> Optional[Signal]:
+        metadata: dict[str, Any],
+    ) -> Signal | None:
         """Analyze for volume surge breakout signals."""
         if len(df) < 25:
             return None

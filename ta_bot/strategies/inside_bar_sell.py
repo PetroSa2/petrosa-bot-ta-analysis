@@ -14,7 +14,7 @@ in a bearish context, they often precede further downward movement.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -41,7 +41,7 @@ class InsideBarSellStrategy(BaseStrategy):
         self.logger = logging.getLogger(__name__)
         self.indicators = Indicators()
 
-    def analyze(self, data: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """
         Analyze market data for inside bar sell opportunities.
 

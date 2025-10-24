@@ -6,7 +6,7 @@ for fetching candle data and persisting signals.
 """
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pandas as pd
 from data_manager_client import DataManagerClient as BaseDataManagerClient
@@ -35,7 +35,7 @@ class DataManagerClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         timeout: int = 30,
         max_retries: int = 3,
     ):
@@ -161,7 +161,7 @@ class DataManagerClient:
             )
             return pd.DataFrame()
 
-    async def persist_signal(self, signal_data: Dict[str, Any]) -> bool:
+    async def persist_signal(self, signal_data: dict[str, Any]) -> bool:
         """
         Persist a single signal to Data Manager.
 
@@ -200,7 +200,7 @@ class DataManagerClient:
             )
             return False
 
-    async def persist_signals_batch(self, signals: List[Dict[str, Any]]) -> bool:
+    async def persist_signals_batch(self, signals: list[dict[str, Any]]) -> bool:
         """
         Persist multiple signals to Data Manager in a batch.
 
@@ -239,7 +239,7 @@ class DataManagerClient:
             self._logger.error(f"Error persisting signal batch: {e}")
             return False
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Check the health of the Data Manager service.
 

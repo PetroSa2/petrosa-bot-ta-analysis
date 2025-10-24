@@ -60,7 +60,7 @@ class PerfectConditionsTester:
 
         # Create OHLCV data
         data = []
-        for i, (date, price) in enumerate(zip(dates, prices)):
+        for i, (date, price) in enumerate(zip(dates, prices, strict=False)):
             # Create realistic OHLCV from the price
             open_price = price * (1 + np.random.uniform(-0.001, 0.001))
             high_price = max(open_price, price) * (1 + np.random.uniform(0, 0.002))

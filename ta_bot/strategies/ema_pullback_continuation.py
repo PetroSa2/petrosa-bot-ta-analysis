@@ -6,7 +6,7 @@ Detects pullback opportunities in trending markets where price
 briefly touches key EMAs before continuing the trend.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -40,8 +40,8 @@ class EMAPullbackContinuationStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
-    ) -> Optional[Signal]:
+        metadata: dict[str, Any],
+    ) -> Signal | None:
         """Analyze for EMA pullback continuation signals."""
         if len(df) < 80:  # Need sufficient data for EMAs
             return None

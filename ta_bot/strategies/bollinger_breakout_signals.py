@@ -6,7 +6,7 @@ Detects when price breaks outside Bollinger Bands, indicating
 potential reversal or continuation opportunities.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -32,8 +32,8 @@ class BollingerBreakoutSignalsStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
-    ) -> Optional[Signal]:
+        metadata: dict[str, Any],
+    ) -> Signal | None:
         """Analyze for Bollinger Band breakout signals."""
         if len(df) < 25:  # Need sufficient data for BB calculation
             return None

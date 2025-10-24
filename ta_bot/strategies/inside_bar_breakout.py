@@ -6,7 +6,7 @@ Detects inside bar consolidation patterns with trend alignment
 for high-probability breakout opportunities.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -36,8 +36,8 @@ class InsideBarBreakoutStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
-    ) -> Optional[Signal]:
+        metadata: dict[str, Any],
+    ) -> Signal | None:
         """Analyze for inside bar breakout signals."""
         if len(df) < 130:  # Need sufficient data for EMA80 + pattern confirmation
             return None

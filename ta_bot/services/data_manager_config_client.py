@@ -6,7 +6,7 @@ Provides configuration management through the data management service instead of
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import aiohttp
 
@@ -22,7 +22,7 @@ class DataManagerConfigClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         timeout: int = 30,
         max_retries: int = 3,
     ):
@@ -37,7 +37,7 @@ class DataManagerConfigClient:
         self.base_url = base_url or "http://petrosa-data-manager:8000"
         self.timeout = timeout
         self.max_retries = max_retries
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
         logger.info(f"Initialized Data Manager config client: {self.base_url}")
 
@@ -74,7 +74,7 @@ class DataManagerConfigClient:
         except Exception as e:
             logger.warning(f"Error disconnecting from Data Manager: {e}")
 
-    async def get_app_config(self) -> Dict[str, Any]:
+    async def get_app_config(self) -> dict[str, Any]:
         """
         Get application configuration from data management service.
 
@@ -100,9 +100,9 @@ class DataManagerConfigClient:
 
     async def set_app_config(
         self,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         changed_by: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> bool:
         """
         Set application configuration through data management service.
@@ -146,8 +146,8 @@ class DataManagerConfigClient:
             return False
 
     async def get_strategy_config(
-        self, strategy_id: str, symbol: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, strategy_id: str, symbol: str | None = None
+    ) -> dict[str, Any]:
         """
         Get strategy configuration from data management service.
 
@@ -181,10 +181,10 @@ class DataManagerConfigClient:
     async def set_strategy_config(
         self,
         strategy_id: str,
-        parameters: Dict[str, Any],
+        parameters: dict[str, Any],
         changed_by: str,
-        symbol: Optional[str] = None,
-        reason: Optional[str] = None,
+        symbol: str | None = None,
+        reason: str | None = None,
     ) -> bool:
         """
         Set strategy configuration through data management service.
@@ -225,7 +225,7 @@ class DataManagerConfigClient:
             logger.error(f"Error updating strategy config for {strategy_id}: {e}")
             return False
 
-    async def list_strategy_configs(self) -> List[str]:
+    async def list_strategy_configs(self) -> list[str]:
         """
         List all strategy configurations.
 
@@ -251,7 +251,7 @@ class DataManagerConfigClient:
             return []
 
     async def delete_strategy_config(
-        self, strategy_id: str, symbol: Optional[str] = None
+        self, strategy_id: str, symbol: str | None = None
     ) -> bool:
         """
         Delete strategy configuration.
@@ -283,7 +283,7 @@ class DataManagerConfigClient:
             logger.error(f"Error deleting strategy config for {strategy_id}: {e}")
             return False
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default application configuration."""
         return {
             "enabled_strategies": [],
@@ -299,7 +299,7 @@ class DataManagerConfigClient:
             "updated_at": datetime.utcnow().isoformat(),
         }
 
-    def _get_default_strategy_config(self) -> Dict[str, Any]:
+    def _get_default_strategy_config(self) -> dict[str, Any]:
         """Get default strategy configuration."""
         return {
             "parameters": {},

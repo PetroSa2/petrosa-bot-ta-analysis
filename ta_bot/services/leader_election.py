@@ -88,7 +88,7 @@ class LeaderElection:
             print(f"Error acting as leader: {e}")
             self.is_leader = False
 
-    async def _get_current_leader(self) -> Optional[dict]:
+    async def _get_current_leader(self) -> dict | None:
         """Get the current leader information."""
         try:
             # This is a simplified version - in production you'd want a more robust approach

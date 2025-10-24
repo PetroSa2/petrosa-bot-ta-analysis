@@ -3,7 +3,7 @@ Order Flow Imbalance Strategy
 Uses volume profile and price action to detect institutional accumulation/distribution.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -25,8 +25,8 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
-    ) -> Optional[Signal]:
+        metadata: dict[str, Any],
+    ) -> Signal | None:
         """Analyze for order flow imbalance signals."""
         if len(df) < 20:
             return None
@@ -235,7 +235,7 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
         # Consolidation: price range less than 3%
         return price_range < 0.03
 
-    def _check_volume_confirmation(self, current: Dict[str, float]) -> bool:
+    def _check_volume_confirmation(self, current: dict[str, float]) -> bool:
         """Check if volume confirms the order flow pattern."""
         if "volume_sma" not in current:
             return True  # Skip volume check if not available
@@ -243,7 +243,7 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
         volume_ratio = current["volume"] / current["volume_sma"]
         return volume_ratio > 1.5  # Volume 50% above average
 
-    def _check_rsi_confirmation(self, current: Dict[str, float], action: str) -> bool:
+    def _check_rsi_confirmation(self, current: dict[str, float], action: str) -> bool:
         """Check if RSI confirms the order flow pattern."""
         rsi = current["rsi"]
 

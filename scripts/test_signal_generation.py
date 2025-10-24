@@ -57,7 +57,7 @@ class SignalGenerationTester:
 
         # Create OHLCV data
         data = []
-        for i, (date, price) in enumerate(zip(dates, prices)):
+        for i, (date, price) in enumerate(zip(dates, prices, strict=False)):
             # Create realistic OHLCV from the price
             open_price = price * (1 + np.random.uniform(-0.002, 0.002))
             high_price = max(open_price, price) * (1 + np.random.uniform(0, 0.005))
@@ -121,7 +121,7 @@ class SignalGenerationTester:
 
         # Create OHLCV data
         data = []
-        for i, (date, price) in enumerate(zip(dates, prices)):
+        for i, (date, price) in enumerate(zip(dates, prices, strict=False)):
             open_price = price * (1 + np.random.uniform(-0.001, 0.001))
             high_price = max(open_price, price) * (1 + np.random.uniform(0, 0.003))
             low_price = min(open_price, price) * (1 - np.random.uniform(0, 0.003))
@@ -172,7 +172,7 @@ class SignalGenerationTester:
 
         # Create OHLCV data
         data = []
-        for i, (date, price) in enumerate(zip(dates, prices)):
+        for i, (date, price) in enumerate(zip(dates, prices, strict=False)):
             open_price = price * (1 + np.random.uniform(-0.001, 0.001))
             high_price = max(open_price, price) * (1 + np.random.uniform(0, 0.003))
             low_price = min(open_price, price) * (1 - np.random.uniform(0, 0.003))

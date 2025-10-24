@@ -3,7 +3,7 @@ Ichimoku Cloud Momentum Strategy
 Uses Ichimoku Cloud for trend identification and momentum.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -25,8 +25,8 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
-    ) -> Optional[Signal]:
+        metadata: dict[str, Any],
+    ) -> Signal | None:
         """Analyze for Ichimoku cloud momentum signals."""
         if len(df) < 52:  # Need at least 52 candles for Ichimoku
             return None
@@ -123,7 +123,7 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
             metadata=signal_metadata,
         )
 
-    def _calculate_ichimoku(self, df: pd.DataFrame) -> Optional[pd.DataFrame]:
+    def _calculate_ichimoku(self, df: pd.DataFrame) -> pd.DataFrame | None:
         """Calculate Ichimoku Cloud components."""
         try:
             # Tenkan-sen (Conversion Line): (9-period high + 9-period low)/2

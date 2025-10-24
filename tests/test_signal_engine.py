@@ -37,7 +37,7 @@ def sample_candles():
         prices.append(prices[-1] * (1 + change))
 
     data = []
-    for i, (timestamp, price) in enumerate(zip(timestamps, prices)):
+    for i, (timestamp, price) in enumerate(zip(timestamps, prices, strict=True)):
         # Create realistic OHLCV data
         volatility = abs(price_changes[i]) * 2
         high = price * (1 + volatility)

@@ -6,7 +6,7 @@ Detects false breakout patterns where price briefly moves beyond
 key levels before reversing, creating high-probability counter-trend opportunities.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -39,8 +39,8 @@ class FoxTrapReversalStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
-    ) -> Optional[Signal]:
+        metadata: dict[str, Any],
+    ) -> Signal | None:
         """Analyze for fox trap reversal signals."""
         if len(df) < 130:  # Need sufficient data for EMA80
             return None

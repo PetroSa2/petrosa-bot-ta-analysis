@@ -3,7 +3,7 @@ Mean Reversion Scalper Strategy
 Capitalizes on crypto's tendency to snap back to moving averages.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -25,8 +25,8 @@ class MeanReversionScalperStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
-    ) -> Optional[Signal]:
+        metadata: dict[str, Any],
+    ) -> Signal | None:
         """Analyze for mean reversion scalping signals."""
         if len(df) < 25:
             return None

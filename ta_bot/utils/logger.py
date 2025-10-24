@@ -86,7 +86,7 @@ def setup_logging(
     return logger
 
 
-def get_logger(name: Optional[str] = None) -> structlog.BoundLogger:
+def get_logger(name: str | None = None) -> structlog.BoundLogger:
     """
     Get a logger instance.
 

@@ -7,7 +7,6 @@ for LLM agent integration.
 """
 
 import logging
-from typing import List
 
 from fastapi import APIRouter, HTTPException, Path, Query, status
 
@@ -70,7 +69,7 @@ def get_app_config_manager() -> AppConfigManager:
 
 @router.get(
     "/strategies",
-    response_model=APIResponse[List[StrategyListItem]],
+    response_model=APIResponse[list[StrategyListItem]],
     summary="List all trading strategies",
     description="""
     **For LLM Agents**: Use this endpoint to discover all available trading strategies
@@ -140,7 +139,7 @@ async def list_strategies():
 
 @router.get(
     "/strategies/{strategy_id}/schema",
-    response_model=APIResponse[List[ParameterSchemaItem]],
+    response_model=APIResponse[list[ParameterSchemaItem]],
     summary="Get parameter schema for a strategy",
     description="""
     **For LLM Agents**: Use this endpoint to understand what parameters a strategy accepts
@@ -721,7 +720,7 @@ async def delete_global_config(
 
 @router.get(
     "/strategies/{strategy_id}/audit",
-    response_model=APIResponse[List[AuditTrailItem]],
+    response_model=APIResponse[list[AuditTrailItem]],
     summary="Get configuration change history",
     description="""
     **For LLM Agents**: Use this to see the complete history of configuration changes.
@@ -1077,7 +1076,7 @@ async def update_application_config(request: AppConfigUpdateRequest):
 
 @router.get(
     "/config/application/audit",
-    response_model=APIResponse[List[AppAuditTrailItem]],
+    response_model=APIResponse[list[AppAuditTrailItem]],
     summary="Get application configuration change history",
     description="""
     **For LLM Agents**: Use this to see the complete history of application configuration changes.

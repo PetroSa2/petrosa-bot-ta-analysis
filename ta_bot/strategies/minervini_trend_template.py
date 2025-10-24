@@ -43,7 +43,7 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
         )
         self.min_periods = 265  # Need 260+ periods for 52-week calculations
 
-    def analyze(self, data: pd.DataFrame, metadata: dict) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict) -> Signal | None:
         """
         Analyze market data using Minervini's Trend Template criteria.
 

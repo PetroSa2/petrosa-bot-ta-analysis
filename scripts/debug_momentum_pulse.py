@@ -14,7 +14,6 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from ta_bot.core.indicators import Indicators  # noqa: E402
-
 from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy  # noqa: E402
 
 # Configure logging

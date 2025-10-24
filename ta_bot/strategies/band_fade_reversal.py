@@ -3,7 +3,7 @@ Band Fade Reversal strategy for technical analysis.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -22,7 +22,7 @@ class BandFadeReversalStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """Analyze candles for Band Fade Reversal signals."""
         if len(df) < 20:
             return None

@@ -3,7 +3,7 @@ Signal engine that coordinates all trading strategies.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -94,10 +94,10 @@ class SignalEngine:
         df: pd.DataFrame,
         symbol: str,
         period: str,
-        enabled_strategies: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        max_confidence: Optional[float] = None,
-    ) -> List[Signal]:
+        enabled_strategies: list[str] | None = None,
+        min_confidence: float | None = None,
+        max_confidence: float | None = None,
+    ) -> list[Signal]:
         """
         Analyze candle data and generate trading signals.
 
@@ -175,7 +175,7 @@ class SignalEngine:
         )
         return signals
 
-    def _calculate_indicators(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _calculate_indicators(self, df: pd.DataFrame) -> dict[str, Any]:
         """Calculate all technical indicators for the dataframe."""
         indicators = {}
 
@@ -217,9 +217,9 @@ class SignalEngine:
         df: pd.DataFrame,
         symbol: str,
         period: str,
-        indicators: Dict[str, Any],
+        indicators: dict[str, Any],
         current_price: float,
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Run a single strategy and return signal if valid."""
         try:
             # Prepare metadata for strategy - pass indicators directly
@@ -298,8 +298,8 @@ class SignalEngine:
             return SignalStrength.WEAK
 
     def _calculate_risk_management(
-        self, current_price: float, indicators: Dict[str, Any], signal_type: SignalType
-    ) -> tuple[Optional[float], Optional[float]]:
+        self, current_price: float, indicators: dict[str, Any], signal_type: SignalType
+    ) -> tuple[float | None, float | None]:
         """Calculate stop loss and take profit levels."""
         atr = indicators.get("atr", 0)
 

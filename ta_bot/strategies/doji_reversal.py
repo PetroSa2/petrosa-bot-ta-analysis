@@ -15,7 +15,7 @@ a reversal could be imminent.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -40,7 +40,7 @@ class DojiReversalStrategy(BaseStrategy):
         self.min_periods = 20  # Need some context for trend determination
         self.logger = logging.getLogger(__name__)
 
-    def analyze(self, data: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """
         Analyze market data for doji reversal opportunities.
 

@@ -1,331 +1,581 @@
-# Cursor AI Rules for Petrosa Systems
+# MASTER RULES: See petrosa_k8s/.cursorrules
 
-## Repository Context
-This is a unified configuration for all Petrosa systems:
-- **petrosa-bot-ta-analysis**: Technical Analysis bot for crypto trading
-- **petrosa-tradeengine**: Cryptocurrency trading engine system
-- **petrosa-binance-data-extractor**: Cryptocurrency data extraction system
+**IMPORTANT**: This file contains service-specific rules only. For ecosystem-wide rules, architecture, shared resources, deployment patterns, and cross-service integration, always refer to:
+- **Master Cursorrules**: `/Users/yurisa2/petrosa/petrosa_k8s/.cursorrules`
 
-All systems use the same remote MicroK8s cluster, CI/CD pipeline patterns, and development workflows.
+When working on this service, read the master cursorrules first to understand the full system context.
 
-## Key Files to Reference
-- `README.md` - Project-specific documentation and usage guide
-- `Makefile` - Complete command reference for all development tasks
-- `k8s/` - Kubernetes manifests for production deployment
-- `k8s/kubeconfig.yaml` - Remote MicroK8s cluster configuration
-- `scripts/` - Automation scripts for setup, testing, and deployment
-- `docs/` - Comprehensive documentation and guides
+---
 
-## Prerequisites & Installation
-- **Python 3.11+**: Required for development and runtime
-- **Docker**: Required for containerization and local testing
-- **kubectl**: Required for Kubernetes deployment (remote cluster)
-- **Make**: Required for using the Makefile commands
+## TA Bot - Satellite Rules
 
-**Note**: All projects use a **remote MicroK8s cluster** - no local Kubernetes installation required.
+### Service Context
 
-## Quick Start Commands
+The **Petrosa TA Bot** is a technical analysis engine that analyzes historical market data from MySQL using **28+ configurable strategies** to generate trading signals. Unlike realtime-strategies which processes streaming data, TA Bot performs **batch analysis** on OHLCV klines with multiple timeframes (15m, 1h, 4h, 1d) and implements **MongoDB leader election** to ensure only one replica runs analysis jobs at a time.
+
+This service operates with **3 replicas** for high availability, but only the **elected leader** executes analysis jobs while followers remain ready for automatic failover. It exposes a **Runtime Configuration API** for live strategy parameter tuning with both global and per-symbol overrides, enabling dynamic optimization without redeployment.
+
+The TA Bot bridges historical data (from data-extractor) with signal generation, providing the foundation for **backtesting, optimization, and production trading** across multiple technical analysis methodologies.
+
+### Cross-References to Master
+
+- **Ecosystem Architecture**: See master § System Architecture Overview → Signal Generation Layer
+- **Work Tracking**: See master § Centralized Work Tracking with GitHub Projects
+- **NATS Topics**: See master § NATS Message Bus → `signals.trading` (output only)
+- **Database Architecture**: See master § Database Architecture (MySQL historical data, MongoDB config)
+- **Deployment Patterns**: See master § TA Bot Configuration
+- **Leader Election**: See master § TA Bot & Data Manager (leader election patterns)
+- **Runtime Configuration**: See master § Configuration Management
+- **Shared Resources**: See master § Shared Resources (ConfigMaps, Secrets)
+
+---
+
+## Service-Specific Rules
+
+### Repository Structure
+
+**Key Files**:
+- `README.md` - Service documentation with strategy catalog
+- `Makefile` - Development commands
+- `k8s/deployment.yaml` - Deployment with 3 replicas + leader election
+- `ta_bot/strategies/` - 28+ strategy implementations
+- `ta_bot/api/` - Runtime configuration API
+- `ta_bot/scheduler/` - Analysis job scheduler (leader only)
+- `ta_bot/db/` - MySQL (data) + MongoDB (config, leader state)
+
+**Directory Layout**:
+```
+petrosa-bot-ta-analysis/
+├── ta_bot/
+│   ├── strategies/             # Strategy implementations
+│   │   ├── rsi_strategy.py
+│   │   ├── macd_strategy.py
+│   │   ├── bollinger_bands.py
+│   │   ├── volume_surge.py
+│   │   ├── pattern_recognition/
+│   │   └── ... (28+ total)
+│   ├── api/                    # Configuration API
+│   │   ├── config_routes.py
+│   │   └── schemas.py
+│   ├── scheduler/              # Job scheduling (leader only)
+│   │   ├── analysis_scheduler.py
+│   │   └── job_executor.py
+│   ├── db/                     # Database layers
+│   │   ├── mysql_client.py     # Historical data
+│   │   ├── mongodb_client.py   # Config + leader state
+│   │   └── models.py
+│   └── leader_election/        # Leader election logic
+│       └── coordinator.py
+└── k8s/
+    ├── deployment.yaml         # 3 replicas
+    └── configmap.yaml
+```
+
+### Leader Election Pattern
+
+**Why Leader Election**:
+
+1. **Avoid Duplicate Analysis**: Only one replica runs analysis jobs
+2. **Consistent Signals**: Single source of signal generation
+3. **Resource Efficiency**: No wasted computation from duplicate work
+4. **High Availability**: Automatic failover if leader fails
+
+**MongoDB-Based Coordination**:
+```python
+class LeaderElection:
+    """
+    MongoDB-based leader election using atomic operations.
+
+    Collection: leader_election
+    Document: { _id: "ta-bot-leader", pod_name: "...", heartbeat: datetime }
+    """
+
+    async def try_become_leader(self):
+        """
+        Attempt to become leader via atomic write.
+
+        Returns True if elected, False otherwise.
+        """
+        try:
+            result = await self.collection.update_one(
+                {
+                    "_id": "ta-bot-leader",
+                    "$or": [
+                        {"heartbeat": {"$lt": datetime.utcnow() - timedelta(seconds=30)}},
+                        {"heartbeat": {"$exists": False}}
+                    ]
+                },
+                {
+                    "$set": {
+                        "pod_name": self.pod_name,
+                        "heartbeat": datetime.utcnow()
+                    }
+                },
+                upsert=True
+            )
+            return result.modified_count > 0 or result.upserted_id
+        except Exception as e:
+            logger.error(f"Leader election failed: {e}")
+            return False
+
+    async def maintain_leadership(self):
+        """Send heartbeat every 10 seconds."""
+        while self.is_leader:
+            await self.collection.update_one(
+                {"_id": "ta-bot-leader", "pod_name": self.pod_name},
+                {"$set": {"heartbeat": datetime.utcnow()}}
+            )
+            await asyncio.sleep(10)
+```
+
+**Leader vs Follower Behavior**:
+```python
+async def start(self):
+    """Start based on leader status."""
+    if await self.leader_election.try_become_leader():
+        logger.info("Elected as leader - starting analysis scheduler")
+        await self.start_analysis_scheduler()  # Only leader
+        await self.maintain_leadership()
+    else:
+        logger.info("Starting as follower - API only")
+        await self.wait_for_leader_failure()  # Monitor for failover
+```
+
+**Failover Process**:
+```
+Leader Pod Crashes
+    ↓
+Heartbeat stops (no update for 30s)
+    ↓
+Follower detects stale heartbeat
+    ↓
+Follower attempts election (atomic write)
+    ↓
+New leader elected
+    ↓
+New leader starts analysis scheduler
+    ↓
+Automatic recovery (< 30 seconds)
+```
+
+### Analysis Scheduler (Leader Only)
+
+**Job Scheduling**:
+```python
+class AnalysisScheduler:
+    """
+    Schedules and executes analysis jobs.
+    Only runs on leader replica.
+    """
+
+    async def start(self):
+        """Start periodic analysis jobs."""
+        self.tasks = [
+            asyncio.create_task(self._run_15m_analysis()),   # Every 15 minutes
+            asyncio.create_task(self._run_1h_analysis()),    # Every hour
+            asyncio.create_task(self._run_4h_analysis()),    # Every 4 hours
+            asyncio.create_task(self._run_1d_analysis())     # Once daily
+        ]
+
+    async def _run_15m_analysis(self):
+        """Run 15-minute analysis loop."""
+        while True:
+            await self._analyze_all_symbols("15m")
+            await asyncio.sleep(900)  # 15 minutes
+
+    async def _analyze_all_symbols(self, timeframe: str):
+        """Analyze all symbols with all enabled strategies."""
+        for symbol in self.config.SUPPORTED_SYMBOLS:
+            # Fetch historical data from MySQL
+            klines = await self.mysql_client.fetch_klines(symbol, timeframe, limit=500)
+
+            # Run all enabled strategies
+            for strategy in self.enabled_strategies:
+                signal = await strategy.analyze(klines)
+                if signal:
+                    await self.publish_signal(signal)
+```
+
+**Analysis Timeframes**:
+```python
+ANALYSIS_SCHEDULES = {
+    "15m": "*/15 * * * *",  # Every 15 minutes
+    "1h": "5 * * * *",       # Every hour at :05
+    "4h": "10 */4 * * *",    # Every 4 hours at :10
+    "1d": "15 0 * * *"       # Daily at 00:15
+}
+```
+
+### Strategy Catalog (28+)
+
+**Trend Following** (8 strategies):
+1. **RSI Strategy** - Relative Strength Index overbought/oversold
+2. **MACD Strategy** - Moving Average Convergence Divergence
+3. **EMA Crossover** - Exponential Moving Average crossovers
+4. **ADX Strategy** - Average Directional Index trend strength
+5. **Parabolic SAR** - Stop and Reverse indicator
+6. **Ichimoku Cloud** - Comprehensive trend system
+7. **Supertrend** - Trend following with ATR
+8. **Moving Average Envelope** - Price channel strategy
+
+**Momentum** (6 strategies):
+9. **Stochastic Oscillator** - Momentum indicator
+10. **Williams %R** - Momentum oscillator
+11. **CCI Strategy** - Commodity Channel Index
+12. **ROC Strategy** - Rate of Change
+13. **Momentum Indicator** - Pure momentum
+14. **TSI Strategy** - True Strength Index
+
+**Volatility** (5 strategies):
+15. **Bollinger Bands** - Volatility bands
+16. **Keltner Channels** - ATR-based channels
+17. **ATR Breakout** - Average True Range breakouts
+18. **Volatility Breakout** - Standard deviation breakouts
+19. **Donchian Channels** - Price channel breakouts
+
+**Volume** (4 strategies):
+20. **Volume Surge** - Abnormal volume detection
+21. **OBV Strategy** - On-Balance Volume
+22. **Volume Profile** - Volume-at-price analysis
+23. **VWAP Strategy** - Volume Weighted Average Price
+
+**Pattern Recognition** (5 strategies):
+24. **Candlestick Patterns** - Doji, Hammer, Engulfing, etc.
+25. **Chart Patterns** - Head & Shoulders, Double Top/Bottom
+26. **Support/Resistance** - Key levels identification
+27. **Fibonacci Retracement** - Fibonacci levels
+28. **Pivot Points** - Support/resistance calculation
+
+**Strategy Configuration Example**:
+```python
+class RSIStrategy(BaseStrategy):
+    """
+    RSI Strategy - Configurable Parameters (8):
+    - period: RSI calculation period (default: 14)
+    - overbought: Overbought threshold (default: 70)
+    - oversold: Oversold threshold (default: 30)
+    - ma_type: Moving average type (default: "SMA")
+    - divergence_enabled: Detect divergences (default: true)
+    - smoothing: RSI smoothing period (default: 1)
+    - base_confidence: Starting confidence (default: 0.75)
+    - min_candles: Minimum candles required (default: 50)
+    """
+
+    def analyze(self, klines: List[Kline]) -> Optional[Signal]:
+        """Analyze klines and generate signal."""
+        # Calculate RSI
+        rsi = self.calculate_rsi(klines, period=self.config.period)
+
+        # Check for oversold (buy signal)
+        if rsi < self.config.oversold:
+            return self.create_buy_signal(klines, rsi)
+
+        # Check for overbought (sell signal)
+        elif rsi > self.config.overbought:
+            return self.create_sell_signal(klines, rsi)
+
+        return None
+```
+
+### Runtime Configuration API
+
+**API Endpoints**:
 ```bash
-# Complete setup
+# List all strategies
+GET /api/v1/strategies
+
+# Get strategy schema
+GET /api/v1/strategies/{strategy_id}/schema
+
+# Get configuration
+GET /api/v1/strategies/{strategy_id}/config
+GET /api/v1/strategies/{strategy_id}/config/{symbol}
+
+# Update configuration
+POST /api/v1/strategies/{strategy_id}/config
+POST /api/v1/strategies/{strategy_id}/config/{symbol}
+
+# Delete configuration
+DELETE /api/v1/strategies/{strategy_id}/config
+DELETE /api/v1/strategies/{strategy_id}/config/{symbol}
+
+# Get audit trail
+GET /api/v1/strategies/{strategy_id}/audit
+
+# Force cache refresh
+POST /api/v1/strategies/cache/refresh
+```
+
+**Configuration Example**:
+```bash
+# Update RSI strategy globally
+curl -X POST http://ta-bot:8080/api/v1/strategies/rsi/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "parameters": {
+      "period": 14,
+      "overbought": 75,
+      "oversold": 25,
+      "divergence_enabled": true
+    },
+    "changed_by": "admin",
+    "reason": "Adjusting for high volatility market"
+  }'
+
+# Override for BTCUSDT only
+curl -X POST http://ta-bot:8080/api/v1/strategies/rsi/config/BTCUSDT \
+  -H "Content-Type: application/json" \
+  -d '{
+    "parameters": {
+      "overbought": 80,
+      "oversold": 20
+    },
+    "changed_by": "admin",
+    "reason": "BTC requires wider range"
+  }'
+
+# Get current configuration
+curl http://ta-bot:8080/api/v1/strategies/rsi/config/BTCUSDT | jq
+```
+
+**Configuration Persistence**:
+- **Primary**: MongoDB (60-second cache)
+- **Fallback**: MySQL (if MongoDB unavailable)
+- **Inheritance**: Global config + Symbol overrides
+- **Audit Trail**: All changes logged with who/what/when/why
+
+**Swagger UI**: http://ta-bot:8080/docs
+
+### MySQL Integration (Historical Data)
+
+**Kline Queries**:
+```python
+async def fetch_klines(
+    self,
+    symbol: str,
+    interval: str,
+    limit: int = 500
+) -> List[Kline]:
+    """
+    Fetch historical klines from MySQL.
+
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        interval: Timeframe (e.g., "15m", "1h")
+        limit: Number of candles to fetch
+
+    Returns:
+        List of Kline objects ordered by time
+    """
+    query = """
+    SELECT
+        symbol, interval, open_time, close_time,
+        open, high, low, close, volume
+    FROM klines
+    WHERE symbol = %s AND interval = %s
+    ORDER BY open_time DESC
+    LIMIT %s
+    """
+    results = await self.execute(query, (symbol, interval, limit))
+    return [Kline(**row) for row in reversed(results)]
+```
+
+**Data Requirements**:
+```python
+# Minimum candles for reliable analysis
+MIN_CANDLES = {
+    "RSI": 50,           # Need 50+ for stable RSI
+    "MACD": 100,         # Need 100+ for MACD convergence
+    "Bollinger": 50,     # Need 50+ for standard deviation
+    "EMA": 200,          # Need 200+ for long-term EMA
+}
+
+# Check data availability before analysis
+if len(klines) < MIN_CANDLES[strategy_name]:
+    logger.warning(f"Insufficient data for {strategy_name}: {len(klines)} < {MIN_CANDLES[strategy_name]}")
+    return None
+```
+
+### Development Workflow
+
+**Local Development**:
+```bash
+# Setup
 make setup
 
-# Run local pipeline
-make pipeline
+# Run as leader (single instance)
+ENABLE_LEADER_ELECTION=false python -m ta_bot.main
 
-# Deploy to Kubernetes
-make deploy
+# Run specific strategy only
+ENABLED_STRATEGIES=rsi,macd python -m ta_bot.main
 
-# Check deployment status
-make k8s-status
+# Test strategy with historical data
+python -m ta_bot.strategies.rsi_strategy --symbol BTCUSDT --interval 1h --backtest
 ```
 
-## Common Issues & Solutions
-
-### 1. Python Environment Issues
+**Testing**:
 ```bash
-# Check Python version
-python3 --version
+# Unit tests (strategy logic)
+pytest tests/unit/test_rsi_strategy.py -v
 
-# Recreate virtual environment
-rm -rf .venv
-make setup
+# Integration tests (MySQL + MongoDB)
+pytest tests/integration/test_analysis_flow.py -v
+
+# Leader election tests
+pytest tests/test_leader_election.py -v
+
+# Configuration API tests
+pytest tests/api/test_config_api.py -v
+
+# Backtesting
+pytest tests/backtest/test_rsi_backtest.py -v
 ```
 
-### 2. Docker Build Issues
+**Strategy Development**:
+```python
+# Create new strategy
+from ta_bot.strategies.base import BaseStrategy
+
+class MyNewStrategy(BaseStrategy):
+    """My new strategy description."""
+
+    PARAMETERS_SCHEMA = {
+        "param1": {"type": "float", "default": 1.0},
+        "param2": {"type": "int", "default": 14},
+    }
+
+    def analyze(self, klines: List[Kline]) -> Optional[Signal]:
+        """Implement strategy logic here."""
+        pass
+
+# Register strategy
+STRATEGY_REGISTRY["my_new_strategy"] = MyNewStrategy
+```
+
+### Common Issues & Solutions
+
+#### 1. Leader Election Failing
+
+**Symptom**: No analysis jobs running, all replicas in follower mode
+
+**Check**:
 ```bash
-# Clean Docker cache
-make docker-clean
+# Check MongoDB connectivity
+kubectl exec -it deployment/petrosa-ta-bot -n petrosa-apps -- mongosh --eval "db.adminCommand('ping')"
 
-# Rebuild image
-make build
+# View leader election logs
+kubectl logs -n petrosa-apps -l app=ta-bot | grep "leader_election"
+
+# Check current leader
+curl http://ta-bot:8080/health/leader
 ```
 
-### 3. Kubernetes Connection Issues
+**Solutions**:
 ```bash
-# Set kubeconfig for remote cluster
-export KUBECONFIG=k8s/kubeconfig.yaml
+# Force leader re-election (delete leader document)
+kubectl exec -it deployment/petrosa-ta-bot -n petrosa-apps -- mongosh petrosa --eval "db.leader_election.deleteOne({_id: 'ta-bot-leader'})"
 
-# Check cluster connection
-kubectl --kubeconfig=k8s/kubeconfig.yaml cluster-info
-
-# Check namespace
-kubectl --kubeconfig=k8s/kubeconfig.yaml get namespace petrosa-apps
-
-# View deployment status
-make k8s-status
-
-# Note: This is a remote MicroK8s cluster - no local installation needed
+# Restart pods to trigger new election
+kubectl rollout restart deployment/petrosa-ta-bot -n petrosa-apps
 ```
 
-### 4. NumPy Compatibility Issues
+#### 2. Signals Not Generated
+
+**Symptom**: No signals published to `signals.trading`
+
+**Check**:
 ```bash
-# Fix NumPy 2.x compatibility issues
-pip install 'numpy<2.0.0'
+# Verify leader is running analysis
+kubectl logs -n petrosa-apps -l app=ta-bot | grep "analysis_scheduler"
 
-# Reinstall dependencies
-pip install -r requirements.txt
+# Check MySQL data availability
+kubectl exec -it deployment/petrosa-ta-bot -n petrosa-apps -- mysql -e "SELECT COUNT(*) FROM klines WHERE symbol='BTCUSDT' AND interval='1h'"
+
+# Check strategy configuration
+curl http://ta-bot:8080/api/v1/strategies/rsi/config
 ```
 
-## Development Workflow
-
-### 1. Initial Setup
+**Solutions**:
 ```bash
-# Complete environment setup
-make setup
+# Enable debug logging
+kubectl set env deployment/petrosa-ta-bot LOG_LEVEL=DEBUG -n petrosa-apps
 
-# Install development dependencies
-make install-dev
+# Manually trigger analysis
+kubectl exec -it deployment/petrosa-ta-bot -n petrosa-apps -- python -m ta_bot.scheduler.manual_run --symbol BTCUSDT --interval 1h
 ```
 
-### 2. Code Quality Checks
+#### 3. Configuration Not Applied
+
+**Symptom**: Changes via API not reflected in analysis
+
+**Check**:
 ```bash
-# Run all linting
-make lint
+# Check cache status
+curl http://ta-bot:8080/api/v1/strategies/cache/stats
 
-# Format code
-make format
+# Force cache refresh
+curl -X POST http://ta-bot:8080/api/v1/strategies/cache/refresh
 
-# Run tests
-make test
-
-# Security scan
-make security
+# Verify MongoDB storage
+kubectl exec -it deployment/petrosa-ta-bot -n petrosa-apps -- mongosh petrosa --eval "db.strategy_configs.find().pretty()"
 ```
 
-### 3. Docker Operations
+### Configuration
+
+**Environment Variables** (service-specific):
 ```bash
-# Build image
-make build
+# Database connections
+MYSQL_URI="mysql+pymysql://user:pass@host:3306/binance_data"
+MONGODB_URI="mongodb://mongodb:27017"
+MONGODB_DATABASE="petrosa"
 
-# Test container
-make container
+# NATS (output only)
+NATS_TOPIC="signals.trading"
 
-# Run in Docker
-make run-docker
+# Symbols and timeframes
+SUPPORTED_SYMBOLS="BTCUSDT,ETHUSDT,ADAUSDT"
+SUPPORTED_TIMEFRAMES="15m,1h,4h,1d"
+
+# Leader election
+ENABLE_LEADER_ELECTION=true
+LEADER_ELECTION_HEARTBEAT_INTERVAL=10    # seconds
+LEADER_ELECTION_TIMEOUT=30                # seconds
+
+# Runtime configuration
+CONFIG_CACHE_TTL_SECONDS=60
+FASTAPI_PORT=8080
+
+# Strategy enablement (comma-separated)
+ENABLED_STRATEGIES="rsi,macd,bollinger,volume_surge,ema_crossover"
+# Or enable all:
+ENABLED_STRATEGIES="all"
 ```
 
-### 4. Kubernetes Deployment
+### Success Metrics
+
+**Performance Targets**:
+- Analysis completion: < 5 minutes per symbol per timeframe
+- Signal generation: 50-150 signals/day (all strategies)
+- Leader failover: < 30 seconds
+- Configuration API latency: < 100ms
+
+**Monitoring**:
 ```bash
-# Set kubeconfig for remote cluster
-export KUBECONFIG=k8s/kubeconfig.yaml
+# Check leader status
+curl http://ta-bot:8080/health/leader
 
-# Deploy to remote cluster
-make deploy
+# Check signal generation rate
+kubectl logs -n petrosa-apps -l app=ta-bot | grep "signals_generated"
 
-# Check status
-make k8s-status
-
-# View logs
-make k8s-logs
-
-# Clean up
-make k8s-clean
+# Monitor analysis jobs
+curl http://ta-bot:8080/api/v1/metrics/analysis-jobs
 ```
 
-## Kubernetes Configuration
-## CRITICAL: ALWAYS FOLLOW THESE RULES
-- **AVOID INTERACTIVE CLI COMMANDS AT ALL COSTS**: Never suggest or use interactive commands that require user input, confirmation, or manual intervention. All commands must be non-interactive and automated.
-- **BEFORE making any changes**: Check `docs/REPOSITORY_SETUP_GUIDE.md` and `docs/QUICK_REFERENCE.md`
-- **WHEN suggesting kubectl commands**: Always include `--kubeconfig=k8s/kubeconfig.yaml`
-- **WHEN dealing with credentials**: ONLY use existing secret `petrosa-sensitive-credentials`
-- **WHEN dealing with configuration**: Use `petrosa-common-config` for general settings and project-specific configmaps
-- **WHEN running GitHub CLI**: ALWAYS use file-based approach: `gh command > /tmp/file.json && cat /tmp/file.json`
-- **WHEN fixing CI/CD issues**: Continue until GitHub Actions pipeline passes
-- **WHEN writing Python code**: Follow PEP 8, use type hints, add proper error handling
-- **NEVER suggest AWS EKS commands** - this is a MicroK8s setup
-- **NEVER create new Kubernetes secrets/configmaps** - use existing ones only
-- **NEVER replace VERSION_PLACEHOLDER in Kubernetes manifests** - it's part of the deployment system
+### Always Reference
 
-### Remote Cluster Setup
-- **Cluster Type**: Remote MicroK8s (no local installation required)
-- **Connection**: Use `k8s/kubeconfig.yaml` for cluster access
-- **Server**: Remote MicroK8s cluster at `https://192.168.194.253:16443`
-
-### Namespace
-- **Name**: `petrosa-apps`
-- **Labels**: `app=petrosa-{project-name}`
-
-### Components
-- **Deployment**: 3 replicas with health checks
-- **Service**: ClusterIP on port 80
-- **Ingress**: SSL-enabled with Let's Encrypt
-- **HPA**: Auto-scaling based on CPU/memory
-
-## Environment Variables
-
-### Common Variables (All Projects)
-- `ENVIRONMENT`: Environment name (default: production)
-- `LOG_LEVEL`: Logging level (default: INFO)
-
-### Project-Specific Variables
-
-#### TA Bot
-- `NATS_URL`: NATS server URL
-- `API_ENDPOINT`: REST API endpoint for signals
-
-#### Trading Engine
-- `MONGODB_URL`: MongoDB connection string
-- `BINANCE_API_KEY`: Binance API key
-- `BINANCE_API_SECRET`: Binance API secret
-- `JWT_SECRET_KEY`: JWT signing secret
-
-#### Data Extractor
-- `DB_ADAPTER`: Database adapter (mysql, mongodb)
-- `MYSQL_URI`: MySQL connection string
-- `BINANCE_API_KEY`: Binance API key
-- `BINANCE_API_SECRET`: Binance API secret
-
-## Testing Procedures
-
-### Standard Test Commands
-```bash
-# Run all tests
-make test
-
-# Run with coverage
-python -m pytest tests/ -v --cov=. --cov-report=term
-
-# Run specific test file
-python -m pytest tests/test_specific.py -v
-
-# Run linting
-make lint
-
-# Run security scan
-make security
-```
-
-### Pipeline Testing
-```bash
-# Run complete local pipeline
-make pipeline
-
-# Run specific pipeline stages
-./scripts/local-pipeline.sh lint test
-./scripts/local-pipeline.sh build container
-./scripts/local-pipeline.sh deploy
-```
-
-## Troubleshooting Scripts
-
-### Complete Diagnostics
-```bash
-# Run all checks
-./scripts/local-pipeline.sh all
-
-# Quick fixes
-make setup
-make test
-```
-
-### Specific Component Checks
-```bash
-# Check Python environment
-./scripts/local-pipeline.sh setup
-
-# Check dependencies
-./scripts/local-pipeline.sh lint
-
-# Check Docker
-./scripts/local-pipeline.sh build
-
-# Check Kubernetes
-./scripts/local-pipeline.sh deploy
-```
-
-## Local Pipeline
-
-### Complete Pipeline
-```bash
-# Run all stages
-./scripts/local-pipeline.sh all
-
-# Run specific stages
-./scripts/local-pipeline.sh lint test
-./scripts/local-pipeline.sh build container
-./scripts/local-pipeline.sh deploy
-```
-
-### Pipeline Stages
-1. **Setup**: Environment and dependencies
-2. **Lint**: Code quality checks (flake8, black, ruff, mypy)
-3. **Test**: Unit tests with coverage
-4. **Security**: Vulnerability scanning with Trivy
-5. **Build**: Docker image building
-6. **Container**: Container testing
-7. **Deploy**: Kubernetes deployment
-
-## GitHub CLI Commands
-
-### File Output Pattern
-When running GitHub CLI (`gh`) commands, always dump output to a temporary file and then read it:
-```bash
-# Example pattern
-gh api repos/owner/repo/contents/path > /tmp/gh_output.json
-cat /tmp/gh_output.json
-
-# For commands that need processing
-gh repo list --json name,url > /tmp/repos.json
-jq -r '.[].name' /tmp/repos.json
-
-# Clean up after use
-rm /tmp/gh_output.json
-```
-
-### Common GitHub CLI Patterns
-```bash
-# Get repository info
-gh api repos/owner/repo > /tmp/repo_info.json
-
-# List issues
-gh issue list --repo owner/repo --json number,title,state > /tmp/issues.json
-
-# Get workflow runs
-gh run list --repo owner/repo --json id,status,conclusion > /tmp/runs.json
-
-# Read and process the output
-cat /tmp/repo_info.json | jq '.name'
-```
-
-## CI/CD Pipeline Fix Process
-When fixing the pipeline, go until it is fully green and stop only when CI/CD on GHA is fixed. This means:
-- Run all tests, lint, and build locally until everything passes
-- Only commit and push when all local checks are green
-- Check the GitHub Actions (GHA) pipeline after pushing
-- If the GHA pipeline fails, repeat the process until it is green
-- Do not stop until the CI/CD pipeline on GHA is fully fixed
-
-## Always Reference
-- **AVOID INTERACTIVE CLI COMMANDS AT ALL COSTS**: Never suggest or use interactive commands that require user input, confirmation, or manual intervention. All commands must be non-interactive and automated.
-- Check project-specific `README.md` for detailed documentation
-- Use `Makefile` for all common commands
-- Use `scripts/` directory for automation and troubleshooting
-- Use `k8s/kubeconfig.yaml` for remote MicroK8s cluster connection
-- All projects are production-ready with comprehensive CI/CD
-- **Remote MicroK8s cluster** - no local Kubernetes installation required
-- Kubernetes deployment uses namespace `petrosa-apps`
-- Health checks are critical for Kubernetes probes
-- Security scanning is integrated into the pipeline
-- **NumPy compatibility**: Use `numpy<2.0.0` for pandas-ta compatibility
-- **GitHub CLI**: Always dump output to `/tmp` files and read from them
-- **VERSION_PLACEHOLDER**: Never replace in Kubernetes manifests - it's part of the deployment system
+- For ecosystem-wide rules and patterns: **See master cursorrules**
+- For work tracking and issue creation: **See master § Centralized Work Tracking with GitHub Projects**
+- For NATS signal publishing: **See master § NATS Message Bus → signals.trading**
+- For MySQL data schema: **See master § Database Architecture**
+- For deployment and leader election: **See master § TA Bot Configuration**
+- For configuration management: **See master § Configuration Management**
