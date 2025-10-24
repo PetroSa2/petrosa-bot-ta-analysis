@@ -187,33 +187,43 @@ class TestAppConfigManager:
     ):
         """Test successfully setting config."""
         # Mock get_config for audit trail
-        config_manager._cache = None
-        mock_data_manager_client.get_app_config.return_value = {
-            "version": 0,
-            "enabled_strategies": [],
-        }
+        with patch.object(
+            config_manager,
+            "get_config",
+            new=AsyncMock(
+                return_value={
+                    "version": 0,
+                    "enabled_strategies": [],
+                    "symbols": [],
+                    "candle_periods": [],
+                    "min_confidence": 0.6,
+                    "max_confidence": 0.9,
+                    "max_positions": 10,
+                    "position_sizes": [100],
+                }
+            ),
+        ):
+            config = {
+                "enabled_strategies": ["momentum_pulse"],
+                "symbols": ["BTCUSDT"],
+                "candle_periods": ["15m"],
+                "min_confidence": 0.6,
+                "max_confidence": 0.9,
+                "max_positions": 10,
+                "position_sizes": [100],
+            }
 
-        config = {
-            "enabled_strategies": ["momentum_pulse"],
-            "symbols": ["BTCUSDT"],
-            "candle_periods": ["15m"],
-            "min_confidence": 0.6,
-            "max_confidence": 0.9,
-            "max_positions": 10,
-            "position_sizes": [100],
-        }
+            mock_data_manager_client.set_app_config.return_value = True
 
-        mock_data_manager_client.set_app_config.return_value = True
+            success, app_config, errors = await config_manager.set_config(
+                config, changed_by="test_user", reason="Testing"
+            )
 
-        success, app_config, errors = await config_manager.set_config(
-            config, changed_by="test_user", reason="Testing"
-        )
-
-        assert success is True
-        assert app_config is not None
-        assert isinstance(app_config, AppConfig)
-        assert len(errors) == 0
-        mock_data_manager_client.set_app_config.assert_called_once()
+            assert success is True
+            assert app_config is not None
+            assert isinstance(app_config, AppConfig)
+            assert len(errors) == 0
+            mock_data_manager_client.set_app_config.assert_called_once()
 
     async def test_refresh_cache(self, config_manager):
         """Test refreshing cache."""

@@ -20,7 +20,8 @@ def mock_signal():
         action="buy",
         confidence=0.85,
         strategy_id="momentum_pulse",
-        entry_price=50000.0,
+        current_price=50000.0,
+        price=50000.0,
         stop_loss=49000.0,
         take_profit=52000.0,
         timestamp="2025-10-24T00:00:00Z",
@@ -29,14 +30,13 @@ def mock_signal():
 
 
 @pytest.fixture
-async def publisher():
+def publisher():
     """Create a signal publisher."""
-    pub = SignalPublisher(
+    return SignalPublisher(
         api_endpoint="http://test-api:8000/signals",
         nats_url="nats://test-nats:4222",
         enable_rest_publishing=False,
     )
-    return pub
 
 
 @pytest.mark.asyncio

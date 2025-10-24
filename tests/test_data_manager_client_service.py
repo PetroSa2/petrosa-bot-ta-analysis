@@ -8,9 +8,34 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pandas as pd
 import pytest
 
+
+# Define exception classes for the mock module
+class APIError(Exception):
+    """Mock API error."""
+
+    pass
+
+
+class ConnectionError(Exception):
+    """Mock connection error."""
+
+    pass
+
+
+class TimeoutError(Exception):
+    """Mock timeout error."""
+
+    pass
+
+
 # Mock the data_manager_client module before importing DataManagerClient
+mock_exceptions = Mock()
+mock_exceptions.APIError = APIError
+mock_exceptions.ConnectionError = ConnectionError
+mock_exceptions.TimeoutError = TimeoutError
+
 sys.modules["data_manager_client"] = Mock()
-sys.modules["data_manager_client.exceptions"] = Mock()
+sys.modules["data_manager_client.exceptions"] = mock_exceptions
 
 from ta_bot.services.data_manager_client import DataManagerClient  # noqa: E402
 
@@ -27,14 +52,13 @@ def mock_base_client():
 
 
 @pytest.fixture
-async def data_manager_client(mock_base_client):
+def data_manager_client(mock_base_client):
     """Create a Data Manager client with mocked base client."""
-    client = DataManagerClient(
+    return DataManagerClient(
         base_url="http://test-dm:8000",
         timeout=30,
         max_retries=3,
     )
-    return client
 
 
 @pytest.mark.asyncio
@@ -142,11 +166,8 @@ class TestDataManagerClient:
 
     async def test_fetch_candles_api_error(self, data_manager_client, mock_base_client):
         """Test fetching candles with API error."""
-        # Create a mock APIError exception
-        mock_api_error = Exception("API error")
-        mock_api_error.__class__.__name__ = "APIError"
-
-        mock_base_client.get_candles.side_effect = mock_api_error
+        # Use the APIError class we defined in the module-level mocks
+        mock_base_client.get_candles.side_effect = APIError("API error")
 
         df = await data_manager_client.fetch_candles("BTCUSDT", "15m")
 
