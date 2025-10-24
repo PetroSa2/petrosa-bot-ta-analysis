@@ -30,7 +30,7 @@ class EMAAlignmentBullishStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for EMA alignment bullish signals."""
         if len(df) < 125:  # Need sufficient data for EMA80

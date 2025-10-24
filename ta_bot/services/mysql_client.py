@@ -233,7 +233,7 @@ class MySQLClient:
         else:
             return obj
 
-    async def persist_signal(self, signal_data: Dict[str, Any]) -> bool:
+    async def persist_signal(self, signal_data: dict[str, Any]) -> bool:
         """Persist a single signal to MySQL or Data Manager."""
         if self.use_data_manager:
             return await self.data_manager_client.persist_signal(signal_data)
@@ -308,7 +308,7 @@ class MySQLClient:
                 logger.error(f"Failed to reconnect: {reconnect_error}")
             return False
 
-    async def persist_signals_batch(self, signals: List[Dict[str, Any]]) -> bool:
+    async def persist_signals_batch(self, signals: list[dict[str, Any]]) -> bool:
         """Persist multiple signals to MySQL or Data Manager in a batch."""
         if self.use_data_manager:
             return await self.data_manager_client.persist_signals_batch(signals)

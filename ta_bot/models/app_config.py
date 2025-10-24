@@ -20,11 +20,11 @@ class AppConfig(BaseModel):
     """
 
     id: Optional[str] = Field(None, description="Configuration ID")
-    enabled_strategies: List[str] = Field(
+    enabled_strategies: list[str] = Field(
         ..., description="List of enabled strategy identifiers"
     )
-    symbols: List[str] = Field(..., description="List of trading symbols to monitor")
-    candle_periods: List[str] = Field(
+    symbols: list[str] = Field(..., description="List of trading symbols to monitor")
+    candle_periods: list[str] = Field(
         ..., description="List of timeframes/candle periods to analyze"
     )
     min_confidence: float = Field(
@@ -36,7 +36,7 @@ class AppConfig(BaseModel):
     max_positions: int = Field(
         ..., description="Maximum number of concurrent positions"
     )
-    position_sizes: List[int] = Field(..., description="Available position sizes")
+    position_sizes: list[int] = Field(..., description="Available position sizes")
     version: int = Field(1, description="Configuration version number")
     created_at: datetime = Field(
         default_factory=datetime.utcnow, description="When config was created"
@@ -45,7 +45,7 @@ class AppConfig(BaseModel):
         default_factory=datetime.utcnow, description="When config was last updated"
     )
     created_by: str = Field(..., description="Who/what created this config")
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
 
@@ -89,10 +89,10 @@ class AppConfigAudit(BaseModel):
     action: Literal["CREATE", "UPDATE", "DELETE"] = Field(
         ..., description="Type of configuration change"
     )
-    old_config: Optional[Dict[str, Any]] = Field(
+    old_config: Optional[dict[str, Any]] = Field(
         None, description="Previous configuration values"
     )
-    new_config: Optional[Dict[str, Any]] = Field(
+    new_config: Optional[dict[str, Any]] = Field(
         None, description="New configuration values"
     )
     changed_by: str = Field(..., description="Who/what made the change")
@@ -100,7 +100,7 @@ class AppConfigAudit(BaseModel):
         default_factory=datetime.utcnow, description="When the change was made"
     )
     reason: Optional[str] = Field(None, description="Reason for the change")
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional audit metadata"
     )
 

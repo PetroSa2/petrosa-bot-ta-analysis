@@ -25,7 +25,7 @@ class MomentumPulseStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for momentum pulse signals."""
         if len(df) < 2:

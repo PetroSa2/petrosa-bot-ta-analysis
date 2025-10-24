@@ -60,7 +60,7 @@ class StrategyConfigManager:
         self.cache_ttl_seconds = cache_ttl_seconds
 
         # Cache: key = f"{strategy_id}:{symbol or 'global'}", value = (config, timestamp)
-        self._cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
+        self._cache: dict[str, tuple[dict[str, Any], float]] = {}
 
         # Background tasks
         self._cache_refresh_task: Optional[asyncio.Task] = None
@@ -102,7 +102,7 @@ class StrategyConfigManager:
 
     async def get_config(
         self, strategy_id: str, symbol: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get configuration for a strategy.
 
@@ -225,12 +225,12 @@ class StrategyConfigManager:
     async def set_config(
         self,
         strategy_id: str,
-        parameters: Dict[str, Any],
+        parameters: dict[str, Any],
         changed_by: str,
         symbol: Optional[str] = None,
         reason: Optional[str] = None,
         validate_only: bool = False,
-    ) -> Tuple[bool, Optional[StrategyConfig], List[str]]:
+    ) -> tuple[bool, Optional[StrategyConfig], list[str]]:
         """
         Create or update configuration.
 
@@ -352,7 +352,7 @@ class StrategyConfigManager:
         changed_by: str,
         symbol: Optional[str] = None,
         reason: Optional[str] = None,
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Delete configuration.
 
@@ -430,7 +430,7 @@ class StrategyConfigManager:
 
     async def get_audit_trail(
         self, strategy_id: str, symbol: Optional[str] = None, limit: int = 100
-    ) -> List[StrategyConfigAudit]:
+    ) -> list[StrategyConfigAudit]:
         """
         Get configuration change history.
 
@@ -474,7 +474,7 @@ class StrategyConfigManager:
             logger.error(f"Failed to get audit trail: {e}")
             return []
 
-    async def list_strategies(self) -> List[Dict[str, Any]]:
+    async def list_strategies(self) -> list[dict[str, Any]]:
         """
         List all strategies with their configuration status.
 
@@ -527,7 +527,7 @@ class StrategyConfigManager:
         """Make cache key from strategy_id and symbol."""
         return f"{strategy_id}:{symbol or 'global'}"
 
-    def _get_from_cache(self, key: str) -> Optional[Dict[str, Any]]:
+    def _get_from_cache(self, key: str) -> Optional[dict[str, Any]]:
         """Get configuration from cache if not expired."""
         if key not in self._cache:
             return None
@@ -540,7 +540,7 @@ class StrategyConfigManager:
 
         return config.copy()
 
-    def _set_cache(self, key: str, config: Dict[str, Any]) -> None:
+    def _set_cache(self, key: str, config: dict[str, Any]) -> None:
         """Set configuration in cache."""
         self._cache[key] = (config.copy(), time.time())
 
@@ -550,8 +550,8 @@ class StrategyConfigManager:
             del self._cache[key]
 
     def _doc_to_config_result(
-        self, doc: Dict[str, Any], source: str, is_override: bool
-    ) -> Dict[str, Any]:
+        self, doc: dict[str, Any], source: str, is_override: bool
+    ) -> dict[str, Any]:
         """Convert database document to config result."""
         return {
             "parameters": doc.get("parameters", {}),
@@ -583,20 +583,20 @@ class StrategyConfigManager:
 
     async def _get_mysql_global_config(
         self, strategy_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, Any]]:
         """Get global config from MySQL."""
         # TODO: Implement MySQL query
         return None
 
     async def _get_mysql_symbol_config(
         self, strategy_id: str, symbol: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, Any]]:
         """Get symbol config from MySQL."""
         # TODO: Implement MySQL query
         return None
 
     async def _upsert_mysql_global_config(
-        self, strategy_id: str, parameters: Dict[str, Any], metadata: Dict[str, Any]
+        self, strategy_id: str, parameters: dict[str, Any], metadata: dict[str, Any]
     ) -> bool:
         """Upsert global config to MySQL."""
         # TODO: Implement MySQL upsert
@@ -606,8 +606,8 @@ class StrategyConfigManager:
         self,
         strategy_id: str,
         symbol: str,
-        parameters: Dict[str, Any],
-        metadata: Dict[str, Any],
+        parameters: dict[str, Any],
+        metadata: dict[str, Any],
     ) -> bool:
         """Upsert symbol config to MySQL."""
         # TODO: Implement MySQL upsert

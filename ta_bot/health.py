@@ -227,7 +227,7 @@ class HealthServerRunner:
 
 
 # Legacy functions for backward compatibility
-def get_health_status() -> Dict[str, Any]:
+def get_health_status() -> dict[str, Any]:
     """Get health status (legacy function)."""
     return {
         "status": "healthy",
@@ -244,7 +244,7 @@ def get_health_status() -> Dict[str, Any]:
     }
 
 
-def get_readiness_status() -> Dict[str, Any]:
+def get_readiness_status() -> dict[str, Any]:
     """Get readiness status (legacy function)."""
     return {
         "status": "ready",
@@ -256,6 +256,6 @@ def get_readiness_status() -> Dict[str, Any]:
     }
 
 
-def get_liveness_status() -> Dict[str, Any]:
+def get_liveness_status() -> dict[str, Any]:
     """Get liveness status (legacy function)."""
     return {"status": "alive", "uptime": get_uptime()}

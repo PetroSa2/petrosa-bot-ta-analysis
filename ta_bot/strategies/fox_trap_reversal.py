@@ -39,7 +39,7 @@ class FoxTrapReversalStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for fox trap reversal signals."""
         if len(df) < 130:  # Need sufficient data for EMA80

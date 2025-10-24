@@ -21,6 +21,7 @@ from pymongo.errors import ConnectionFailure
 # Import Data Manager client
 try:
     from ..services.data_manager_client import DataManagerClient
+
     DATA_MANAGER_AVAILABLE = True
 except ImportError:
     DATA_MANAGER_AVAILABLE = False
@@ -32,10 +33,10 @@ logger = logging.getLogger(__name__)
 class MongoDBClient:
     """
     Async MongoDB client for strategy configuration persistence.
-    
+
     Supports both direct MongoDB connections and Data Manager API.
     Data Manager is the recommended approach for new deployments.
-    
+
     Features:
     - Connection pooling with configurable limits
     - Automatic retry with exponential backoff
@@ -64,7 +65,7 @@ class MongoDBClient:
             use_data_manager: If True, use Data Manager API instead of direct MongoDB
         """
         self.use_data_manager = use_data_manager and DATA_MANAGER_AVAILABLE
-        
+
         if self.use_data_manager:
             # Initialize Data Manager client
             self.data_manager_client = DataManagerClient()
@@ -73,7 +74,7 @@ class MongoDBClient:
             self._connected = False
             logger.info("Using Data Manager for configuration management")
             return
-        
+
         # Fallback to direct MongoDB connection
         logger.info("Using direct MongoDB connection")
         self.uri = uri or os.getenv("MONGODB_URI", "mongodb://localhost:27017")
@@ -81,7 +82,7 @@ class MongoDBClient:
         self.max_pool_size = max_pool_size
         self.min_pool_size = min_pool_size
         self.timeout_ms = timeout_ms
-        
+
         self.client: Optional[AsyncIOMotorClient] = None
         self.database: Optional[AsyncIOMotorDatabase] = None
         self._connected = False
@@ -97,7 +98,7 @@ class MongoDBClient:
             await self.data_manager_client.connect()
             self._connected = True
             return True
-        
+
         try:
             self.client = AsyncIOMotorClient(
                 self.uri,
@@ -199,7 +200,7 @@ class MongoDBClient:
             logger.error(f"MongoDB health check failed: {e}")
             return False
 
-    async def get_global_config(self, strategy_id: str) -> Optional[Dict[str, Any]]:
+    async def get_global_config(self, strategy_id: str) -> Optional[dict[str, Any]]:
         """
         Get global configuration for a strategy.
 
@@ -211,7 +212,7 @@ class MongoDBClient:
         """
         if self.use_data_manager:
             return await self.data_manager_client.get_global_config(strategy_id)
-        
+
         if not self._connected:
             return None
 
@@ -226,7 +227,7 @@ class MongoDBClient:
 
     async def get_symbol_config(
         self, strategy_id: str, symbol: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, Any]]:
         """
         Get symbol-specific configuration for a strategy.
 
@@ -239,7 +240,7 @@ class MongoDBClient:
         """
         if self.use_data_manager:
             return await self.data_manager_client.get_symbol_config(strategy_id, symbol)
-        
+
         if not self._connected:
             return None
 
@@ -255,7 +256,7 @@ class MongoDBClient:
             return None
 
     async def upsert_global_config(
-        self, strategy_id: str, parameters: Dict[str, Any], metadata: Dict[str, Any]
+        self, strategy_id: str, parameters: dict[str, Any], metadata: dict[str, Any]
     ) -> Optional[str]:
         """
         Create or update global configuration.
@@ -272,7 +273,7 @@ class MongoDBClient:
             return await self.data_manager_client.upsert_global_config(
                 strategy_id, parameters, metadata
             )
-        
+
         if not self._connected:
             return None
 
@@ -313,8 +314,8 @@ class MongoDBClient:
         self,
         strategy_id: str,
         symbol: str,
-        parameters: Dict[str, Any],
-        metadata: Dict[str, Any],
+        parameters: dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[str]:
         """
         Create or update symbol-specific configuration.
@@ -332,7 +333,7 @@ class MongoDBClient:
             return await self.data_manager_client.upsert_symbol_config(
                 strategy_id, symbol, parameters, metadata
             )
-        
+
         if not self._connected:
             return None
 
@@ -427,7 +428,7 @@ class MongoDBClient:
             )
             return False
 
-    async def create_audit_record(self, audit_data: Dict[str, Any]) -> Optional[str]:
+    async def create_audit_record(self, audit_data: dict[str, Any]) -> Optional[str]:
         """
         Create audit trail record for configuration change.
 
@@ -454,7 +455,7 @@ class MongoDBClient:
 
     async def get_audit_trail(
         self, strategy_id: str, symbol: Optional[str] = None, limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get configuration change history.
 
@@ -487,7 +488,7 @@ class MongoDBClient:
             logger.error(f"Error fetching audit trail for {strategy_id}: {e}")
             return []
 
-    async def list_all_strategy_ids(self) -> List[str]:
+    async def list_all_strategy_ids(self) -> list[str]:
         """
         Get list of all strategy IDs with configurations.
 
@@ -513,7 +514,7 @@ class MongoDBClient:
             logger.error(f"Error listing strategy IDs: {e}")
             return []
 
-    async def list_symbol_overrides(self, strategy_id: str) -> List[str]:
+    async def list_symbol_overrides(self, strategy_id: str) -> list[str]:
         """
         Get list of symbols with configuration overrides for a strategy.
 
@@ -539,7 +540,7 @@ class MongoDBClient:
     # Application Configuration Methods
     # -------------------------------------------------------------------------
 
-    async def get_app_config(self) -> Optional[Dict[str, Any]]:
+    async def get_app_config(self) -> Optional[dict[str, Any]]:
         """
         Get application configuration.
 
@@ -558,7 +559,7 @@ class MongoDBClient:
             return None
 
     async def upsert_app_config(
-        self, config: Dict[str, Any], metadata: Dict[str, Any]
+        self, config: dict[str, Any], metadata: dict[str, Any]
     ) -> Optional[str]:
         """
         Create or update application configuration.
@@ -618,7 +619,7 @@ class MongoDBClient:
             return None
 
     async def create_app_audit_record(
-        self, audit_data: Dict[str, Any]
+        self, audit_data: dict[str, Any]
     ) -> Optional[str]:
         """
         Create audit trail record for application configuration change.
@@ -644,7 +645,7 @@ class MongoDBClient:
             logger.error(f"Error creating app config audit record: {e}")
             return None
 
-    async def get_app_audit_trail(self, limit: int = 100) -> List[Dict[str, Any]]:
+    async def get_app_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
         """
         Get application configuration change history.
 

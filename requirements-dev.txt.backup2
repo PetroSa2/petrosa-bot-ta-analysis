@@ -6,17 +6,17 @@
 bandit==1.7.5
 
 # Code Quality & Formatting
+black==24.3.0
 codecov==2.1.13
 
 # Coverage & Reporting
 coverage==7.4.1
-
-# Secret Detection
-detect-secrets==1.4.0
+flake8==7.0.0
 ipdb==0.13.13
 
 # Development Tools
 ipython==8.18.1
+isort==5.13.2
 jupyter==1.0.0
 
 # Performance Testing
@@ -48,3 +48,6 @@ types-PyYAML==6.0.12.12
 
 # Type Checking Stubs
 types-requests==2.31.0.20240125
+
+# Secret Detection
+detect-secrets==1.4.0

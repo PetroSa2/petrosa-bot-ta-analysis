@@ -25,7 +25,7 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for Ichimoku cloud momentum signals."""
         if len(df) < 52:  # Need at least 52 candles for Ichimoku

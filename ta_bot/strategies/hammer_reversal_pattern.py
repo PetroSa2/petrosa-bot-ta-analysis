@@ -33,7 +33,7 @@ class HammerReversalPatternStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for hammer reversal pattern signals."""
         if len(df) < 10:  # Need minimal data for pattern recognition

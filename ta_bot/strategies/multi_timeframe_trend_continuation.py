@@ -25,7 +25,7 @@ class MultiTimeframeTrendContinuationStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for multi-timeframe trend continuation signals."""
         if len(df) < 50:
@@ -130,7 +130,7 @@ class MultiTimeframeTrendContinuationStrategy(BaseStrategy):
         )
 
     def _determine_trend_direction(
-        self, current: Dict[str, float], previous: Dict[str, float]
+        self, current: dict[str, float], previous: dict[str, float]
     ) -> Optional[str]:
         """Determine the overall trend direction."""
         # Check EMA alignment
@@ -196,7 +196,7 @@ class MultiTimeframeTrendContinuationStrategy(BaseStrategy):
 
         return False
 
-    def _check_volume_confirmation(self, current: Dict[str, float]) -> bool:
+    def _check_volume_confirmation(self, current: dict[str, float]) -> bool:
         """Check if volume confirms the trend continuation."""
         if "volume_sma" not in current:
             return True  # Skip volume check if not available

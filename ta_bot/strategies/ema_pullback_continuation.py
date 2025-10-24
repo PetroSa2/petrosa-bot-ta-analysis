@@ -40,7 +40,7 @@ class EMAPullbackContinuationStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for EMA pullback continuation signals."""
         if len(df) < 80:  # Need sufficient data for EMAs

@@ -41,7 +41,7 @@ class InsideBarSellStrategy(BaseStrategy):
         self.logger = logging.getLogger(__name__)
         self.indicators = Indicators()
 
-    def analyze(self, data: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict[str, Any]) -> Optional[Signal]:
         """
         Analyze market data for inside bar sell opportunities.
 

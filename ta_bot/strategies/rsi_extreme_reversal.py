@@ -33,7 +33,7 @@ class RSIExtremeReversalStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for RSI extreme reversal signals."""
         # Extract metadata

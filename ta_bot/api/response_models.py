@@ -36,11 +36,11 @@ class APIResponse(BaseModel, Generic[T]):
         None,
         description="Response data (only present when success=true). Contains the actual payload requested.",
     )
-    error: Optional[Dict[str, Any]] = Field(
+    error: Optional[dict[str, Any]] = Field(
         None,
         description="Error details (only present when success=false). Contains code, message, and additional context.",
     )
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: Optional[dict[str, Any]] = Field(
         default_factory=dict,
         description="Additional metadata about the response: pagination info, timing, cache status, etc.",
     )
@@ -87,7 +87,7 @@ class ErrorDetail(BaseModel):
     message: str = Field(
         ..., description="Human-readable error message explaining what went wrong"
     )
-    details: Optional[Dict[str, Any]] = Field(
+    details: Optional[dict[str, Any]] = Field(
         None,
         description="Additional error context with specific information about the failure",
     )
@@ -118,7 +118,7 @@ class ConfigUpdateRequest(BaseModel):
     within 60 seconds due to caching. All changes are audited for tracking.
     """
 
-    parameters: Dict[str, Any] = Field(
+    parameters: dict[str, Any] = Field(
         ...,
         description=(
             "Dictionary of strategy parameters to update. Must match the schema "
@@ -184,7 +184,7 @@ class ConfigResponse(BaseModel):
             "Null means this is a global configuration applied to all symbols."
         ),
     )
-    parameters: Dict[str, Any] = Field(
+    parameters: dict[str, Any] = Field(
         ..., description="Current parameter values for this strategy configuration"
     )
     version: int = Field(
@@ -243,7 +243,7 @@ class StrategyListItem(BaseModel):
     has_global_config: bool = Field(
         ..., description="Whether a global configuration exists for this strategy"
     )
-    symbol_overrides: List[str] = Field(
+    symbol_overrides: list[str] = Field(
         default_factory=list,
         description="List of symbols that have specific configuration overrides",
     )
@@ -277,7 +277,7 @@ class ParameterSchemaItem(BaseModel):
     max: Optional[float] = Field(
         None, description="Maximum allowed value (for numeric types)"
     )
-    allowed_values: Optional[List[Any]] = Field(
+    allowed_values: Optional[list[Any]] = Field(
         None, description="List of allowed values (for enum-like parameters)"
     )
     example: Any = Field(..., description="Example valid value")
@@ -303,10 +303,10 @@ class AuditTrailItem(BaseModel):
     strategy_id: str = Field(..., description="Strategy that was modified")
     symbol: Optional[str] = Field(None, description="Symbol (null for global configs)")
     action: str = Field(..., description="Action taken: CREATE, UPDATE, or DELETE")
-    old_parameters: Optional[Dict[str, Any]] = Field(
+    old_parameters: Optional[dict[str, Any]] = Field(
         None, description="Previous parameter values (null for CREATE)"
     )
-    new_parameters: Optional[Dict[str, Any]] = Field(
+    new_parameters: Optional[dict[str, Any]] = Field(
         None, description="New parameter values (null for DELETE)"
     )
     changed_by: str = Field(..., description="Who/what made the change")
@@ -343,7 +343,7 @@ class AppConfigUpdateRequest(BaseModel):
     Changes take effect within 60 seconds due to caching. All changes are audited.
     """
 
-    enabled_strategies: Optional[List[str]] = Field(
+    enabled_strategies: Optional[list[str]] = Field(
         None,
         description=(
             "List of strategy identifiers to enable. Must be non-empty. "
@@ -351,14 +351,14 @@ class AppConfigUpdateRequest(BaseModel):
             "Example: ['momentum_pulse', 'rsi_extreme_reversal']"
         ),
     )
-    symbols: Optional[List[str]] = Field(
+    symbols: Optional[list[str]] = Field(
         None,
         description=(
             "List of trading symbols to monitor. Must be uppercase and valid format. "
             "Example: ['BTCUSDT', 'ETHUSDT', 'ADAUSDT']"
         ),
     )
-    candle_periods: Optional[List[str]] = Field(
+    candle_periods: Optional[list[str]] = Field(
         None,
         description=(
             "List of timeframes to analyze. Must be valid Binance timeframes. "
@@ -386,7 +386,7 @@ class AppConfigUpdateRequest(BaseModel):
             "Must be at least 1. Example: 10"
         ),
     )
-    position_sizes: Optional[List[int]] = Field(
+    position_sizes: Optional[list[int]] = Field(
         None,
         description=(
             "Available position sizes (positive integers). "
@@ -445,19 +445,19 @@ class AppConfigResponse(BaseModel):
     Shows the active application-level configuration including all runtime settings.
     """
 
-    enabled_strategies: List[str] = Field(
+    enabled_strategies: list[str] = Field(
         ..., description="List of currently enabled strategies"
     )
-    symbols: List[str] = Field(
+    symbols: list[str] = Field(
         ..., description="List of trading symbols being monitored"
     )
-    candle_periods: List[str] = Field(
+    candle_periods: list[str] = Field(
         ..., description="List of timeframes being analyzed"
     )
     min_confidence: float = Field(..., description="Minimum confidence threshold")
     max_confidence: float = Field(..., description="Maximum confidence threshold")
     max_positions: int = Field(..., description="Maximum concurrent positions allowed")
-    position_sizes: List[int] = Field(..., description="Available position sizes")
+    position_sizes: list[int] = Field(..., description="Available position sizes")
     version: int = Field(
         ..., description="Configuration version number. Increments with each update."
     )
@@ -502,10 +502,10 @@ class AppAuditTrailItem(BaseModel):
 
     id: str = Field(..., description="Audit record ID")
     action: str = Field(..., description="Action taken: CREATE, UPDATE, or DELETE")
-    old_config: Optional[Dict[str, Any]] = Field(
+    old_config: Optional[dict[str, Any]] = Field(
         None, description="Previous configuration values (null for CREATE)"
     )
-    new_config: Optional[Dict[str, Any]] = Field(
+    new_config: Optional[dict[str, Any]] = Field(
         None, description="New configuration values (null for DELETE)"
     )
     changed_by: str = Field(..., description="Who/what made the change")

@@ -88,7 +88,7 @@ class Signal:
     quantity: float = 0.0
     source: str = "ta_bot"
     strategy: str = ""
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] = None
     timeframe: str = "15m"
     order_type: OrderType = OrderType.MARKET
     time_in_force: TimeInForce = TimeInForce.GTC
@@ -108,7 +108,7 @@ class Signal:
         if not self.strategy:
             self.strategy = self.strategy_id
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert signal to dictionary for API transmission."""
         signal_dict = asdict(self)
         # Convert enums to their values

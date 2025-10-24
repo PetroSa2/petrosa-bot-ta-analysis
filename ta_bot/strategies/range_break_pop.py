@@ -28,7 +28,7 @@ class RangeBreakPopStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Optional[Signal]:
         """Analyze candles for Range Break Pop signals."""
         if len(df) < 20:
             return None

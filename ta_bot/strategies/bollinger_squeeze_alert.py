@@ -30,7 +30,7 @@ class BollingerSqueezeAlertStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for Bollinger Band squeeze conditions."""
         if len(df) < 25:  # Need sufficient data for BB calculation

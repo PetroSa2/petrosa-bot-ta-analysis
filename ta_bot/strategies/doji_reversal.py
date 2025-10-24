@@ -40,7 +40,7 @@ class DojiReversalStrategy(BaseStrategy):
         self.min_periods = 20  # Need some context for trend determination
         self.logger = logging.getLogger(__name__)
 
-    def analyze(self, data: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict[str, Any]) -> Optional[Signal]:
         """
         Analyze market data for doji reversal opportunities.
 

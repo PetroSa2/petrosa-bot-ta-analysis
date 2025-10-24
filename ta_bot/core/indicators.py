@@ -23,7 +23,7 @@ class Indicators:
     @staticmethod
     def macd(
         df: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9
-    ) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    ) -> tuple[pd.Series, pd.Series, pd.Series]:
         """Calculate MACD indicator."""
         macd_result = df.ta.macd(close=df["close"], fast=fast, slow=slow, signal=signal)
         if macd_result is None or macd_result.empty:
@@ -61,7 +61,7 @@ class Indicators:
     @staticmethod
     def bollinger_bands(
         df: pd.DataFrame, period: int = 20, std: float = 2.0
-    ) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    ) -> tuple[pd.Series, pd.Series, pd.Series]:
         """Calculate Bollinger Bands."""
         bb_result = df.ta.bbands(close=df["close"], length=period, std=std)
         if bb_result is None or bb_result.empty:

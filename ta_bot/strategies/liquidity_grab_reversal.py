@@ -25,7 +25,7 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for liquidity grab reversal signals."""
         if len(df) < 30:

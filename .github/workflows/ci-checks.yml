@@ -1,0 +1,150 @@
+name: CI Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Cache virtual environment
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run linting
+        run: make lint
+
+      - name: Run type check
+        run: make type-check
+        continue-on-error: true  # Allow type check failures initially
+
+  test:
+    name: Test & Coverage
+    runs-on: ubuntu-latest
+    env:
+      OTEL_NO_AUTO_INIT: 1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Cache virtual environment
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run tests with coverage
+        timeout-minutes: 10
+        run: make test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: PetroSa2/petrosa-bot-ta-analysis
+          file: ./coverage.xml
+          flags: unittests
+          fail_ci_if_error: true
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for secret detection
+
+      - name: 🔐 Run Gitleaks (Secret Detection)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🐍 Run Bandit (Python Security)
+        run: |
+          pip install bandit[toml]
+          bandit -r . \
+            --severity-level medium \
+            --confidence-level medium \
+            --format json \
+            --output bandit-report.json \
+            --exclude tests/ \
+            || true
+          echo "📊 Bandit Results:"
+          python -m json.tool bandit-report.json | head -30 || echo "No issues found"
+
+      - name: 🗂️ Run Trivy (Vulnerability Scanner)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+          ignore-unfixed: true
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  documentation-standards:
+    name: Documentation Standards Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for temporary documentation patterns
+        run: |
+          temp_docs=$(find docs/ -maxdepth 1 -type f -regex '.*_\(SUMMARY\|FIX\|COMPLETE\|STATUS\)\.md$' || true)
+          if [ -n "$temp_docs" ]; then
+            echo "❌ Found temporary documentation in docs/ root:"
+            echo "$temp_docs"
+            echo ""
+            echo "These files should be in docs/archive/ subdirectories"
+            exit 1
+          fi
+          echo "✅ Documentation standards check passed"

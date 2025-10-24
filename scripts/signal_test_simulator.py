@@ -17,23 +17,14 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from ta_bot.config import Config
-
 from ta_bot.core.indicators import Indicators
-
 from ta_bot.core.signal_engine import SignalEngine
-
 from ta_bot.services.mysql_client import MySQLClient
-
 from ta_bot.services.publisher import SignalPublisher
-
 from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy
-
 from ta_bot.strategies.divergence_trap import DivergenceTrapStrategy
-
 from ta_bot.strategies.golden_trend_sync import GoldenTrendSyncStrategy
-
 from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
-
 from ta_bot.strategies.range_break_pop import RangeBreakPopStrategy
 
 # Configure logging

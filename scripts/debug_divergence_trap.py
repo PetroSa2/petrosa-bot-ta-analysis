@@ -14,7 +14,6 @@ import pandas as pd
 sys.path.insert(0, ".")
 
 from ta_bot.core.indicators import Indicators  # noqa: E402
-
 from ta_bot.strategies.divergence_trap import DivergenceTrapStrategy  # noqa: E402
 
 # Configure logging
@@ -54,12 +53,7 @@ def generate_divergence_trap_data():
             elif i == 91:
                 # Slight bounce
                 price = (
-                    base_price
-                    * (1.005**40)
-                    * (0.995**40)
-                    * (0.99**10)
-                    * 0.98
-                    * 1.002
+                    base_price * (1.005**40) * (0.995**40) * (0.99**10) * 0.98 * 1.002
                 )
             elif i == 92:
                 # Continue bounce
@@ -102,12 +96,7 @@ def generate_divergence_trap_data():
             if i == 95:
                 # This should be lower than the low at i=90
                 price = (
-                    base_price
-                    * (1.005**40)
-                    * (0.995**40)
-                    * (0.99**10)
-                    * 0.98
-                    * 0.97
+                    base_price * (1.005**40) * (0.995**40) * (0.99**10) * 0.98 * 0.97
                 )
             elif i == 96:
                 # Slight recovery
@@ -163,7 +152,7 @@ def generate_divergence_trap_data():
 
     # Create DataFrame
     data = []
-    for i, (date, price) in enumerate(zip(dates, prices)):
+    for i, (date, price) in enumerate(zip(dates, prices, strict=False)):
         open_price = price * (1 + np.random.uniform(-0.002, 0.002))
         high_price = max(open_price, price) * (1 + np.random.uniform(0, 0.005))
         low_price = min(open_price, price) * (1 - np.random.uniform(0, 0.005))

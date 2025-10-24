@@ -76,7 +76,7 @@ class Config:
     timeout: int = 30
 
     # Strategy settings
-    enabled_strategies: List[str] = field(
+    enabled_strategies: list[str] = field(
         default_factory=lambda: [
             # Original Petrosa strategies
             "momentum_pulse",
@@ -113,10 +113,10 @@ class Config:
     )
 
     # Technical analysis settings
-    candle_periods: List[str] = field(
+    candle_periods: list[str] = field(
         default_factory=lambda: os.getenv("SUPPORTED_TIMEFRAMES", "5m").split(",")
     )
-    symbols: List[str] = field(
+    symbols: list[str] = field(
         default_factory=lambda: os.getenv(
             "SUPPORTED_SYMBOLS", "BTCUSDT,ETHUSDT,ADAUSDT"
         ).split(",")
@@ -128,7 +128,7 @@ class Config:
 
     # Risk management
     max_positions: int = 10
-    position_sizes: List[int] = field(default_factory=lambda: [100, 200, 500, 1000])
+    position_sizes: list[int] = field(default_factory=lambda: [100, 200, 500, 1000])
 
     # TP/SL Configuration (used when strategies don't define their own)
     # Default stop loss percentage (2% for buy, added for sell)

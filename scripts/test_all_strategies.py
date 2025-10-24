@@ -165,9 +165,7 @@ class AllStrategiesTester:
                 # This means the last low should be lower than the low 5 periods ago
                 if i == 90:
                     # First low in the pattern
-                    price = (
-                        base_price * (1.005**40) * (0.995**40) * (0.99**10) * 0.98
-                    )
+                    price = base_price * (1.005**40) * (0.995**40) * (0.99**10) * 0.98
                 elif i == 91:
                     # Slight bounce
                     price = (
@@ -422,7 +420,7 @@ class AllStrategiesTester:
     ) -> pd.DataFrame:
         """Create DataFrame with OHLCV data."""
         data = []
-        for i, (date, price) in enumerate(zip(dates, prices)):
+        for i, (date, price) in enumerate(zip(dates, prices, strict=False)):
             # Create realistic OHLCV from the price
             open_price = price * (1 + np.random.uniform(-0.002, 0.002))
             high_price = max(open_price, price) * (1 + np.random.uniform(0, 0.005))

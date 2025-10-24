@@ -74,7 +74,7 @@ class DataManagerConfigClient:
         except Exception as e:
             logger.warning(f"Error disconnecting from Data Manager: {e}")
 
-    async def get_app_config(self) -> Dict[str, Any]:
+    async def get_app_config(self) -> dict[str, Any]:
         """
         Get application configuration from data management service.
 
@@ -100,7 +100,7 @@ class DataManagerConfigClient:
 
     async def set_app_config(
         self,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         changed_by: str,
         reason: Optional[str] = None,
     ) -> bool:
@@ -147,7 +147,7 @@ class DataManagerConfigClient:
 
     async def get_strategy_config(
         self, strategy_id: str, symbol: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get strategy configuration from data management service.
 
@@ -181,7 +181,7 @@ class DataManagerConfigClient:
     async def set_strategy_config(
         self,
         strategy_id: str,
-        parameters: Dict[str, Any],
+        parameters: dict[str, Any],
         changed_by: str,
         symbol: Optional[str] = None,
         reason: Optional[str] = None,
@@ -225,7 +225,7 @@ class DataManagerConfigClient:
             logger.error(f"Error updating strategy config for {strategy_id}: {e}")
             return False
 
-    async def list_strategy_configs(self) -> List[str]:
+    async def list_strategy_configs(self) -> list[str]:
         """
         List all strategy configurations.
 
@@ -283,7 +283,7 @@ class DataManagerConfigClient:
             logger.error(f"Error deleting strategy config for {strategy_id}: {e}")
             return False
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default application configuration."""
         return {
             "enabled_strategies": [],
@@ -299,7 +299,7 @@ class DataManagerConfigClient:
             "updated_at": datetime.utcnow().isoformat(),
         }
 
-    def _get_default_strategy_config(self) -> Dict[str, Any]:
+    def _get_default_strategy_config(self) -> dict[str, Any]:
         """Get default strategy configuration."""
         return {
             "parameters": {},

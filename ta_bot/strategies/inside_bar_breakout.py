@@ -36,7 +36,7 @@ class InsideBarBreakoutStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for inside bar breakout signals."""
         if len(df) < 130:  # Need sufficient data for EMA80 + pattern confirmation

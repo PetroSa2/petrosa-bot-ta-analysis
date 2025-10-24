@@ -54,7 +54,7 @@ class NATSListener:
         self.supported_timeframes = supported_timeframes or ["15m", "1h"]
         self.app_config_manager = app_config_manager
         self.nc = NATS()
-        self.subscriptions: List[Any] = []
+        self.subscriptions: list[Any] = []
         self.leader_election = None
         self.mysql_client = MySQLClient()
 

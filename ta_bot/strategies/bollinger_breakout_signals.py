@@ -32,7 +32,7 @@ class BollingerBreakoutSignalsStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for Bollinger Band breakout signals."""
         if len(df) < 25:  # Need sufficient data for BB calculation

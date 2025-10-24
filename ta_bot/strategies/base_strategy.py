@@ -31,7 +31,7 @@ class BaseStrategy:
         self.config_manager = config_manager
         self.strategy_id = self.__class__.__name__.lower().replace("strategy", "")
 
-    def analyze(self, df: pd.DataFrame, metadata: Dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Optional[Signal]:
         """
         Analyze candles and return a trading signal.
 
@@ -48,7 +48,7 @@ class BaseStrategy:
         """
         raise NotImplementedError("Subclasses must implement analyze method")
 
-    def _get_config(self, metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _get_config(self, metadata: dict[str, Any]) -> Optional[dict[str, Any]]:
         """
         Get configuration for this strategy.
 
@@ -64,7 +64,7 @@ class BaseStrategy:
         return metadata.get("config")
 
     def _add_config_to_signal(
-        self, signal: Signal, config: Optional[Dict[str, Any]]
+        self, signal: Signal, config: Optional[dict[str, Any]]
     ) -> Signal:
         """
         Add configuration metadata to signal for position tracking.
@@ -90,8 +90,8 @@ class BaseStrategy:
         return signal
 
     def _get_current_values(
-        self, indicators: Dict[str, Any], df: pd.DataFrame
-    ) -> Dict[str, float]:
+        self, indicators: dict[str, Any], df: pd.DataFrame
+    ) -> dict[str, float]:
         """Get current values of indicators for the latest candle."""
         current_values = {}
 
@@ -141,8 +141,8 @@ class BaseStrategy:
         return current_values
 
     def _get_previous_values(
-        self, indicators: Dict[str, Any], df: pd.DataFrame
-    ) -> Dict[str, float]:
+        self, indicators: dict[str, Any], df: pd.DataFrame
+    ) -> dict[str, float]:
         """Get previous values of indicators for the previous candle."""
         previous_values = {}
 

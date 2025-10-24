@@ -21,7 +21,7 @@ class StrategyConfig(BaseModel):
     symbol: Optional[str] = Field(
         None, description="Trading symbol (None for global configs)"
     )
-    parameters: Dict[str, Any] = Field(
+    parameters: dict[str, Any] = Field(
         ..., description="Strategy parameters as key-value pairs"
     )
     version: int = Field(1, description="Configuration version number")
@@ -32,7 +32,7 @@ class StrategyConfig(BaseModel):
         default_factory=datetime.utcnow, description="When config was last updated"
     )
     created_by: str = Field(..., description="Who/what created this config")
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
 
@@ -75,10 +75,10 @@ class StrategyConfigAudit(BaseModel):
     action: Literal["CREATE", "UPDATE", "DELETE"] = Field(
         ..., description="Type of change made"
     )
-    old_parameters: Optional[Dict[str, Any]] = Field(
+    old_parameters: Optional[dict[str, Any]] = Field(
         None, description="Previous parameter values"
     )
-    new_parameters: Optional[Dict[str, Any]] = Field(
+    new_parameters: Optional[dict[str, Any]] = Field(
         None, description="New parameter values"
     )
     changed_by: str = Field(..., description="Who/what made the change")
@@ -117,7 +117,7 @@ class ParameterSchema(BaseModel):
     default: Any = Field(..., description="Default value")
     min: Optional[float] = Field(None, description="Minimum value (for numeric)")
     max: Optional[float] = Field(None, description="Maximum value (for numeric)")
-    allowed_values: Optional[List[Any]] = Field(
+    allowed_values: Optional[list[Any]] = Field(
         None, description="Allowed values (for enums)"
     )
     example: Any = Field(..., description="Example valid value")
@@ -145,7 +145,7 @@ class StrategyInfo(BaseModel):
     name: str = Field(..., description="Human-readable name")
     description: str = Field(..., description="Strategy description")
     has_global_config: bool = Field(False, description="Whether global config exists")
-    symbol_overrides: List[str] = Field(
+    symbol_overrides: list[str] = Field(
         default_factory=list, description="Symbols with overrides"
     )
     parameter_count: int = Field(0, description="Number of parameters")

@@ -46,7 +46,7 @@ class EMAMomentumReversalStrategy(BaseStrategy):
     def analyze(
         self,
         df: pd.DataFrame,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> Optional[Signal]:
         """Analyze for EMA momentum reversal signals."""
         if len(df) < 60:  # Need sufficient data for pattern analysis

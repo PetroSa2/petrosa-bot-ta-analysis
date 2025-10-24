@@ -63,7 +63,7 @@ class SignalPublisher:
         if self.nats_client:
             await self.nats_client.close()
 
-    async def publish_signals(self, signals: List[Signal]):
+    async def publish_signals(self, signals: list[Signal]):
         """Publish signals to the Trade Engine."""
         if not signals:
             logger.info("No signals to publish")
@@ -86,7 +86,7 @@ class SignalPublisher:
 
         logger.info(f"✅ PUBLISH COMPLETE: {len(signals)} signals dispatched")
 
-    async def _publish_via_rest(self, signals: List[Signal]):
+    async def _publish_via_rest(self, signals: list[Signal]):
         """Publish signals via REST API."""
         if not self.session:
             logger.warning("REST session not started")
@@ -119,7 +119,7 @@ class SignalPublisher:
             except Exception as e:
                 logger.error(f"Error publishing signal via REST: {e}")
 
-    async def _publish_via_nats(self, signals: List[Signal]):
+    async def _publish_via_nats(self, signals: list[Signal]):
         """Publish signals via NATS."""
         if not self.nats_client:
             logger.error(
@@ -162,7 +162,7 @@ class SignalPublisher:
             except Exception as e:
                 logger.error(f"Error publishing signal via NATS: {e}")
 
-    async def publish_batch(self, signals: List[Signal]):
+    async def publish_batch(self, signals: list[Signal]):
         """Publish multiple signals in a batch."""
         if not signals:
             logger.info("No signals to publish in batch")
@@ -179,7 +179,7 @@ class SignalPublisher:
         # Publish via NATS
         await self._publish_batch_via_nats(signals)
 
-    async def _publish_batch_via_rest(self, signals: List[Signal]):
+    async def _publish_batch_via_rest(self, signals: list[Signal]):
         """Publish signals batch via REST API."""
         if not self.session:
             logger.warning("REST session not started")
@@ -207,7 +207,7 @@ class SignalPublisher:
         except Exception as e:
             logger.error(f"Error publishing batch via REST: {e}")
 
-    async def _publish_batch_via_nats(self, signals: List[Signal]):
+    async def _publish_batch_via_nats(self, signals: list[Signal]):
         """Publish signals batch via NATS."""
         if not self.nats_client:
             logger.warning("NATS client not connected")

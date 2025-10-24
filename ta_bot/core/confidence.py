@@ -11,7 +11,7 @@ class ConfidenceCalculator:
     """Calculate confidence scores for trading signals."""
 
     @staticmethod
-    def momentum_pulse_confidence(df: pd.DataFrame, metadata: Dict[str, Any]) -> float:
+    def momentum_pulse_confidence(df: pd.DataFrame, metadata: dict[str, Any]) -> float:
         """Calculate confidence for Momentum Pulse strategy."""
         base_confidence = 0.6
 
@@ -32,7 +32,7 @@ class ConfidenceCalculator:
 
     @staticmethod
     def band_fade_reversal_confidence(
-        df: pd.DataFrame, metadata: Dict[str, Any]
+        df: pd.DataFrame, metadata: dict[str, Any]
     ) -> float:
         """Calculate confidence for Band Fade Reversal strategy."""
         base_confidence = 0.55
@@ -52,7 +52,7 @@ class ConfidenceCalculator:
 
     @staticmethod
     def golden_trend_sync_confidence(
-        df: pd.DataFrame, metadata: Dict[str, Any]
+        df: pd.DataFrame, metadata: dict[str, Any]
     ) -> float:
         """Calculate confidence for Golden Trend Sync strategy."""
         base_confidence = 0.65
@@ -71,7 +71,7 @@ class ConfidenceCalculator:
         return min(base_confidence, 1.0)
 
     @staticmethod
-    def range_break_pop_confidence(df: pd.DataFrame, metadata: Dict[str, Any]) -> float:
+    def range_break_pop_confidence(df: pd.DataFrame, metadata: dict[str, Any]) -> float:
         """Calculate confidence for Range Break Pop strategy."""
         base_confidence = 0.6
 
@@ -88,7 +88,7 @@ class ConfidenceCalculator:
         return min(base_confidence, 1.0)
 
     @staticmethod
-    def divergence_trap_confidence(df: pd.DataFrame, metadata: Dict[str, Any]) -> float:
+    def divergence_trap_confidence(df: pd.DataFrame, metadata: dict[str, Any]) -> float:
         """Calculate confidence for Divergence Trap strategy."""
         base_confidence = 0.6
 
@@ -106,7 +106,7 @@ class ConfidenceCalculator:
 
     @staticmethod
     def calculate_confidence(
-        strategy_name: str, df: pd.DataFrame, metadata: Dict[str, Any]
+        strategy_name: str, df: pd.DataFrame, metadata: dict[str, Any]
     ) -> float:
         """Calculate confidence score for a given strategy."""
         confidence_methods = {
