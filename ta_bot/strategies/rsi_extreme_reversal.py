@@ -6,7 +6,7 @@ Detects extreme RSI conditions that suggest potential mean reversion
 opportunities in oversold/overbought markets.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -34,7 +34,7 @@ class RSIExtremeReversalStrategy(BaseStrategy):
         self,
         df: pd.DataFrame,
         metadata: dict[str, Any],
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Analyze for RSI extreme reversal signals."""
         # Extract metadata
         symbol = metadata.get("symbol", "UNKNOWN")

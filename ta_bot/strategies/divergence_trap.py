@@ -2,7 +2,7 @@
 Divergence Trap strategy for technical analysis.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -19,7 +19,7 @@ class DivergenceTrapStrategy(BaseStrategy):
         super().__init__()
         self.indicators = Indicators()
 
-    def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """Analyze candles for Divergence Trap signals."""
         if len(df) < 30:
             return None

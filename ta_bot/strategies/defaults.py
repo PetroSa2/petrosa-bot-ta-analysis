@@ -6,7 +6,7 @@ These defaults are used when no database configuration exists and are
 automatically persisted to MongoDB on first use.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 # =============================================================================
 # STRATEGY DEFAULT PARAMETERS

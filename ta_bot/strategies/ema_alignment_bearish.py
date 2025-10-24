@@ -37,7 +37,7 @@ class EMAAlignmentBearishStrategy(BaseStrategy):
         )
         self.min_periods = 125  # Need sufficient data for EMA80
 
-    def analyze(self, data: pd.DataFrame, metadata: dict) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict) -> Signal | None:
         """
         Analyze market data for bearish EMA alignment opportunities.
 

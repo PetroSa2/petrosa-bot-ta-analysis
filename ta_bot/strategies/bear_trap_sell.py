@@ -37,7 +37,7 @@ class BearTrapSellStrategy(BaseStrategy):
         self.description = "Identifies bearish reversals when price fails to sustain above EMA80 after brief breakout"
         self.min_periods = 125  # Need sufficient data for EMA80
 
-    def analyze(self, data: pd.DataFrame, metadata: dict) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict) -> Signal | None:
         """
         Analyze market data for bear trap sell opportunities.
 

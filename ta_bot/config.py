@@ -18,7 +18,6 @@ Startup configuration (this file) is used when:
 
 import os
 from dataclasses import dataclass, field
-from typing import List
 
 
 @dataclass

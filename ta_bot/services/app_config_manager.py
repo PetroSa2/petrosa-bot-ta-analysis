@@ -12,7 +12,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.app_config import AppConfig, AppConfigAudit
@@ -36,9 +36,9 @@ class AppConfigManager:
 
     def __init__(
         self,
-        mongodb_client: Optional[MongoDBClient] = None,
-        mysql_client: Optional[MySQLClient] = None,
-        data_manager_client: Optional[DataManagerConfigClient] = None,
+        mongodb_client: MongoDBClient | None = None,
+        mysql_client: MySQLClient | None = None,
+        data_manager_client: DataManagerConfigClient | None = None,
         cache_ttl_seconds: int = 60,
     ):
         """
@@ -56,10 +56,10 @@ class AppConfigManager:
         self.cache_ttl_seconds = cache_ttl_seconds
 
         # Cache: (config, timestamp)
-        self._cache: Optional[tuple[dict[str, Any], float]] = None
+        self._cache: tuple[dict[str, Any], float] | None = None
 
         # Background tasks
-        self._cache_refresh_task: Optional[asyncio.Task] = None
+        self._cache_refresh_task: asyncio.Task | None = None
         self._running = False
 
     async def start(self) -> None:
@@ -186,9 +186,9 @@ class AppConfigManager:
         self,
         config: dict[str, Any],
         changed_by: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
         validate_only: bool = False,
-    ) -> tuple[bool, Optional[AppConfig], list[str]]:
+    ) -> tuple[bool, AppConfig | None, list[str]]:
         """
         Create or update application configuration.
 
@@ -369,7 +369,7 @@ class AppConfigManager:
     # Private Methods
     # -------------------------------------------------------------------------
 
-    def _get_from_cache(self) -> Optional[dict[str, Any]]:
+    def _get_from_cache(self) -> dict[str, Any] | None:
         """Get configuration from cache if not expired."""
         if self._cache is None:
             return None
@@ -425,7 +425,7 @@ class AppConfigManager:
     # MySQL Helper Methods (Simplified - Real implementation would use MySQLClient)
     # -------------------------------------------------------------------------
 
-    async def _get_mysql_config(self) -> Optional[dict[str, Any]]:
+    async def _get_mysql_config(self) -> dict[str, Any] | None:
         """Get config from MySQL."""
         # TODO: Implement MySQL query
         return None

@@ -6,7 +6,7 @@ import math
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal, Optional
 
 
 class SignalType(str, Enum):
@@ -92,12 +92,12 @@ class Signal:
     timeframe: str = "15m"
     order_type: OrderType = OrderType.MARKET
     time_in_force: TimeInForce = TimeInForce.GTC
-    position_size_pct: Optional[float] = None
-    stop_loss: Optional[float] = None
-    stop_loss_pct: Optional[float] = None
-    take_profit: Optional[float] = None
-    take_profit_pct: Optional[float] = None
-    timestamp: Optional[str] = None
+    position_size_pct: float | None = None
+    stop_loss: float | None = None
+    stop_loss_pct: float | None = None
+    take_profit: float | None = None
+    take_profit_pct: float | None = None
+    timestamp: str | None = None
 
     def __post_init__(self):
         """Set default values after initialization."""

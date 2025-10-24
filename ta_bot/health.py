@@ -6,7 +6,7 @@ import asyncio
 import logging
 import os
 import time
-from typing import Any, Dict
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI

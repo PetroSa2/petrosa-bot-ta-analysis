@@ -3,7 +3,7 @@ Signal engine that coordinates all trading strategies.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -94,9 +94,9 @@ class SignalEngine:
         df: pd.DataFrame,
         symbol: str,
         period: str,
-        enabled_strategies: Optional[list[str]] = None,
-        min_confidence: Optional[float] = None,
-        max_confidence: Optional[float] = None,
+        enabled_strategies: list[str] | None = None,
+        min_confidence: float | None = None,
+        max_confidence: float | None = None,
     ) -> list[Signal]:
         """
         Analyze candle data and generate trading signals.
@@ -219,7 +219,7 @@ class SignalEngine:
         period: str,
         indicators: dict[str, Any],
         current_price: float,
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Run a single strategy and return signal if valid."""
         try:
             # Prepare metadata for strategy - pass indicators directly
@@ -299,7 +299,7 @@ class SignalEngine:
 
     def _calculate_risk_management(
         self, current_price: float, indicators: dict[str, Any], signal_type: SignalType
-    ) -> tuple[Optional[float], Optional[float]]:
+    ) -> tuple[float | None, float | None]:
         """Calculate stop loss and take profit levels."""
         atr = indicators.get("atr", 0)
 

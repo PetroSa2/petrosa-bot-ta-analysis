@@ -6,7 +6,7 @@ Detects bullish trend alignment when multiple EMAs are properly aligned
 with positive momentum confirmation.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -31,7 +31,7 @@ class EMAAlignmentBullishStrategy(BaseStrategy):
         self,
         df: pd.DataFrame,
         metadata: dict[str, Any],
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Analyze for EMA alignment bullish signals."""
         if len(df) < 125:  # Need sufficient data for EMA80
             return None

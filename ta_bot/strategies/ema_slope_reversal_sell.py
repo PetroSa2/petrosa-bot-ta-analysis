@@ -39,7 +39,7 @@ class EMASlopeReversalSellStrategy(BaseStrategy):
         self.logger = logging.getLogger(__name__)
         self.indicators = Indicators()
 
-    def analyze(self, data: pd.DataFrame, metadata: dict) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict) -> Signal | None:
         """
         Analyze market data for EMA slope reversal sell opportunities.
 

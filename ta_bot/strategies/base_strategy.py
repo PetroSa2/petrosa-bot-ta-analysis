@@ -3,7 +3,7 @@ Base strategy class for technical analysis strategies.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -31,7 +31,7 @@ class BaseStrategy:
         self.config_manager = config_manager
         self.strategy_id = self.__class__.__name__.lower().replace("strategy", "")
 
-    def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """
         Analyze candles and return a trading signal.
 
@@ -48,7 +48,7 @@ class BaseStrategy:
         """
         raise NotImplementedError("Subclasses must implement analyze method")
 
-    def _get_config(self, metadata: dict[str, Any]) -> Optional[dict[str, Any]]:
+    def _get_config(self, metadata: dict[str, Any]) -> dict[str, Any] | None:
         """
         Get configuration for this strategy.
 
@@ -64,7 +64,7 @@ class BaseStrategy:
         return metadata.get("config")
 
     def _add_config_to_signal(
-        self, signal: Signal, config: Optional[dict[str, Any]]
+        self, signal: Signal, config: dict[str, Any] | None
     ) -> Signal:
         """
         Add configuration metadata to signal for position tracking.

@@ -6,7 +6,7 @@ Provides configuration management through the data management service instead of
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import aiohttp
 
@@ -22,7 +22,7 @@ class DataManagerConfigClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         timeout: int = 30,
         max_retries: int = 3,
     ):
@@ -37,7 +37,7 @@ class DataManagerConfigClient:
         self.base_url = base_url or "http://petrosa-data-manager:8000"
         self.timeout = timeout
         self.max_retries = max_retries
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
         logger.info(f"Initialized Data Manager config client: {self.base_url}")
 
@@ -102,7 +102,7 @@ class DataManagerConfigClient:
         self,
         config: dict[str, Any],
         changed_by: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> bool:
         """
         Set application configuration through data management service.
@@ -146,7 +146,7 @@ class DataManagerConfigClient:
             return False
 
     async def get_strategy_config(
-        self, strategy_id: str, symbol: Optional[str] = None
+        self, strategy_id: str, symbol: str | None = None
     ) -> dict[str, Any]:
         """
         Get strategy configuration from data management service.
@@ -183,8 +183,8 @@ class DataManagerConfigClient:
         strategy_id: str,
         parameters: dict[str, Any],
         changed_by: str,
-        symbol: Optional[str] = None,
-        reason: Optional[str] = None,
+        symbol: str | None = None,
+        reason: str | None = None,
     ) -> bool:
         """
         Set strategy configuration through data management service.
@@ -251,7 +251,7 @@ class DataManagerConfigClient:
             return []
 
     async def delete_strategy_config(
-        self, strategy_id: str, symbol: Optional[str] = None
+        self, strategy_id: str, symbol: str | None = None
     ) -> bool:
         """
         Delete strategy configuration.

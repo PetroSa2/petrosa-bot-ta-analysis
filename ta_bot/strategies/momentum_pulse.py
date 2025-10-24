@@ -3,7 +3,7 @@ Momentum Pulse Strategy
 Detects trend entry signals based on MACD histogram crossovers.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -26,7 +26,7 @@ class MomentumPulseStrategy(BaseStrategy):
         self,
         df: pd.DataFrame,
         metadata: dict[str, Any],
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Analyze for momentum pulse signals."""
         if len(df) < 2:
             return None

@@ -2,8 +2,6 @@
 Technical indicators wrapper using pandas-ta.
 """
 
-from typing import Tuple
-
 import pandas as pd
 import pandas_ta_classic as ta
 

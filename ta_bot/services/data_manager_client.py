@@ -6,7 +6,7 @@ for fetching candle data and persisting signals.
 """
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pandas as pd
 from data_manager_client import DataManagerClient as BaseDataManagerClient
@@ -35,7 +35,7 @@ class DataManagerClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         timeout: int = 30,
         max_retries: int = 3,
     ):

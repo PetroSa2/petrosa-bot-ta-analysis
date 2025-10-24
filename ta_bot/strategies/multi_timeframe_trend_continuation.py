@@ -3,7 +3,7 @@ Multi-Timeframe Trend Continuation Strategy
 Aligns signals across multiple timeframes for trend continuation trades.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -26,7 +26,7 @@ class MultiTimeframeTrendContinuationStrategy(BaseStrategy):
         self,
         df: pd.DataFrame,
         metadata: dict[str, Any],
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Analyze for multi-timeframe trend continuation signals."""
         if len(df) < 50:
             return None
@@ -131,7 +131,7 @@ class MultiTimeframeTrendContinuationStrategy(BaseStrategy):
 
     def _determine_trend_direction(
         self, current: dict[str, float], previous: dict[str, float]
-    ) -> Optional[str]:
+    ) -> str | None:
         """Determine the overall trend direction."""
         # Check EMA alignment
         ema21 = current["ema21"]

@@ -6,7 +6,7 @@ Detects low volatility periods by identifying when Bollinger Bands
 are unusually narrow, signaling potential breakout opportunities.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -31,7 +31,7 @@ class BollingerSqueezeAlertStrategy(BaseStrategy):
         self,
         df: pd.DataFrame,
         metadata: dict[str, Any],
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Analyze for Bollinger Band squeeze conditions."""
         if len(df) < 25:  # Need sufficient data for BB calculation
             return None

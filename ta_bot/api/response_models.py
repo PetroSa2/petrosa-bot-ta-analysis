@@ -6,7 +6,7 @@ consistent structure that's easy for LLM agents to parse.
 """
 
 from datetime import datetime
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -32,15 +32,15 @@ class APIResponse(BaseModel, Generic[T]):
         ...,
         description="Whether the request was successful. Check this first to determine if data or error is present.",
     )
-    data: Optional[T] = Field(
+    data: T | None = Field(
         None,
         description="Response data (only present when success=true). Contains the actual payload requested.",
     )
-    error: Optional[dict[str, Any]] = Field(
+    error: dict[str, Any] | None = Field(
         None,
         description="Error details (only present when success=false). Contains code, message, and additional context.",
     )
-    metadata: Optional[dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default_factory=dict,
         description="Additional metadata about the response: pagination info, timing, cache status, etc.",
     )
@@ -87,14 +87,14 @@ class ErrorDetail(BaseModel):
     message: str = Field(
         ..., description="Human-readable error message explaining what went wrong"
     )
-    details: Optional[dict[str, Any]] = Field(
+    details: dict[str, Any] | None = Field(
         None,
         description="Additional error context with specific information about the failure",
     )
-    field: Optional[str] = Field(
+    field: str | None = Field(
         None, description="Field name if this is a field-specific validation error"
     )
-    suggestion: Optional[str] = Field(
+    suggestion: str | None = Field(
         None, description="Optional suggestion on how to fix the error"
     )
 
@@ -135,7 +135,7 @@ class ConfigUpdateRequest(BaseModel):
         min_length=1,
         max_length=100,
     )
-    reason: Optional[str] = Field(
+    reason: str | None = Field(
         None,
         description=(
             "Optional explanation for why this configuration is being changed. "
@@ -177,7 +177,7 @@ class ConfigResponse(BaseModel):
         ...,
         description="Unique identifier of the strategy (e.g., 'rsi_extreme_reversal')",
     )
-    symbol: Optional[str] = Field(
+    symbol: str | None = Field(
         None,
         description=(
             "Trading symbol if this is a symbol-specific configuration override. "
@@ -271,13 +271,13 @@ class ParameterSchemaItem(BaseModel):
     type: str = Field(..., description="Data type: 'int', 'float', 'bool', 'str'")
     description: str = Field(..., description="What this parameter controls")
     default: Any = Field(..., description="Default value if not configured")
-    min: Optional[float] = Field(
+    min: float | None = Field(
         None, description="Minimum allowed value (for numeric types)"
     )
-    max: Optional[float] = Field(
+    max: float | None = Field(
         None, description="Maximum allowed value (for numeric types)"
     )
-    allowed_values: Optional[list[Any]] = Field(
+    allowed_values: list[Any] | None = Field(
         None, description="List of allowed values (for enum-like parameters)"
     )
     example: Any = Field(..., description="Example valid value")
@@ -301,17 +301,17 @@ class AuditTrailItem(BaseModel):
 
     id: str = Field(..., description="Audit record ID")
     strategy_id: str = Field(..., description="Strategy that was modified")
-    symbol: Optional[str] = Field(None, description="Symbol (null for global configs)")
+    symbol: str | None = Field(None, description="Symbol (null for global configs)")
     action: str = Field(..., description="Action taken: CREATE, UPDATE, or DELETE")
-    old_parameters: Optional[dict[str, Any]] = Field(
+    old_parameters: dict[str, Any] | None = Field(
         None, description="Previous parameter values (null for CREATE)"
     )
-    new_parameters: Optional[dict[str, Any]] = Field(
+    new_parameters: dict[str, Any] | None = Field(
         None, description="New parameter values (null for DELETE)"
     )
     changed_by: str = Field(..., description="Who/what made the change")
     changed_at: str = Field(..., description="ISO-8601 timestamp of change")
-    reason: Optional[str] = Field(None, description="Reason for the change")
+    reason: str | None = Field(None, description="Reason for the change")
 
     class Config:
         json_schema_extra = {
@@ -343,7 +343,7 @@ class AppConfigUpdateRequest(BaseModel):
     Changes take effect within 60 seconds due to caching. All changes are audited.
     """
 
-    enabled_strategies: Optional[list[str]] = Field(
+    enabled_strategies: list[str] | None = Field(
         None,
         description=(
             "List of strategy identifiers to enable. Must be non-empty. "
@@ -351,42 +351,42 @@ class AppConfigUpdateRequest(BaseModel):
             "Example: ['momentum_pulse', 'rsi_extreme_reversal']"
         ),
     )
-    symbols: Optional[list[str]] = Field(
+    symbols: list[str] | None = Field(
         None,
         description=(
             "List of trading symbols to monitor. Must be uppercase and valid format. "
             "Example: ['BTCUSDT', 'ETHUSDT', 'ADAUSDT']"
         ),
     )
-    candle_periods: Optional[list[str]] = Field(
+    candle_periods: list[str] | None = Field(
         None,
         description=(
             "List of timeframes to analyze. Must be valid Binance timeframes. "
             "Example: ['5m', '15m', '1h']"
         ),
     )
-    min_confidence: Optional[float] = Field(
+    min_confidence: float | None = Field(
         None,
         description=(
             "Minimum confidence threshold for signals (0.0 to 1.0). "
             "Must be less than max_confidence. Example: 0.6"
         ),
     )
-    max_confidence: Optional[float] = Field(
+    max_confidence: float | None = Field(
         None,
         description=(
             "Maximum confidence threshold for signals (0.0 to 1.0). "
             "Must be greater than min_confidence. Example: 0.95"
         ),
     )
-    max_positions: Optional[int] = Field(
+    max_positions: int | None = Field(
         None,
         description=(
             "Maximum number of concurrent positions allowed. "
             "Must be at least 1. Example: 10"
         ),
     )
-    position_sizes: Optional[list[int]] = Field(
+    position_sizes: list[int] | None = Field(
         None,
         description=(
             "Available position sizes (positive integers). "
@@ -402,7 +402,7 @@ class AppConfigUpdateRequest(BaseModel):
         min_length=1,
         max_length=100,
     )
-    reason: Optional[str] = Field(
+    reason: str | None = Field(
         None,
         description=(
             "Optional explanation for why this configuration is being changed. "
@@ -502,15 +502,15 @@ class AppAuditTrailItem(BaseModel):
 
     id: str = Field(..., description="Audit record ID")
     action: str = Field(..., description="Action taken: CREATE, UPDATE, or DELETE")
-    old_config: Optional[dict[str, Any]] = Field(
+    old_config: dict[str, Any] | None = Field(
         None, description="Previous configuration values (null for CREATE)"
     )
-    new_config: Optional[dict[str, Any]] = Field(
+    new_config: dict[str, Any] | None = Field(
         None, description="New configuration values (null for DELETE)"
     )
     changed_by: str = Field(..., description="Who/what made the change")
     changed_at: str = Field(..., description="ISO-8601 timestamp of change")
-    reason: Optional[str] = Field(None, description="Reason for the change")
+    reason: str | None = Field(None, description="Reason for the change")
 
     class Config:
         json_schema_extra = {

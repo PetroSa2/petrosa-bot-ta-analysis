@@ -3,7 +3,7 @@ Order Flow Imbalance Strategy
 Uses volume profile and price action to detect institutional accumulation/distribution.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -26,7 +26,7 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
         self,
         df: pd.DataFrame,
         metadata: dict[str, Any],
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Analyze for order flow imbalance signals."""
         if len(df) < 20:
             return None

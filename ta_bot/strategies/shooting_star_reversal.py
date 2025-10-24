@@ -15,7 +15,7 @@ showing that buyers pushed price higher but sellers ultimately took control.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -40,7 +40,7 @@ class ShootingStarReversalStrategy(BaseStrategy):
         self.min_periods = 10  # Minimal data needed for candlestick analysis
         self.logger = logging.getLogger(__name__)
 
-    def analyze(self, data: pd.DataFrame, metadata: dict[str, Any]) -> Optional[Signal]:
+    def analyze(self, data: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """
         Analyze market data for shooting star reversal opportunities.
 

@@ -7,7 +7,7 @@ including strategies, symbols, timeframes, confidence, and risk management.
 
 import logging
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

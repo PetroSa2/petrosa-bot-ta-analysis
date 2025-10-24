@@ -3,7 +3,7 @@ Liquidity Grab Reversal Strategy
 Identifies when price "hunts" stop losses below/above key levels and enters on reversal.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -26,7 +26,7 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
         self,
         df: pd.DataFrame,
         metadata: dict[str, Any],
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Analyze for liquidity grab reversal signals."""
         if len(df) < 30:
             return None
@@ -195,7 +195,7 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
         return False
 
     def _check_rsi_divergence(
-        self, df: pd.DataFrame, action: str, rsi_series: Optional[pd.Series] = None
+        self, df: pd.DataFrame, action: str, rsi_series: pd.Series | None = None
     ) -> bool:
         """Check for RSI divergence."""
         if len(df) < 10:

@@ -5,7 +5,7 @@ NATS listener service for receiving candle data and processing signals.
 import asyncio
 import json
 import logging
-from typing import Any, List
+from typing import Any
 
 from nats.aio.client import Client as NATS
 

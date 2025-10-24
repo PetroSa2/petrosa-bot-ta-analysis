@@ -6,7 +6,7 @@ Detects hammer candlestick patterns that indicate potential
 bullish reversal after downward price movement.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -34,7 +34,7 @@ class HammerReversalPatternStrategy(BaseStrategy):
         self,
         df: pd.DataFrame,
         metadata: dict[str, Any],
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Analyze for hammer reversal pattern signals."""
         if len(df) < 10:  # Need minimal data for pattern recognition
             return None

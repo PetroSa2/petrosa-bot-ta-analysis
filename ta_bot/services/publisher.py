@@ -3,7 +3,6 @@ Signal publisher service for sending trading signals to Trade Engine.
 """
 
 import json
-from typing import List
 
 import aiohttp
 import nats  # Added to use nats.connect

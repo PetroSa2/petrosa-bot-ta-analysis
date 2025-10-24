@@ -6,7 +6,7 @@ timeframes, confidence thresholds, and risk management parameters.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -19,7 +19,7 @@ class AppConfig(BaseModel):
     including enabled strategies, trading symbols, timeframes, and risk parameters.
     """
 
-    id: Optional[str] = Field(None, description="Configuration ID")
+    id: str | None = Field(None, description="Configuration ID")
     enabled_strategies: list[str] = Field(
         ..., description="List of enabled strategy identifiers"
     )
@@ -85,21 +85,21 @@ class AppConfigAudit(BaseModel):
     """
 
     id: str = Field(..., description="Audit record ID")
-    config_id: Optional[str] = Field(None, description="Configuration ID being audited")
+    config_id: str | None = Field(None, description="Configuration ID being audited")
     action: Literal["CREATE", "UPDATE", "DELETE"] = Field(
         ..., description="Type of configuration change"
     )
-    old_config: Optional[dict[str, Any]] = Field(
+    old_config: dict[str, Any] | None = Field(
         None, description="Previous configuration values"
     )
-    new_config: Optional[dict[str, Any]] = Field(
+    new_config: dict[str, Any] | None = Field(
         None, description="New configuration values"
     )
     changed_by: str = Field(..., description="Who/what made the change")
     changed_at: datetime = Field(
         default_factory=datetime.utcnow, description="When the change was made"
     )
-    reason: Optional[str] = Field(None, description="Reason for the change")
+    reason: str | None = Field(None, description="Reason for the change")
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional audit metadata"
     )

@@ -6,7 +6,7 @@ Detects momentum reversals using EMA9 slope changes and
 specific price action patterns for high-probability entries.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -47,7 +47,7 @@ class EMAMomentumReversalStrategy(BaseStrategy):
         self,
         df: pd.DataFrame,
         metadata: dict[str, Any],
-    ) -> Optional[Signal]:
+    ) -> Signal | None:
         """Analyze for EMA momentum reversal signals."""
         if len(df) < 60:  # Need sufficient data for pattern analysis
             return None
