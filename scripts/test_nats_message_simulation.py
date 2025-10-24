@@ -9,8 +9,8 @@ sends and tests if the TA Bot can generate signals with perfect market condition
 import asyncio
 import logging
 import sys
-from datetime import UTC, datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
 # Add project root to path
 sys.path.insert(0, ".")
@@ -65,7 +65,7 @@ class NATSMessageSimulator:
             "extraction_type": "klines",
             "symbol": symbol,
             "period": period,
-            "timestamp": datetime.now(UTC).isoformat() + "Z",
+            "timestamp": datetime.now(UTC).replace(tzinfo=None).isoformat() + "Z",
             "success": True,
             "metrics": {
                 "records_fetched": 7,

@@ -102,7 +102,7 @@ security: ## Run comprehensive security scans (gitleaks, detect-secrets, bandit,
 	@echo ""
 	@echo "1️⃣ Gitleaks (Secret Detection)..."
 	@if command -v gitleaks >/dev/null 2>&1; then \
-		gitleaks detect --verbose --no-color || echo "⚠️  Gitleaks found potential secrets (review above)"; \
+		gitleaks detect --verbose --no-color || { echo "⚠️  Gitleaks found potential secrets (review above)"; exit 1; }; \
 	else \
 		echo "⚠️  Gitleaks not installed. Install with: brew install gitleaks"; \
 	fi
