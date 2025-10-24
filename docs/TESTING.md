@@ -414,10 +414,10 @@ pytest --durations=10  # Show 10 slowest tests
 ### Issue: Low Coverage
 
 **Solutions:**
-- Identify uncovered lines: `pytest --cov-report=term-missing`
-- Add tests for edge cases
-- Test error handling paths
-- Remove dead code
+- Identify uncovered lines using the coverage report with missing line details.
+- Add tests for edge cases and boundary conditions to ensure robustness.
+- Test error handling paths and exception scenarios to improve reliability.
+- Identify and remove dead code that inflates the coverage denominator.
 
 ### Issue: Slow Tests
 
