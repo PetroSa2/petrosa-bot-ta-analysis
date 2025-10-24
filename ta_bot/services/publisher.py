@@ -10,6 +10,7 @@ import nats.aio.client
 import structlog
 
 from ta_bot.models.signal import Signal
+from ta_bot.utils.nats_trace_propagator import NATSTracePropagator
 
 logger = structlog.get_logger()
 
@@ -132,10 +133,14 @@ class SignalPublisher:
                 # Convert signal to Trade Engine format
                 signal_data = signal.to_dict()
 
+                # Inject OpenTelemetry trace context for distributed tracing
+                signal_data = NATSTracePropagator.inject_context(signal_data)
+
                 # DEBUG: Log the signal data including stop_loss/take_profit
                 logger.info(
                     f"🔍 DEBUG SIGNAL DATA: {signal.strategy_id} | "
-                    f"SL: {signal_data.get('stop_loss')} | TP: {signal_data.get('take_profit')}"
+                    f"SL: {signal_data.get('stop_loss')} | TP: {signal_data.get('take_profit')} | "
+                    f"Trace Context: {NATSTracePropagator.has_trace_context(signal_data)}"
                 )
 
                 # Publish to NATS subject that Trade Engine listens to
@@ -217,6 +222,10 @@ class SignalPublisher:
 
             for signal in signals:
                 signal_data = signal.to_dict()
+
+                # Inject OpenTelemetry trace context for distributed tracing
+                signal_data = NATSTracePropagator.inject_context(signal_data)
+
                 message = json.dumps(signal_data).encode()
                 await self.nats_client.publish(subject, message)
 

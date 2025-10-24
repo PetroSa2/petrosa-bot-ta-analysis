@@ -185,6 +185,111 @@ class Signal(BaseModel):
         )
 ```
 
+### Distributed Tracing
+
+**OpenTelemetry trace context propagation** is implemented to enable end-to-end distributed tracing across all Petrosa services via NATS messages.
+
+#### How It Works
+
+When TA Bot publishes signals to NATS (`signals.trading` topic), the current OpenTelemetry span context is automatically injected into the message payload. This allows downstream services (Trade Engine) to continue the same distributed trace.
+
+```python
+# Automatic trace injection in SignalPublisher
+from ta_bot.utils.nats_trace_propagator import NATSTracePropagator
+
+# Convert signal to dict
+signal_data = signal.to_dict()
+
+# Inject trace context (W3C TraceContext headers)
+signal_data = NATSTracePropagator.inject_context(signal_data)
+
+# Publish to NATS
+await nats_client.publish("signals.trading", json.dumps(signal_data).encode())
+```
+
+#### Message Format with Trace Context
+
+Published messages include a reserved `_otel_trace_headers` field:
+
+```json
+{
+  "strategy_id": "rsi_extreme_reversal",
+  "symbol": "BTCUSDT",
+  "action": "buy",
+  "confidence": 0.85,
+  "price": 50000.0,
+  "_otel_trace_headers": {
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    "tracestate": ""
+  }
+}
+```
+
+The `traceparent` header follows the [W3C Trace Context](https://www.w3.org/TR/trace-context/) specification:
+- `00`: Version
+- `4bf92f3577b34da6a3ce929d0e0e4736`: Trace ID (128-bit, shared across all services)
+- `00f067aa0ba902b7`: Span ID (64-bit, unique to this span)
+- `01`: Trace flags (sampled)
+
+#### Benefits
+
+1. **End-to-End Visibility**: Trace a signal from data ingestion → analysis → signal generation → order execution
+2. **Latency Analysis**: Measure total time from market data arrival to trade execution
+3. **Bottleneck Identification**: Pinpoint which service is slow in the pipeline
+4. **Debugging**: Correlate logs, metrics, and traces across all services in a single request flow
+
+#### Usage Example
+
+```python
+from opentelemetry import trace
+from ta_bot.utils.nats_trace_propagator import NATSTracePropagator
+
+# Create a span for signal generation
+tracer = trace.get_tracer(__name__)
+with tracer.start_as_current_span("generate_rsi_signal"):
+    signal = analyze_rsi(candles)
+    signal_data = signal.to_dict()
+
+    # Inject trace context (automatic in SignalPublisher)
+    signal_data = NATSTracePropagator.inject_context(signal_data)
+
+    # Publish to NATS
+    await publish_signal(signal_data)
+```
+
+**Downstream Service (Trade Engine)**:
+```python
+# Extract trace context on consumer side
+ctx = NATSTracePropagator.extract_context(message_data)
+
+# Create child span continuing the distributed trace
+with tracer.start_as_current_span("execute_order", context=ctx):
+    order = execute_trade(message_data)
+```
+
+#### Trace Propagation API
+
+The `NATSTracePropagator` utility provides helper methods:
+
+```python
+# Inject current trace context into message
+NATSTracePropagator.inject_context(message_dict)
+
+# Extract trace context from message
+ctx = NATSTracePropagator.extract_context(message_dict)
+
+# Check if message has trace context
+has_context = NATSTracePropagator.has_trace_context(message_dict)
+
+# Remove trace context from message
+NATSTracePropagator.remove_trace_context(message_dict)
+```
+
+For more details, see:
+- Implementation: `ta_bot/utils/nats_trace_propagator.py`
+- Tests: `tests/test_nats_trace_propagator.py`
+- OpenTelemetry setup: `otel_init.py`
+
 ---
 
 ## 🔧 TA BOT - DETAILED DOCUMENTATION
