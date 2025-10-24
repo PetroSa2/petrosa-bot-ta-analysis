@@ -18,8 +18,7 @@ from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.context import Context
-from opentelemetry.propagate import extract, get_global_textmap, inject
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.propagate import extract, inject
 
 
 class NATSTracePropagator:
