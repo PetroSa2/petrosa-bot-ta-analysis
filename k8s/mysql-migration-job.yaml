@@ -29,11 +29,11 @@ spec:
             echo "Starting MySQL migration - Add timeframe column"
 
             # Parse MYSQL_URI to get connection details
-            # Expected format: mysql://user:pass@host:port/database
+            # Actual format: mysql+pymysql://user:pass@host:port/database
             MYSQL_HOST=$(echo $MYSQL_URI | sed -n 's|.*@\([^:]*\):.*|\1|p')
             MYSQL_PORT=$(echo $MYSQL_URI | sed -n 's|.*:\([0-9]*\)/.*|\1|p')
-            MYSQL_USER=$(echo $MYSQL_URI | sed -n 's|mysql://\([^:]*\):.*|\1|p')
-            MYSQL_PASSWORD=$(echo $MYSQL_URI | sed -n 's|mysql://[^:]*:\([^@]*\)@.*|\1|p')
+            MYSQL_USER=$(echo $MYSQL_URI | sed -n 's|mysql[^:]*://\([^:]*\):.*|\1|p')
+            MYSQL_PASSWORD=$(echo $MYSQL_URI | sed -n 's|mysql[^:]*://[^:]*:\([^@]*\)@.*|\1|p')
             MYSQL_DATABASE=$(echo $MYSQL_URI | sed -n 's|.*/\([^?]*\).*|\1|p')
 
             export MYSQL_HOST MYSQL_PORT MYSQL_USER MYSQL_PASSWORD MYSQL_DATABASE
