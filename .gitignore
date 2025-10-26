@@ -62,6 +62,8 @@ Thumbs.db
 
 # Misc
 *.bak
+*.backup
+*.backup[0-9]
 *.tmp
 
 # Node (if any JS tooling)

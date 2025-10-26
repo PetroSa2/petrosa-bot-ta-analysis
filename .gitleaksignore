@@ -1,0 +1,7 @@
+# Gitleaks Ignore File
+# Format: <commit-hash>:<file-path>:<rule-id>:<line-number>
+
+# Historical finding - backup file removed in tech-debt/105
+# This pattern existed in .pre-commit-config.yaml.backup2 (now deleted)
+# It was a regex pattern for secret detection, not an actual secret
+41ac11d2c82e4204ac004b5cdfc47a1617119d50:.pre-commit-config.yaml.backup2:mongodb-connection-string:139
