@@ -291,7 +291,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Number of active strategies running",
+      "description": "Number of strategies run per analysis cycle",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -367,13 +367,13 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "ta_bot_strategies_active",
+          "expr": "rate(ta_bot_strategies_run_total[5m])",
           "legendFormat": "{{symbol}} {{timeframe}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Active Strategies Count",
+      "title": "Strategies Run Rate",
       "type": "timeseries"
     },
     {

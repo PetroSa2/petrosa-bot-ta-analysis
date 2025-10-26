@@ -108,10 +108,10 @@ class SignalEngine:
             unit="ms",
         )
 
-        # Gauge for active strategies count
-        self.active_strategies_gauge = meter.create_up_down_counter(
-            name="ta_bot.strategies.active",
-            description="Number of active strategies",
+        # Counter for strategies run per analysis cycle
+        self.strategies_run_counter = meter.create_counter(
+            name="ta_bot.strategies.run",
+            description="Number of strategies run per analysis cycle",
             unit="1",
         )
 
@@ -178,8 +178,8 @@ class SignalEngine:
         else:
             logger.info(f"Running all {len(strategies_to_run)} strategies")
 
-        # Record active strategies count
-        self.active_strategies_gauge.add(
+        # Record strategies run count for this analysis cycle
+        self.strategies_run_counter.add(
             len(strategies_to_run), {"symbol": symbol, "timeframe": period}
         )
 

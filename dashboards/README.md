@@ -11,7 +11,7 @@ Comprehensive business metrics dashboard for the TA Bot, including:
 - **Total Signals (24h)**: Gauge showing total signals generated in the last 24 hours
 - **Signal Generation Rate by Strategy**: Time series of signal generation rate per strategy
 - **Signal Processing Latency**: Histogram showing p50, p95, and p99 latency
-- **Active Strategies Count**: Number of strategies currently active
+- **Strategies Run Rate**: Rate of strategies executed per analysis cycle
 - **Strategy Execution Rate**: Success vs error rate for strategy executions
 - **Configuration Changes**: Frequency of configuration updates
 - **Top 10 Strategies**: Pie chart of most productive strategies
@@ -70,7 +70,7 @@ The dashboard uses the following OpenTelemetry metrics:
 
 ### Strategy Metrics
 
-- **`ta_bot_strategies_active`**: Gauge of active strategies count
+- **`ta_bot_strategies_run_total`**: Counter of strategies run per analysis cycle
   - Labels: `symbol`, `timeframe`
 
 - **`ta_bot_strategy_executions_total`**: Counter of strategy executions
