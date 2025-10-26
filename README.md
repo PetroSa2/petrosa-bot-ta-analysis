@@ -1389,6 +1389,87 @@ else:
 
 ---
 
+## 📊 Metrics & Observability
+
+### Business Metrics (Available in v1.0.68+)
+
+The TA Bot emits comprehensive business metrics via OpenTelemetry for production monitoring:
+
+**Signal Generation Metrics:**
+- `ta_bot_signals_generated_total` - Signals generated (by symbol, strategy, timeframe, action)
+- `ta_bot_signal_processing_duration` - Processing latency histogram (ms)
+
+**Strategy Execution Metrics:**
+- `ta_bot_strategies_run_total` - Strategies run per analysis cycle
+- `ta_bot_strategy_executions_total` - Strategy executions (success/error tracking)
+
+**Configuration Metrics:**
+- `ta_bot_config_changes_total` - Configuration changes (create/update/delete)
+
+### Grafana Dashboard
+
+Import the pre-built dashboard for complete visibility:
+
+```bash
+# Location
+dashboards/ta-bot-business-metrics.json
+
+# Import via Grafana UI
+Dashboards → Import → Upload JSON file
+
+# Or via API
+curl -X POST "https://your-grafana.com/api/dashboards/db" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @dashboards/ta-bot-business-metrics.json
+```
+
+**Dashboard Panels:**
+1. Total Signals (24h) - Gauge
+2. Signal Generation Rate by Strategy - Time series
+3. Processing Latency (p50, p95, p99) - Histogram
+4. Strategies Run Rate - Time series
+5. Strategy Execution Rate (Success vs Error) - Stacked area
+6. Configuration Changes - Bar chart
+7. Top 10 Strategies - Pie chart
+8. Signal Distribution by Action - Donut chart
+
+### Metrics Verification
+
+After deploying v1.0.68+, verify metrics are working:
+
+```bash
+# Run verification script
+./scripts/verify-metrics.sh
+
+# Expected output:
+# ✓ Pods running
+# ✓ Version v1.0.68+
+# ✓ OpenTelemetry enabled
+# ✓ 5 ta_bot_* metrics found
+```
+
+**Documentation:**
+- Full verification guide: `docs/RUNBOOK.md` (Metrics Verification section)
+- Baseline metrics: `docs/METRICS_BASELINE.md`
+- Deployment status: `docs/DEPLOYMENT_STATUS.md`
+
+### Health Checks
+
+```bash
+# Liveness probe
+curl http://ta-bot:8080/healthz
+
+# Readiness probe
+curl http://ta-bot:8080/ready
+
+# Detailed health + metrics
+curl http://ta-bot:8080/health | jq .
+curl http://ta-bot:8080/metrics | grep ta_bot_
+```
+
+---
+
 ## 📚 Documentation Structure
 
 Core documentation (kept up-to-date):
@@ -1398,6 +1479,9 @@ Core documentation (kept up-to-date):
 - `CI_CD_PIPELINE.md` - CI/CD reference
 - `TESTING.md` - Testing procedures
 - `MAKEFILE.md` - Makefile commands
+- `docs/RUNBOOK.md` - Operations runbook (troubleshooting, metrics verification)
+- `docs/METRICS_BASELINE.md` - Baseline metrics documentation
+- `dashboards/README.md` - Grafana dashboard import guide
 
 Archive:
 - `docs/archive/` - Historical documentation for reference only
