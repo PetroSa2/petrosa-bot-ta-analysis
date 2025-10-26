@@ -15,6 +15,7 @@ import time
 from datetime import datetime
 from typing import Any, Optional
 
+from otel_init import get_meter
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.strategy_config import StrategyConfig, StrategyConfigAudit
 from ta_bot.services.mysql_client import MySQLClient
@@ -65,6 +66,16 @@ class StrategyConfigManager:
         # Background tasks
         self._cache_refresh_task: asyncio.Task | None = None
         self._running = False
+
+        # Initialize OpenTelemetry metrics
+        meter = get_meter("ta_bot.services.config_manager")
+
+        # Counter for configuration changes (by strategy, action, symbol)
+        self.config_change_counter = meter.create_counter(
+            name="ta_bot.config.changes",
+            description="Number of configuration changes",
+            unit="1",
+        )
 
     async def start(self) -> None:
         """Start the configuration manager and background tasks."""
@@ -344,6 +355,18 @@ class StrategyConfigManager:
             f"{strategy_id}" + (f"/{symbol}" if symbol else "")
         )
 
+        # Record configuration change metric
+        self.config_change_counter.add(
+            1,
+            {
+                "strategy_id": strategy_id,
+                "action": action.lower(),
+                "scope": "symbol" if symbol else "global",
+                "symbol": symbol or "global",
+                "changed_by": changed_by,
+            },
+        )
+
         return True, config, []
 
     async def delete_config(
@@ -424,6 +447,18 @@ class StrategyConfigManager:
 
         logger.info(
             f"Configuration deleted: {strategy_id}" + (f"/{symbol}" if symbol else "")
+        )
+
+        # Record configuration change metric
+        self.config_change_counter.add(
+            1,
+            {
+                "strategy_id": strategy_id,
+                "action": "delete",
+                "scope": "symbol" if symbol else "global",
+                "symbol": symbol or "global",
+                "changed_by": changed_by,
+            },
         )
 
         return True, []

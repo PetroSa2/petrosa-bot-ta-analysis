@@ -28,9 +28,22 @@ logger = logging.getLogger(__name__)
 async def main():
     """Main entry point for the TA bot."""
     try:
-        # Set up OpenTelemetry and attach OTLP logging handler for log export
-        otel_init.setup_telemetry()
-        otel_init.attach_logging_handler_simple()
+        # 1. Setup OpenTelemetry FIRST (before any logging configuration)
+        from petrosa_otel import attach_logging_handler, initialize_telemetry_standard
+
+        initialize_telemetry_standard(
+            service_name="ta-bot",
+            service_type="fastapi",
+            enable_fastapi=True,
+            enable_mongodb=True,
+            enable_mysql=True,
+        )
+
+        # 2. Setup logging (may call basicConfig)
+        # Note: logging is already configured at module level
+
+        # 3. Attach OTel logging handler LAST (after logging is configured)
+        attach_logging_handler()
 
         # Initialize components
         config = Config()

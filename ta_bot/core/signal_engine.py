@@ -3,10 +3,12 @@ Signal engine that coordinates all trading strategies.
 """
 
 import logging
+import time
 from typing import Any, Optional
 
 import pandas as pd
 
+from otel_init import get_meter
 from ta_bot.core.indicators import Indicators
 from ta_bot.models.signal import Signal, SignalStrength, SignalType
 from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy
@@ -89,6 +91,37 @@ class SignalEngine:
         }
         self.indicators = Indicators()
 
+        # Initialize OpenTelemetry metrics
+        meter = get_meter("ta_bot.core.signal_engine")
+
+        # Counter for signals generated (by symbol, strategy, timeframe, action)
+        self.signal_counter = meter.create_counter(
+            name="ta_bot.signals.generated",
+            description="Number of trading signals generated",
+            unit="1",
+        )
+
+        # Histogram for signal processing latency
+        self.signal_latency = meter.create_histogram(
+            name="ta_bot.signal.processing_duration",
+            description="Signal processing duration",
+            unit="ms",
+        )
+
+        # Gauge for active strategies count
+        self.active_strategies_gauge = meter.create_up_down_counter(
+            name="ta_bot.strategies.active",
+            description="Number of active strategies",
+            unit="1",
+        )
+
+        # Counter for strategy execution count
+        self.strategy_execution_counter = meter.create_counter(
+            name="ta_bot.strategy.executions",
+            description="Number of strategy executions (successful and failed)",
+            unit="1",
+        )
+
     def analyze_candles(
         self,
         df: pd.DataFrame,
@@ -112,6 +145,9 @@ class SignalEngine:
         Returns:
             List of trading signals
         """
+        # Start timing for latency metric
+        start_time = time.time()
+
         if df is None or len(df) == 0:
             logger.warning("No candle data provided for analysis")
             return []
@@ -142,6 +178,11 @@ class SignalEngine:
         else:
             logger.info(f"Running all {len(strategies_to_run)} strategies")
 
+        # Record active strategies count
+        self.active_strategies_gauge.add(
+            len(strategies_to_run), {"symbol": symbol, "timeframe": period}
+        )
+
         signals = []
 
         # Run each strategy
@@ -167,11 +208,31 @@ class SignalEngine:
                 logger.info(
                     f"✅ {strategy_name}: SIGNAL GENERATED - {signal.action} with {signal.confidence:.2f} confidence"
                 )
+
+                # Record signal generation metric
+                self.signal_counter.add(
+                    1,
+                    {
+                        "symbol": symbol,
+                        "timeframe": period,
+                        "strategy": strategy_name,
+                        "action": signal.action,
+                    },
+                )
             else:
                 logger.info(f"❌ {strategy_name}: No signal - conditions not met")
 
+        # Calculate processing duration
+        duration_ms = (time.time() - start_time) * 1000
+
+        # Record processing latency metric
+        self.signal_latency.record(
+            duration_ms,
+            {"symbol": symbol, "timeframe": period, "signal_count": len(signals)},
+        )
+
         logger.info(
-            f"=== Strategy analysis complete: {len(signals)} signals generated ==="
+            f"=== Strategy analysis complete: {len(signals)} signals generated in {duration_ms:.2f}ms ==="
         )
         return signals
 
@@ -226,6 +287,18 @@ class SignalEngine:
             metadata = {**indicators, "symbol": symbol, "timeframe": period}
             # Run strategy analysis
             signal = strategy.analyze(df, metadata)
+
+            # Record strategy execution (success)
+            self.strategy_execution_counter.add(
+                1,
+                {
+                    "strategy": strategy_name,
+                    "symbol": symbol,
+                    "timeframe": period,
+                    "status": "success",
+                    "signal_generated": "yes" if signal else "no",
+                },
+            )
 
             if not signal:
                 logger.info(f"  {strategy_name}: No signal returned by strategy")
@@ -284,6 +357,18 @@ class SignalEngine:
 
         except Exception as e:
             logger.error(f"  {strategy_name}: Error during analysis: {e}")
+
+            # Record strategy execution (failure)
+            self.strategy_execution_counter.add(
+                1,
+                {
+                    "strategy": strategy_name,
+                    "symbol": symbol,
+                    "timeframe": period,
+                    "status": "error",
+                    "signal_generated": "no",
+                },
+            )
             return None
 
     def _calculate_signal_strength(self, confidence: float) -> SignalStrength:
