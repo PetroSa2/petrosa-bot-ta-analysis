@@ -7,7 +7,8 @@
 # 3. Recording accurate data
 # 4. Ready for alerting and dashboards
 #
-# Usage: ./verify-metrics.sh [--kubeconfig PATH]
+# Usage: ./verify-metrics.sh [KUBECONFIG_PATH]
+#   KUBECONFIG_PATH: Optional path to kubeconfig file (default: from $KUBECONFIG env var or ../petrosa_k8s/k8s/kubeconfig.yaml)
 
 set -e
 
@@ -18,8 +19,8 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configuration
-KUBECONFIG_PATH="${1:-/Users/yurisa2/petrosa/petrosa_k8s/k8s/kubeconfig.yaml}"
+# Configuration - Use environment variable or relative path instead of hardcoded user path
+KUBECONFIG_PATH="${1:-${KUBECONFIG:-../petrosa_k8s/k8s/kubeconfig.yaml}}"
 NAMESPACE="petrosa-apps"
 DEPLOYMENT="petrosa-ta-bot"
 SERVICE="petrosa-ta-bot-service"
@@ -29,14 +30,22 @@ echo -e "${BLUE}TA Bot Business Metrics Verification${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "Date: $(date)"
+echo "Kubeconfig: $KUBECONFIG_PATH"
 echo "Namespace: $NAMESPACE"
 echo "Deployment: $DEPLOYMENT"
 echo ""
 
+# Verify kubeconfig exists
+if [ ! -f "$KUBECONFIG_PATH" ]; then
+    echo -e "${RED}✗ Kubeconfig not found: $KUBECONFIG_PATH${NC}"
+    echo "  Please provide path as first argument or set KUBECONFIG environment variable"
+    exit 1
+fi
+
 # Step 1: Check Pod Status
 echo -e "${YELLOW}Step 1: Checking Pod Status...${NC}"
-POD_COUNT=$(kubectl --kubeconfig=$KUBECONFIG_PATH get pods -n $NAMESPACE -l app=$DEPLOYMENT -o json | jq '.items | length')
-RUNNING_PODS=$(kubectl --kubeconfig=$KUBECONFIG_PATH get pods -n $NAMESPACE -l app=$DEPLOYMENT -o json | jq '[.items[] | select(.status.phase=="Running")] | length')
+POD_COUNT=$(kubectl --kubeconfig=$KUBECONFIG_PATH get pods -n $NAMESPACE -l app=$DEPLOYMENT -o json 2>/dev/null | jq '.items | length')
+RUNNING_PODS=$(kubectl --kubeconfig=$KUBECONFIG_PATH get pods -n $NAMESPACE -l app=$DEPLOYMENT -o json 2>/dev/null | jq '[.items[] | select(.status.phase=="Running")] | length')
 
 echo "  Total pods: $POD_COUNT"
 echo "  Running pods: $RUNNING_PODS"
@@ -80,21 +89,23 @@ echo ""
 # Step 3: Check OpenTelemetry Configuration
 echo -e "${YELLOW}Step 3: Checking OpenTelemetry Configuration...${NC}"
 OTEL_ENABLED=$(kubectl --kubeconfig=$KUBECONFIG_PATH get deployment $DEPLOYMENT -n $NAMESPACE -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="OTEL_ENABLED")].value}')
-echo "  OTEL_ENABLED: $OTEL_ENABLED"
+echo "  OTEL_ENABLED: ${OTEL_ENABLED:-not set}"
 
 if [ "$OTEL_ENABLED" != "true" ]; then
-    echo -e "${RED}✗ OpenTelemetry not enabled${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠ OpenTelemetry may not be enabled${NC}"
+    echo "  Check deployment env vars or ConfigMap"
+else
+    echo -e "${GREEN}✓ OpenTelemetry enabled${NC}"
 fi
-echo -e "${GREEN}✓ OpenTelemetry enabled${NC}"
 echo ""
 
 # Step 4: Check Pod Logs for Metrics Initialization
 echo -e "${YELLOW}Step 4: Checking Logs for Metrics Initialization...${NC}"
 POD_NAME=$(kubectl --kubeconfig=$KUBECONFIG_PATH get pods -n $NAMESPACE -l app=$DEPLOYMENT -o jsonpath='{.items[0].metadata.name}')
+echo "  Using pod: $POD_NAME"
 
 # Check for OTel initialization
-kubectl --kubeconfig=$KUBECONFIG_PATH logs -n $NAMESPACE $POD_NAME --tail=100 | grep -i "opentelemetry\|meter" > /tmp/otel-logs.txt || true
+kubectl --kubeconfig=$KUBECONFIG_PATH logs -n $NAMESPACE $POD_NAME --tail=100 2>/dev/null | grep -i "opentelemetry\|meter" > /tmp/otel-logs.txt || true
 
 if [ -s /tmp/otel-logs.txt ]; then
     echo -e "${GREEN}✓ OpenTelemetry logs found${NC}"
@@ -189,7 +200,7 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "${GREEN}✓ Pod Status: $RUNNING_PODS/$POD_COUNT running${NC}"
 echo -e "${GREEN}✓ Version: $VERSION${NC}"
-echo -e "${GREEN}✓ OpenTelemetry: Enabled${NC}"
+echo -e "${GREEN}✓ OpenTelemetry: ${OTEL_ENABLED:-not set}${NC}"
 echo ""
 
 if [ -s /tmp/ta-bot-metrics-raw.txt ]; then

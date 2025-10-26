@@ -15,7 +15,23 @@ This runbook provides step-by-step procedures for common operational tasks and t
 
 ## Metrics Verification
 
-### Verify Business Metrics are Being Emitted
+### Prerequisites and Deployment Status
+
+**Required Version**: v1.0.68+ (contains metrics from PR #106)
+
+**Check Current Deployment Version**:
+```bash
+kubectl --kubeconfig=k8s/kubeconfig.yaml get deployment petrosa-ta-bot -n petrosa-apps \
+  -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# Example output: yurisa2/petrosa-ta-bot:v1.0.68
+```
+
+**If version < v1.0.68**:
+- Metrics code is merged but not yet deployed
+- Wait for CI/CD to build and deploy new image (5-15 minutes)
+- Monitor deployment: `gh run list --repo PetroSa2/petrosa-bot-ta-analysis`
+- Watch rollout: `kubectl rollout status deployment/petrosa-ta-bot -n petrosa-apps -w`
 
 **Prerequisites**:
 - TA Bot deployed with version containing metrics (v1.0.68+)
@@ -198,6 +214,23 @@ kubectl --kubeconfig=k8s/kubeconfig.yaml logs -n petrosa-apps deployment/petrosa
 
 ## Configuration Management
 
+> **Note**: The service URLs used below (e.g., `petrosa-ta-bot-service:80`) are only accessible from within the Kubernetes cluster.
+>
+> To run these commands from outside the cluster, use one of these approaches:
+>
+> **Option 1: Port-forward to service**
+> ```bash
+> kubectl --kubeconfig=k8s/kubeconfig.yaml port-forward -n petrosa-apps svc/petrosa-ta-bot-service 8080:80 &
+> curl http://localhost:8080/api/v1/strategies/rsi/config | jq .
+> # Kill port-forward when done: kill %1
+> ```
+>
+> **Option 2: Execute from within a pod**
+> ```bash
+> kubectl --kubeconfig=k8s/kubeconfig.yaml exec -n petrosa-apps deployment/petrosa-ta-bot -- \
+>   curl http://petrosa-ta-bot-service:80/api/v1/strategies/rsi/config
+> ```
+
 ### Testing Configuration Changes
 
 ```bash
@@ -320,6 +353,8 @@ kubectl --kubeconfig=k8s/kubeconfig.yaml scale deployment/petrosa-ta-bot --repli
 ## Health Check Reference
 
 ### Health Endpoints
+
+> **Note**: These URLs work from within the cluster. For external access, use `kubectl port-forward` or `kubectl exec` as shown in the Configuration Management section above.
 
 ```bash
 # Liveness probe

@@ -1450,9 +1450,9 @@ After deploying v1.0.68+, verify metrics are working:
 ```
 
 **Documentation:**
-- Full verification guide: `docs/RUNBOOK.md` (Metrics Verification section)
+- Full verification guide: `docs/RUNBOOK.md` (includes deployment tracking and verification)
 - Baseline metrics: `docs/METRICS_BASELINE.md`
-- Deployment status: `docs/DEPLOYMENT_STATUS.md`
+- Grafana dashboard guide: `dashboards/README.md`
 
 ### Health Checks
 

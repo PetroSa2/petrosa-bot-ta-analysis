@@ -261,29 +261,42 @@ echo ""
 
 # Query Prometheus for all metrics
 echo "2. Signal Generation (24h):"
-curl -s "http://prometheus:9090/api/v1/query?query=sum(increase(ta_bot_signals_generated_total[24h]))" | jq -r '.data.result[0].value[1]'
+SIGNALS=$(curl -s "http://prometheus:9090/api/v1/query?query=sum(increase(ta_bot_signals_generated_total[24h]))" | jq -r '.data.result[0].value[1] // "N/A"')
+echo "  Total: $SIGNALS"
 echo ""
 
 echo "3. Top 5 Strategies:"
-curl -s "http://prometheus:9090/api/v1/query?query=topk(5, sum by (strategy) (increase(ta_bot_signals_generated_total[24h])))" | jq -r '.data.result[] | "\(.metric.strategy): \(.value[1])"'
+curl -s "http://prometheus:9090/api/v1/query?query=topk(5, sum by (strategy) (increase(ta_bot_signals_generated_total[24h])))" | jq -r '.data.result[]? | "\(.metric.strategy): \(.value[1])"' || echo "  No data available"
 echo ""
 
 echo "4. Processing Latency:"
 for quantile in 0.50 0.95 0.99; do
-  latency=$(curl -s "http://prometheus:9090/api/v1/query?query=histogram_quantile($quantile, rate(ta_bot_signal_processing_duration_bucket[5m]))" | jq -r '.data.result[0].value[1]')
-  echo "  p$(echo $quantile*100 | bc | cut -d. -f1): ${latency}ms"
+  latency=$(curl -s "http://prometheus:9090/api/v1/query?query=histogram_quantile($quantile, rate(ta_bot_signal_processing_duration_bucket[5m]))" | jq -r '.data.result[0].value[1] // "N/A"')
+  p_label=$(printf "%.0f" $(echo "$quantile * 100" | bc))
+  echo "  p${p_label}: ${latency}ms"
 done
 echo ""
 
 echo "5. Strategy Success Rate:"
-curl -s "http://prometheus:9090/api/v1/query?query=sum(rate(ta_bot_strategy_executions_total{status='success'}[5m])) / sum(rate(ta_bot_strategy_executions_total[5m]))" | jq -r '.data.result[0].value[1]' | awk '{printf "%.2f%%\n", $1*100}'
+SUCCESS_RATE=$(curl -s "http://prometheus:9090/api/v1/query?query=sum(rate(ta_bot_strategy_executions_total{status='success'}[5m])) / sum(rate(ta_bot_strategy_executions_total[5m]))" | jq -r '.data.result[0].value[1] // "N/A"')
+if [ "$SUCCESS_RATE" != "N/A" ]; then
+  printf "  %.2f%%\n" $(echo "$SUCCESS_RATE * 100" | bc)
+else
+  echo "  N/A"
+fi
 echo ""
 
 echo "6. Config Changes (7d):"
-curl -s "http://prometheus:9090/api/v1/query?query=sum(increase(ta_bot_config_changes_total[7d]))" | jq -r '.data.result[0].value[1]'
+CHANGES=$(curl -s "http://prometheus:9090/api/v1/query?query=sum(increase(ta_bot_config_changes_total[7d]))" | jq -r '.data.result[0].value[1] // "N/A"')
+echo "  Total: $CHANGES"
 echo ""
 
 echo "=== Baseline Capture Complete ==="
+echo ""
+echo "Note: If values show 'N/A', metrics may not have data yet."
+echo "  - Ensure TA Bot has been running for at least 15 minutes"
+echo "  - Verify metrics are being scraped by Prometheus"
+echo "  - Check that signals have been generated"
 ```
 
 ---
@@ -294,3 +307,4 @@ echo "=== Baseline Capture Complete ==="
 - **Update Frequency**: After significant changes (new strategies, config updates, scaling)
 - **Anomaly Detection**: Compare current values to baseline to identify issues
 - **Alert Tuning**: Use baseline p99 latency +20% for alert thresholds
+- **Error Handling**: All queries use `// "N/A"` to handle missing data gracefully
