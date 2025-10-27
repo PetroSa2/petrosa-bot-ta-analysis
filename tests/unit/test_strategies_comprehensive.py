@@ -423,7 +423,6 @@ class TestBandFadeReversalStrategy:
         assert signal is None or isinstance(signal, Signal)
         
         if signal:
-            assert isinstance(signal, Signal)
             assert signal.symbol == "ETHUSDT"
             assert signal.strategy_id == "band_fade_reversal"
             assert signal.action in ["buy", "sell"]
@@ -595,7 +594,11 @@ class TestEMAPullbackContinuationStrategy:
             # Always assert that signal is either None or a valid Signal
             assert signal is None or isinstance(signal, Signal)
             
-            if signal and signal.action == "sell":
+            if signal:
+                # In a downtrend pullback, only "sell" signals are expected
+                assert signal.action == "sell", (
+                    f"Unexpected signal action: {signal.action}. Only 'sell' or None expected."
+                )
                 assert signal.confidence > 0.5
 
 
