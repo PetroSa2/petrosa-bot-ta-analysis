@@ -61,8 +61,8 @@ petrosa-bot-ta-analysis/
 │   │   ├── analysis_scheduler.py
 │   │   └── job_executor.py
 │   ├── db/                     # Database layers
-│   │   ├── mysql_client.py     # Historical data
-│   │   ├── mongodb_client.py   # Config + leader state
+│   │   ├── mysql_client.py     # Data Manager client wrapper
+│   │   ├── mongodb_client.py   # Data Manager client wrapper
 │   │   └── models.py
 │   └── leader_election/        # Leader election logic
 │       └── coordinator.py
@@ -348,36 +348,23 @@ curl http://ta-bot:8080/api/v1/strategies/rsi/config/BTCUSDT | jq
 
 ### MySQL Integration (Historical Data)
 
-**Kline Queries**:
+**Data Access via Data Manager** (ENFORCED):
+
+All data access must go through Data Manager API:
+
 ```python
-async def fetch_klines(
-    self,
-    symbol: str,
-    interval: str,
-    limit: int = 500
-) -> List[Kline]:
-    """
-    Fetch historical klines from MySQL.
+from ta_bot.services.mysql_client import MySQLClient
 
-    Args:
-        symbol: Trading pair (e.g., "BTCUSDT")
-        interval: Timeframe (e.g., "15m", "1h")
-        limit: Number of candles to fetch
+# Initialize client (uses Data Manager internally)
+mysql_client = MySQLClient()
+await mysql_client.connect()  # Fails fast if Data Manager unavailable
 
-    Returns:
-        List of Kline objects ordered by time
-    """
-    query = """
-    SELECT
-        symbol, interval, open_time, close_time,
-        open, high, low, close, volume
-    FROM klines
-    WHERE symbol = %s AND interval = %s
-    ORDER BY open_time DESC
-    LIMIT %s
-    """
-    results = await self.execute(query, (symbol, interval, limit))
-    return [Kline(**row) for row in reversed(results)]
+# Fetch candles via Data Manager
+df = await mysql_client.fetch_candles(
+    symbol="BTCUSDT",
+    period="15m",
+    limit=200
+)
 ```
 
 **Data Requirements**:
@@ -391,10 +378,17 @@ MIN_CANDLES = {
 }
 
 # Check data availability before analysis
-if len(klines) < MIN_CANDLES[strategy_name]:
-    logger.warning(f"Insufficient data for {strategy_name}: {len(klines)} < {MIN_CANDLES[strategy_name]}")
+if len(candles_df) < MIN_CANDLES[strategy_name]:
+    logger.warning(f"Insufficient data for {strategy_name}")
     return None
 ```
+
+**Architecture Enforcement**:
+- Direct MySQL connections (`pymysql`) are **removed**
+- Direct MongoDB connections (`motor`) are **removed**
+- All database access **must** go through Data Manager API
+- TA-BOT will **fail to start** if Data Manager unavailable
+- Health checks validate Data Manager availability
 
 ### Development Workflow
 

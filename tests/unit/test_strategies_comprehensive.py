@@ -419,6 +419,9 @@ class TestBandFadeReversalStrategy:
 
         signal = strategy.analyze(df, metadata)
 
+        # Always assert that signal is either None or a valid Signal
+        assert signal is None or isinstance(signal, Signal)
+
         if signal:
             assert isinstance(signal, Signal)
             assert signal.symbol == "ETHUSDT"
@@ -588,6 +591,9 @@ class TestEMAPullbackContinuationStrategy:
             )
 
             signal = strategy.analyze(df, metadata)
+
+            # Always assert that signal is either None or a valid Signal
+            assert signal is None or isinstance(signal, Signal)
 
             if signal and signal.action == "sell":
                 assert signal.confidence > 0.5

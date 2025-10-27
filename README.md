@@ -69,29 +69,36 @@ A production-ready signal generation system that analyzes historical market data
 
 ### Transport Layer
 
-#### MySQL Database (Data Source)
+#### Data Manager API (Data Source)
 
-**Tables Used:**
-```sql
--- Klines tables (per symbol and interval)
-btcusdt_klines_15m
-btcusdt_klines_1h
-btcusdt_klines_1d
-ethusdt_klines_15m
-ethusdt_klines_1h
-...
+**IMPORTANT**: TA-BOT uses Data Manager API exclusively for all data access.
 
--- Query Pattern
-SELECT * FROM {symbol}_klines_{interval}
-WHERE open_time >= :start_time
-ORDER BY open_time ASC
-LIMIT 200  -- Typical lookback for indicators
+**Data Access Pattern:**
+```python
+from ta_bot.services.mysql_client import MySQLClient
+
+# Initialize Data Manager client wrapper
+mysql_client = MySQLClient()
+await mysql_client.connect()  # Connects to Data Manager
+
+# Fetch candles via Data Manager
+df = await mysql_client.fetch_candles(
+    symbol="BTCUSDT",
+    period="15m",
+    limit=200
+)
 ```
 
 **Connection:**
 ```python
-MYSQL_URI = "mysql+pymysql://user:password@host:3306/database"
+DATA_MANAGER_URL = "http://petrosa-data-manager:8000"
 ```
+
+**Architecture Enforcement:**
+- Direct database connections (`pymysql`, `motor`) have been removed
+- All data access must go through Data Manager API
+- TA-BOT will fail to start if Data Manager is unavailable
+- Health checks validate Data Manager availability
 
 #### NATS Messaging (Signal Output)
 

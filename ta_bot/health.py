@@ -80,7 +80,21 @@ def get_uptime() -> str:
 
 @app.get("/health")
 async def health_check():
-    """Get detailed health status."""
+    """Get detailed health status - includes Data Manager check."""
+    # Check Data Manager availability (critical dependency)
+    data_manager_status = "unknown"
+    try:
+        from ta_bot.services.mysql_client import MySQLClient
+
+        mysql_client = MySQLClient()
+        if await mysql_client.health_check():
+            data_manager_status = "healthy"
+        else:
+            data_manager_status = "unhealthy"
+    except Exception as e:
+        logger.error(f"Data Manager health check failed: {e}")
+        data_manager_status = "error"
+
     # Check NATS publisher connection
     nats_publisher_status = "unknown"
     if hasattr(app.state, "publisher") and app.state.publisher:
@@ -91,7 +105,9 @@ async def health_check():
 
     # Determine overall health status
     status = "healthy"
-    if (
+    if data_manager_status != "healthy":
+        status = "unhealthy"  # Data Manager is critical
+    elif (
         nats_publisher_status == "disconnected"
         and os.getenv("NATS_ENABLED", "true").lower() == "true"
     ):
@@ -106,6 +122,7 @@ async def health_check():
                 "build_date": os.getenv("BUILD_DATE", "unknown"),
             },
             "components": {
+                "data_manager": data_manager_status,  # Critical dependency
                 "signal_engine": "running",
                 "nats_listener": (
                     "connected"
@@ -123,11 +140,29 @@ async def health_check():
 
 @app.get("/ready")
 async def readiness_check():
-    """Get readiness status."""
+    """Get readiness status - includes Data Manager health check."""
+    # Check Data Manager availability (critical dependency)
+    data_manager_status = "unknown"
+    try:
+        from ta_bot.services.mysql_client import MySQLClient
+
+        mysql_client = MySQLClient()
+        if await mysql_client.health_check():
+            data_manager_status = "ok"
+        else:
+            data_manager_status = "unhealthy"
+    except Exception as e:
+        logger.error(f"Data Manager health check failed: {e}")
+        data_manager_status = "error"
+
+    # Determine overall readiness
+    is_ready = data_manager_status == "ok"
+
     return JSONResponse(
         {
-            "status": "ready",
+            "status": "ready" if is_ready else "not_ready",
             "checks": {
+                "data_manager": data_manager_status,  # Critical dependency
                 "nats_connection": (
                     "ok"
                     if os.getenv("NATS_ENABLED", "true").lower() == "true"
@@ -138,7 +173,8 @@ async def readiness_check():
             },
             "uptime": get_uptime(),
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        }
+        },
+        status_code=200 if is_ready else 503,
     )
 
 

@@ -174,20 +174,7 @@ spec:
             configMapKeyRef:
               name: petrosa-common-config
               key: NATS_SUBJECT_PREFIX_PRODUCTION
-        - name: MYSQL_HOST
-          value: "mysql-server"
-        - name: MYSQL_PORT
-          value: "3306"
-        - name: MYSQL_USER
-          value: "petrosa"
-        - name: MYSQL_URI
-          valueFrom:
-            secretKeyRef:
-              name: petrosa-sensitive-credentials
-              key: MYSQL_URI
-        - name: MYSQL_DATABASE
-          value: "petrosa"
-        # Data Manager API configuration
+        # Data Manager API configuration (sole data access layer)
         - name: DATA_MANAGER_URL
           valueFrom:
             configMapKeyRef:

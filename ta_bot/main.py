@@ -56,10 +56,27 @@ async def main():
         await data_manager_client.connect()
         logger.info("Data Manager client initialized")
 
-        # Initialize MongoDB client for fallback configuration persistence
+        # Initialize MongoDB client for configuration persistence via Data Manager
         mongodb_client = MongoDBClient()
-        await mongodb_client.connect()
-        logger.info("MongoDB client initialized")
+        try:
+            await mongodb_client.connect()
+            logger.info("MongoDB client initialized via Data Manager")
+
+            # Verify Data Manager is healthy (fail-fast)
+            if not await mongodb_client.health_check():
+                logger.error("Data Manager health check failed - cannot start")
+                raise RuntimeError(
+                    "Data Manager is not available. TA-BOT requires Data Manager for operation."
+                )
+            logger.info("✅ Data Manager health check passed")
+
+        except Exception as e:
+            logger.error(f"Failed to connect to Data Manager: {e}")
+            logger.error("TA-BOT cannot start without Data Manager")
+            raise RuntimeError(
+                "Data Manager connection is required for TA-BOT operation. "
+                "Ensure petrosa-data-manager service is deployed and healthy."
+            ) from e
 
         # Initialize Application Configuration Manager
         app_config_manager = AppConfigManager(

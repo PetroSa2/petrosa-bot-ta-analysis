@@ -1,5 +1,8 @@
 """
-Comprehensive tests for MySQL client service.
+Tests for MySQL client service (Data Manager API only).
+
+These tests verify that MySQLClient correctly uses Data Manager API
+for all database operations. Direct MySQL connection has been removed.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,285 +14,222 @@ from ta_bot.services.mysql_client import MySQLClient
 
 
 @pytest.fixture
-def mock_pymysql_connection():
-    """Create a mock pymysql connection."""
-    mock_conn = MagicMock()
-    mock_cursor = MagicMock()
-    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-    mock_conn.cursor.return_value.__exit__.return_value = None
-    return mock_conn, mock_cursor
+def mock_data_manager_client():
+    """Create a mock Data Manager client."""
+    mock_client = AsyncMock()
+    mock_client.connect = AsyncMock()
+    mock_client.disconnect = AsyncMock()
+    mock_client.fetch_candles = AsyncMock()
+    mock_client.persist_signal = AsyncMock()
+    mock_client.persist_signals_batch = AsyncMock()
+    mock_client._client = AsyncMock()
+    mock_client._client.health = AsyncMock(return_value={"status": "healthy"})
+    return mock_client
 
 
 @pytest.mark.asyncio
-class TestMySQLClient:
-    """Test suite for MySQLClient."""
+class TestMySQLClientDataManager:
+    """Test suite for MySQLClient with Data Manager enforcement."""
 
-    def test_initialization_with_uri(self):
-        """Test client initialization with URI."""
-        with patch.dict(
-            "os.environ",
-            {"MYSQL_URI": "mysql+pymysql://user:pass@host:3306/database"},
+    def test_initialization(self):
+        """Test that client always initializes with Data Manager."""
+        with patch("ta_bot.services.mysql_client.DataManagerClient"):
+            client = MySQLClient()
+            assert hasattr(client, "data_manager_client")
+
+    async def test_connect(self, mock_data_manager_client):
+        """Test connecting via Data Manager."""
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient",
+            return_value=mock_data_manager_client,
         ):
-            client = MySQLClient(use_data_manager=False)
-            assert client.host == "host"
-            assert client.port == 3306
-            assert client.user == "user"
-            assert client.password == "pass"
-            assert client.database == "database"
+            client = MySQLClient()
+            await client.connect()
 
-    def test_initialization_with_individual_params(self):
-        """Test client initialization with individual parameters."""
-        client = MySQLClient(
-            host="testhost",
-            port=3307,
-            user="testuser",
-            password="testpass",
-            database="testdb",
-            use_data_manager=False,
+            mock_data_manager_client.connect.assert_called_once()
+
+    async def test_connect_failure_raises_runtime_error(self, mock_data_manager_client):
+        """Test that connection failure raises RuntimeError."""
+        mock_data_manager_client.connect.side_effect = Exception("Connection failed")
+
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient",
+            return_value=mock_data_manager_client,
+        ):
+            client = MySQLClient()
+
+            with pytest.raises(RuntimeError, match="Data Manager connection required"):
+                await client.connect()
+
+    async def test_disconnect(self, mock_data_manager_client):
+        """Test disconnecting from Data Manager."""
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient",
+            return_value=mock_data_manager_client,
+        ):
+            client = MySQLClient()
+            await client.connect()
+            await client.disconnect()
+
+            mock_data_manager_client.disconnect.assert_called_once()
+
+    async def test_health_check_healthy(self, mock_data_manager_client):
+        """Test health check when Data Manager is healthy."""
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient",
+            return_value=mock_data_manager_client,
+        ):
+            client = MySQLClient()
+            result = await client.health_check()
+
+            assert result is True
+            mock_data_manager_client._client.health.assert_called_once()
+
+    async def test_health_check_unhealthy(self, mock_data_manager_client):
+        """Test health check when Data Manager is unhealthy."""
+        mock_data_manager_client._client.health.return_value = {"status": "error"}
+
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient",
+            return_value=mock_data_manager_client,
+        ):
+            client = MySQLClient()
+            result = await client.health_check()
+
+            assert result is False
+
+    async def test_health_check_exception(self, mock_data_manager_client):
+        """Test health check when exception occurs."""
+        mock_data_manager_client._client.health.side_effect = Exception(
+            "Health check failed"
         )
 
-        assert client.host == "testhost"
-        assert client.port == 3307
-        assert client.user == "testuser"
-        assert client.password == "testpass"
-        assert client.database == "testdb"
-
-    def test_initialization_with_data_manager(self):
-        """Test client initialization with Data Manager enabled."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient"), patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient",
+            return_value=mock_data_manager_client,
         ):
-            client = MySQLClient(use_data_manager=True)
-            assert client.use_data_manager is True
-            assert client.connection is None
+            client = MySQLClient()
+            result = await client.health_check()
 
-    async def test_connect_with_data_manager(self):
-        """Test connecting with Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
-        ):
-            mock_dm_instance = AsyncMock()
-            mock_dm.return_value = mock_dm_instance
+            assert result is False
 
-            client = MySQLClient(use_data_manager=True)
-            await client.connect()
-
-            mock_dm_instance.connect.assert_called_once()
-
-    async def test_connect_with_mysql(self, mock_pymysql_connection):
-        """Test connecting directly to MySQL."""
-        mock_conn, _ = mock_pymysql_connection
-
-        with patch("pymysql.connect", return_value=mock_conn):
-            client = MySQLClient(use_data_manager=False)
-            await client.connect()
-
-            assert client.connection is not None
-
-    async def test_disconnect_with_data_manager(self):
-        """Test disconnecting with Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
-        ):
-            mock_dm_instance = AsyncMock()
-            mock_dm.return_value = mock_dm_instance
-
-            client = MySQLClient(use_data_manager=True)
-            await client.connect()
-            await client.disconnect()
-
-            mock_dm_instance.disconnect.assert_called_once()
-
-    async def test_disconnect_with_mysql(self, mock_pymysql_connection):
-        """Test disconnecting from MySQL."""
-        mock_conn, _ = mock_pymysql_connection
-
-        with patch("pymysql.connect", return_value=mock_conn):
-            client = MySQLClient(use_data_manager=False)
-            await client.connect()
-            await client.disconnect()
-
-            mock_conn.close.assert_called_once()
-
-    async def test_fetch_candles_with_data_manager(self):
+    async def test_fetch_candles(self, mock_data_manager_client):
         """Test fetching candles via Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
-        ):
-            mock_dm_instance = AsyncMock()
-            mock_df = pd.DataFrame(
-                {
-                    "timestamp": ["2025-10-24T00:00:00Z"],
-                    "open": [50000.0],
-                    "high": [51000.0],
-                    "low": [49000.0],
-                    "close": [50500.0],
-                    "volume": [100.5],
-                }
-            )
-            mock_dm_instance.fetch_candles.return_value = mock_df
-            mock_dm.return_value = mock_dm_instance
-
-            client = MySQLClient(use_data_manager=True)
-            df = await client.fetch_candles("BTCUSDT", "15m", limit=1)
-
-            assert len(df) == 1
-            mock_dm_instance.fetch_candles.assert_called_once_with("BTCUSDT", "15m", 1)
-
-    async def test_fetch_candles_with_mysql(self, mock_pymysql_connection):
-        """Test fetching candles directly from MySQL."""
-        mock_conn, mock_cursor = mock_pymysql_connection
-        mock_cursor.fetchall.return_value = [
+        # Create sample candle data
+        expected_df = pd.DataFrame(
             {
-                "timestamp": "2025-10-24 00:00:00",
-                "open": 50000.0,
-                "high": 51000.0,
-                "low": 49000.0,
-                "close": 50500.0,
-                "volume": 100.5,
+                "timestamp": pd.date_range("2024-01-01", periods=5, freq="5min"),
+                "open": [100.0, 101.0, 102.0, 103.0, 104.0],
+                "high": [101.0, 102.0, 103.0, 104.0, 105.0],
+                "low": [99.0, 100.0, 101.0, 102.0, 103.0],
+                "close": [101.0, 102.0, 103.0, 104.0, 105.0],
+                "volume": [1000.0, 1100.0, 1200.0, 1300.0, 1400.0],
             }
+        )
+
+        mock_data_manager_client.fetch_candles.return_value = expected_df
+
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient",
+            return_value=mock_data_manager_client,
+        ):
+            client = MySQLClient()
+            df = await client.fetch_candles("BTCUSDT", "5m", limit=100)
+
+            assert not df.empty
+            assert len(df) == 5
+            mock_data_manager_client.fetch_candles.assert_called_once_with(
+                "BTCUSDT", "5m", 100
+            )
+
+    async def test_persist_signal(self, mock_data_manager_client):
+        """Test persisting a single signal via Data Manager."""
+        mock_data_manager_client.persist_signal.return_value = True
+
+        signal_data = {
+            "symbol": "BTCUSDT",
+            "timeframe": "5m",
+            "action": "buy",
+            "confidence": 0.85,
+            "strategy": "rsi_strategy",
+            "metadata": {"rsi": 30},
+            "timestamp": "2024-01-01T00:00:00Z",
+        }
+
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient",
+            return_value=mock_data_manager_client,
+        ):
+            client = MySQLClient()
+            result = await client.persist_signal(signal_data)
+
+            assert result is True
+            mock_data_manager_client.persist_signal.assert_called_once_with(signal_data)
+
+    async def test_persist_signals_batch(self, mock_data_manager_client):
+        """Test persisting multiple signals via Data Manager."""
+        mock_data_manager_client.persist_signals_batch.return_value = True
+
+        signals = [
+            {
+                "symbol": "BTCUSDT",
+                "timeframe": "5m",
+                "action": "buy",
+                "confidence": 0.85,
+                "strategy": "rsi_strategy",
+                "metadata": {},
+                "timestamp": "2024-01-01T00:00:00Z",
+            },
+            {
+                "symbol": "ETHUSDT",
+                "timeframe": "15m",
+                "action": "sell",
+                "confidence": 0.75,
+                "strategy": "macd_strategy",
+                "metadata": {},
+                "timestamp": "2024-01-01T00:00:00Z",
+            },
         ]
 
-        with patch("pymysql.connect", return_value=mock_conn):
-            client = MySQLClient(use_data_manager=False)
-            await client.connect()
-
-            df = await client.fetch_candles("BTCUSDT", "15m", limit=1)
-
-            assert len(df) == 1
-            assert df.iloc[0]["close"] == 50500.0
-
-    async def test_fetch_candles_unsupported_period(self, mock_pymysql_connection):
-        """Test fetching candles with unsupported period."""
-        mock_conn, _ = mock_pymysql_connection
-
-        with patch("pymysql.connect", return_value=mock_conn):
-            client = MySQLClient(use_data_manager=False)
-            await client.connect()
-
-            df = await client.fetch_candles("BTCUSDT", "invalid_period")
-
-            assert len(df) == 0
-
-    async def test_persist_signal_with_data_manager(self):
-        """Test persisting signal via Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient",
+            return_value=mock_data_manager_client,
         ):
-            mock_dm_instance = AsyncMock()
-            mock_dm_instance.persist_signal.return_value = True
-            mock_dm.return_value = mock_dm_instance
-
-            client = MySQLClient(use_data_manager=True)
-            signal_data = {"symbol": "BTCUSDT", "confidence": 0.85}
-
-            result = await client.persist_signal(signal_data)
-
-            assert result is True
-            mock_dm_instance.persist_signal.assert_called_once()
-
-    async def test_persist_signal_with_mysql(self, mock_pymysql_connection):
-        """Test persisting signal directly to MySQL."""
-        mock_conn, mock_cursor = mock_pymysql_connection
-
-        with patch("pymysql.connect", return_value=mock_conn):
-            client = MySQLClient(use_data_manager=False)
-            await client.connect()
-
-            signal_data = {
-                "symbol": "BTCUSDT",
-                "timeframe": "15m",
-                "confidence": 0.85,
-                "timestamp": "2025-10-24T00:00:00Z",
-                "metadata": {},
-            }
-
-            result = await client.persist_signal(signal_data)
-
-            assert result is True
-            mock_cursor.execute.assert_called_once()
-
-    async def test_persist_signals_batch_with_data_manager(self):
-        """Test persisting signal batch via Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
-        ):
-            mock_dm_instance = AsyncMock()
-            mock_dm_instance.persist_signals_batch.return_value = True
-            mock_dm.return_value = mock_dm_instance
-
-            client = MySQLClient(use_data_manager=True)
-            signals = [
-                {"symbol": "BTCUSDT", "confidence": 0.85},
-                {"symbol": "ETHUSDT", "confidence": 0.90},
-            ]
-
+            client = MySQLClient()
             result = await client.persist_signals_batch(signals)
 
             assert result is True
+            mock_data_manager_client.persist_signals_batch.assert_called_once_with(
+                signals
+            )
 
-    async def test_persist_signals_batch_with_mysql(self, mock_pymysql_connection):
-        """Test persisting signal batch directly to MySQL."""
-        mock_conn, mock_cursor = mock_pymysql_connection
 
-        with patch("pymysql.connect", return_value=mock_conn):
-            client = MySQLClient(use_data_manager=False)
-            await client.connect()
+@pytest.mark.asyncio
+class TestMySQLClientFailFast:
+    """Test suite for fail-fast behavior when Data Manager is unavailable."""
 
-            signals = [
-                {
-                    "symbol": "BTCUSDT",
-                    "timeframe": "15m",
-                    "confidence": 0.85,
-                    "timestamp": "2025-10-24T00:00:00Z",
-                    "metadata": {},
-                },
-                {
-                    "symbol": "ETHUSDT",
-                    "timeframe": "15m",
-                    "confidence": 0.90,
-                    "timestamp": "2025-10-24T00:00:00Z",
-                    "metadata": {},
-                },
-            ]
+    async def test_connect_fails_when_data_manager_unavailable(self):
+        """Test that connect fails fast when Data Manager is unavailable."""
+        mock_dm = AsyncMock()
+        mock_dm.connect.side_effect = ConnectionError("Data Manager not available")
 
-            result = await client.persist_signals_batch(signals)
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient", return_value=mock_dm
+        ):
+            client = MySQLClient()
 
-            assert result is True
-            mock_cursor.executemany.assert_called_once()
+            with pytest.raises(RuntimeError, match="Data Manager connection required"):
+                await client.connect()
 
-    async def test_persist_signals_batch_empty(self, mock_pymysql_connection):
-        """Test persisting empty signal batch."""
-        mock_conn, _ = mock_pymysql_connection
+    async def test_health_check_returns_false_on_error(self):
+        """Test that health check returns False on error."""
+        mock_dm = AsyncMock()
+        mock_dm._client.health.side_effect = Exception("Health check failed")
 
-        with patch("pymysql.connect", return_value=mock_conn):
-            client = MySQLClient(use_data_manager=False)
-            await client.connect()
+        with patch(
+            "ta_bot.services.mysql_client.DataManagerClient", return_value=mock_dm
+        ):
+            client = MySQLClient()
+            result = await client.health_check()
 
-            result = await client.persist_signals_batch([])
-
-            assert result is True
-
-    def test_deep_sanitize_for_json(self):
-        """Test deep sanitization for JSON serialization."""
-        client = MySQLClient(use_data_manager=False)
-
-        # Test NaN
-        assert client._deep_sanitize_for_json(float("nan")) is None
-
-        # Test Infinity
-        assert client._deep_sanitize_for_json(float("inf")) is None
-
-        # Test -Infinity
-        assert client._deep_sanitize_for_json(float("-inf")) is None
-
-        # Test nested dict
-        result = client._deep_sanitize_for_json(
-            {"a": float("nan"), "b": {"c": float("inf")}}
-        )
-        assert result["a"] is None
-        assert result["b"]["c"] is None
-
-        # Test list
-        result = client._deep_sanitize_for_json([1, float("nan"), 3])
-        assert result == [1, None, 3]
+            assert result is False
