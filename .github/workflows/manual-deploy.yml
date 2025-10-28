@@ -1,0 +1,211 @@
+name: Manual Deployment with Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      reason:
+        description: 'Reason for deployment (audit trail)'
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for tags
+
+      - name: Get current version
+        id: current_version
+        run: |
+          # Get latest tag, default to v0.0.0 if no tags exist
+          CURRENT=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Current version: $CURRENT"
+          echo "version=$CURRENT" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          chmod +x scripts/bump-version.sh
+          NEW_VERSION=$(./scripts/bump-version.sh "${{ steps.current_version.outputs.version }}" "${{ inputs.version_bump }}")
+          echo "New version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.bump_version.outputs.new_version }}" -m "Manual deployment: ${{ inputs.reason }}"
+          git push origin "${{ steps.bump_version.outputs.new_version }}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/petrosa2/ta-bot:${{ steps.bump_version.outputs.new_version }}
+            ghcr.io/petrosa2/ta-bot:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: |
+          VERSION="${{ steps.bump_version.outputs.new_version }}"
+          ENV="${{ inputs.environment }}"
+
+          echo "Deploying ta-bot version $VERSION to $ENV"
+
+          # Update deployment with new image tag
+          # Skip TLS verification since external IP not in certificate SAN
+          kubectl set image deployment/petrosa-ta-bot \
+            ta-bot=ghcr.io/petrosa2/ta-bot:$VERSION \
+            --namespace=petrosa-apps \
+            --insecure-skip-tls-verify
+
+      - name: Wait for rollout
+        run: |
+          echo "Waiting for rollout to complete..."
+          kubectl rollout status deployment/petrosa-ta-bot \
+            --namespace=petrosa-apps \
+            --timeout=5m \
+            --insecure-skip-tls-verify
+
+      - name: Verify deployment
+        run: |
+          echo "Checking pod status..."
+          kubectl get pods -n petrosa-apps -l app=ta-bot --insecure-skip-tls-verify
+
+          echo ""
+          echo "Recent logs:"
+          kubectl logs -n petrosa-apps -l app=ta-bot --tail=20 --insecure-skip-tls-verify || true
+
+      - name: Create deployment record
+        run: |
+          mkdir -p deployments
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          cat >> deployments/history.log << EOF
+          ========================================
+          Deployment Record
+          ========================================
+          Service: ta-bot
+          Environment: ${{ inputs.environment }}
+          Version: ${{ steps.bump_version.outputs.new_version }}
+          Previous Version: ${{ steps.current_version.outputs.version }}
+          Docker Image: ghcr.io/petrosa2/ta-bot:${{ steps.bump_version.outputs.new_version }}
+          Triggered by: ${{ github.actor }}
+          Reason: ${{ inputs.reason }}
+          Timestamp: $TIMESTAMP
+          Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ========================================
+
+          EOF
+
+          cat deployments/history.log
+
+      - name: Create summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # Deployment Successful ✅
+
+          ## Details
+          - **Service**: \`ta-bot\`
+          - **Environment**: \`${{ inputs.environment }}\`
+          - **Version**: \`${{ steps.current_version.outputs.version }}\` → \`${{ steps.bump_version.outputs.new_version }}\`
+          - **Bump Type**: \`${{ inputs.version_bump }}\`
+          - **Docker Image**: \`ghcr.io/petrosa2/ta-bot:${{ steps.bump_version.outputs.new_version }}\`
+          - **Triggered by**: @${{ github.actor }}
+          - **Reason**: ${{ inputs.reason }}
+
+          ## Verification
+
+          Check deployment status:
+          \`\`\`bash
+          kubectl get pods -n petrosa-apps -l app=ta-bot --insecure-skip-tls-verify
+          kubectl logs -n petrosa-apps -l app=ta-bot --tail=50 --insecure-skip-tls-verify
+          \`\`\`
+
+          ## Rollback (if needed)
+
+          \`\`\`bash
+          kubectl rollout undo deployment/petrosa-ta-bot -n petrosa-apps --insecure-skip-tls-verify
+          \`\`\`
+
+          ## Image Details
+
+          - **Latest tag**: \`ghcr.io/petrosa2/ta-bot:latest\`
+          - **Version tag**: \`ghcr.io/petrosa2/ta-bot:${{ steps.bump_version.outputs.new_version }}\`
+          EOF
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # Deployment Failed ❌
+
+          ## Details
+          - **Service**: \`ta-bot\`
+          - **Environment**: \`${{ inputs.environment }}\`
+          - **Version**: \`${{ steps.bump_version.outputs.new_version }}\`
+          - **Triggered by**: @${{ github.actor }}
+
+          Please check the workflow logs for details.
+
+          ## Debug Commands
+
+          \`\`\`bash
+          # Check deployment status
+          kubectl describe deployment petrosa-ta-bot -n petrosa-apps --insecure-skip-tls-verify
+
+          # Check pod events
+          kubectl get events -n petrosa-apps --field-selector involvedObject.kind=Pod --insecure-skip-tls-verify
+
+          # Check pod logs
+          kubectl logs -n petrosa-apps -l app=ta-bot --tail=100 --insecure-skip-tls-verify
+          \`\`\`
+          EOF
