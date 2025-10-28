@@ -22,6 +22,7 @@ class SignalPublisher:
         self,
         api_endpoint: str,
         nats_url: str = None,
+        nats_signal_topic: str = "signals.trading",
         enable_rest_publishing: bool = False,
     ):
         """Initialize the signal publisher.
@@ -29,13 +30,24 @@ class SignalPublisher:
         Args:
             api_endpoint: HTTP endpoint for REST API publishing
             nats_url: NATS server URL for NATS publishing
+            nats_signal_topic: NATS topic for publishing signals (default: signals.trading)
             enable_rest_publishing: Enable REST API publishing (default: False to prevent duplicates)
         """
         self.api_endpoint = api_endpoint
         self.nats_url = nats_url
+        self.nats_signal_topic = nats_signal_topic
         self.enable_rest_publishing = enable_rest_publishing
         self.session = None
         self.nats_client = None
+
+        # Validate topic configuration
+        if self.nats_signal_topic != "signals.trading":
+            logger.error(
+                "CRITICAL: NATS signal topic misconfigured!",
+                configured_topic=self.nats_signal_topic,
+                expected_topic="signals.trading",
+                message="Signals may not reach tradeengine with this configuration",
+            )
 
     async def start(self):
         """Start the publisher session."""
@@ -144,7 +156,7 @@ class SignalPublisher:
                 )
 
                 # Publish to NATS subject that Trade Engine listens to
-                subject = "signals.trading"
+                subject = self.nats_signal_topic
                 message = json.dumps(signal_data).encode()
 
                 logger.info(
@@ -218,7 +230,7 @@ class SignalPublisher:
             return
 
         try:
-            subject = "signals.trading"
+            subject = self.nats_signal_topic
 
             for signal in signals:
                 signal_data = signal.to_dict()

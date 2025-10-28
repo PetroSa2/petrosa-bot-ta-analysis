@@ -117,6 +117,7 @@ async def main():
         publisher = SignalPublisher(
             api_endpoint=config.api_endpoint,
             nats_url=config.nats_url if config.nats_enabled else None,
+            nats_signal_topic=config.nats_signal_topic,
             enable_rest_publishing=config.enable_rest_publishing,
         )
 

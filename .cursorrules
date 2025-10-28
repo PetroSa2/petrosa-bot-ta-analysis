@@ -22,6 +22,9 @@ The TA Bot bridges historical data (from data-extractor) with signal generation,
 - **Ecosystem Architecture**: See master § System Architecture Overview → Signal Generation Layer
 - **Work Tracking**: See master § Centralized Work Tracking with GitHub Projects
 - **NATS Topics**: See master § NATS Message Bus → `signals.trading` (output only)
+  - **Canonical NATS Registry**: `/Users/yurisa2/petrosa/petrosa_k8s/docs/NATS_TOPICS.md`
+  - This service MUST publish to `signals.trading` (configured via `NATS_SIGNAL_TOPIC`)
+  - Consult registry before any NATS configuration changes
 - **Database Architecture**: See master § Database Architecture (MySQL historical data, MongoDB config)
 - **Deployment Patterns**: See master § TA Bot Configuration
 - **Leader Election**: See master § TA Bot & Data Manager (leader election patterns)

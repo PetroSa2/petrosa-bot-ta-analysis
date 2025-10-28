@@ -50,6 +50,9 @@ class Config:
     nats_subject_prefix_production: str = os.getenv(
         "NATS_SUBJECT_PREFIX_PRODUCTION", "binance.extraction.production"
     )
+    # CRITICAL: Must match consumer topic in tradeengine (signals.trading)
+    # See /Users/yurisa2/petrosa/petrosa_k8s/docs/NATS_TOPICS.md
+    nats_signal_topic: str = os.getenv("NATS_SIGNAL_TOPIC", "signals.trading")
 
     # API Configuration
     # Prefer cluster-provided API_ENDPOINT, fallback to old var for local
