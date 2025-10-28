@@ -9,8 +9,9 @@ import os
 from typing import Any, Optional
 
 import pandas as pd
-from data_manager_client import DataManagerClient as BaseDataManagerClient
 from data_manager_client.exceptions import APIError, ConnectionError, TimeoutError
+
+from data_manager_client import DataManagerClient as BaseDataManagerClient
 
 logger = None
 
