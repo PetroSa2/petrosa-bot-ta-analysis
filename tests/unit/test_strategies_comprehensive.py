@@ -411,7 +411,14 @@ class TestBandFadeReversalStrategy:
         assert isinstance(strategy, BaseStrategy)
 
     def test_band_fade_reversal_analyze(self):
-        """Test band fade reversal analysis."""
+        """Test band fade reversal analysis.
+
+        This is a general smoke test that verifies the strategy runs without crashing.
+        Signal may be None if market conditions don't meet the strategy's criteria.
+        Specific signal generation scenarios are tested in dedicated test cases:
+        - test_band_fade_reversal_buy_at_lower_band
+        - test_band_fade_reversal_sell_at_upper_band
+        """
         strategy = BandFadeReversalStrategy()
         df = self.create_volatile_dataframe()
 
@@ -420,6 +427,7 @@ class TestBandFadeReversalStrategy:
         signal = strategy.analyze(df, metadata)
 
         # Always assert that signal is either None or a valid Signal
+        # None is acceptable: strategy may not generate signal if conditions aren't met
         assert signal is None or isinstance(signal, Signal)
 
         if signal:
