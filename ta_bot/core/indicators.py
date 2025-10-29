@@ -30,7 +30,6 @@ class Indicators:
             # Add result info to span
             if not result_series.empty:
                 span.set_attribute("rsi_value", float(result_series.iloc[-1]))
-                span.set_attribute("valid_values", int(result_series.notna().sum()))
 
             return result_series
 
@@ -138,12 +137,13 @@ class Indicators:
 
             # Add values to span
             if not lower.empty:
-                current_price = df["close"].iloc[-1]
-                span.set_attribute("bb_lower", float(lower.iloc[-1]))
+                lower_val = float(lower.iloc[-1])
+                upper_val = float(upper.iloc[-1])
+                span.set_attribute("bb_lower", lower_val)
                 span.set_attribute("bb_middle", float(middle.iloc[-1]))
-                span.set_attribute("bb_upper", float(upper.iloc[-1]))
-                span.set_attribute("bb_width", float(upper.iloc[-1] - lower.iloc[-1]))
-                span.set_attribute("price_position", float(current_price))
+                span.set_attribute("bb_upper", upper_val)
+                span.set_attribute("bb_width", upper_val - lower_val)
+                span.set_attribute("price_position", float(df["close"].iloc[-1]))
 
             return lower, middle, upper
 

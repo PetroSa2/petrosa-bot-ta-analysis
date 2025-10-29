@@ -88,12 +88,12 @@ class LeaderElection:
 
     async def _act_as_leader(self):
         """Act as the leader by sending heartbeats."""
-        with tracer.start_as_current_span("leader_heartbeat") as span:
-            span.set_attribute("pod_name", self.pod_name)
-            heartbeat_count = 0
+        try:
+            while self.is_leader:
+                # Create a new span for each heartbeat iteration
+                with tracer.start_as_current_span("leader_heartbeat") as span:
+                    span.set_attribute("pod_name", self.pod_name)
 
-            try:
-                while self.is_leader:
                     # Send heartbeat
                     heartbeat = {
                         "pod_name": self.pod_name,
@@ -104,15 +104,12 @@ class LeaderElection:
                     await self.nc.publish(
                         self.election_subject, str(heartbeat).encode()
                     )
-                    heartbeat_count += 1
-                    span.set_attribute("heartbeat_count", heartbeat_count)
 
                     await asyncio.sleep(self.heartbeat_interval)
 
-            except Exception as e:
-                print(f"Error acting as leader: {e}")
-                span.set_attribute("error", str(e))
-                self.is_leader = False
+        except Exception as e:
+            print(f"Error acting as leader: {e}")
+            self.is_leader = False
 
     async def _get_current_leader(self) -> dict | None:
         """Get the current leader information."""

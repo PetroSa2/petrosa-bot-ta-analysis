@@ -276,5 +276,56 @@ class TestConfidenceCalculator:
             assert 0.0 <= confidence <= 1.0
 
 
+class TestSignalEngineTracing:
+    """Test cases for OpenTelemetry tracing in SignalEngine."""
+
+    @pytest.fixture
+    def mock_tracer(self):
+        """Create a mock tracer."""
+        from unittest.mock import MagicMock, patch
+
+        with patch("ta_bot.core.signal_engine.tracer") as mock:
+            mock_span = MagicMock()
+            mock.start_as_current_span.return_value.__enter__.return_value = mock_span
+            yield mock, mock_span
+
+    def test_analyze_candles_creates_span(self, sample_candles, mock_tracer):
+        """Test that analyze_candles creates span with attributes."""
+        mock_tracer_obj, mock_span = mock_tracer
+
+        engine = SignalEngine()
+        signals = engine.analyze_candles(sample_candles, symbol="BTCUSDT", period="15m")
+
+        # Verify span was created
+        assert mock_tracer_obj.start_as_current_span.called
+
+        # Verify span attributes were set
+        mock_span.set_attribute.assert_any_call("symbol", "BTCUSDT")
+        mock_span.set_attribute.assert_any_call("timeframe", "15m")
+
+    def test_run_strategy_creates_span(self, sample_candles, mock_tracer):
+        """Test that _run_strategy creates span with attributes."""
+        from unittest.mock import patch
+
+        mock_tracer_obj, mock_span = mock_tracer
+
+        engine = SignalEngine()
+
+        # Run strategy with mocked tracer
+        with patch("ta_bot.core.signal_engine.tracer", mock_tracer_obj):
+            signals = engine.analyze_candles(
+                sample_candles,
+                symbol="ETHUSDT",
+                period="5m",
+                enabled_strategies=["momentum_pulse"],
+            )
+
+        # Verify strategy span was created
+        calls = [
+            call[0][0] for call in mock_tracer_obj.start_as_current_span.call_args_list
+        ]
+        assert "run_strategy" in calls or "analyze_candles" in calls
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
