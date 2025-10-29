@@ -9,6 +9,11 @@ from typing import Optional
 
 import nats
 
+from otel_init import get_tracer
+
+# Get tracer for manual spans
+tracer = get_tracer("ta_bot.services.leader_election")
+
 
 class LeaderElection:
     """Simple leader election using NATS."""
@@ -42,51 +47,72 @@ class LeaderElection:
 
     async def _try_become_leader(self):
         """Try to become the leader."""
-        try:
-            # Publish leader claim
-            leader_claim = {
-                "pod_name": self.pod_name,
-                "timestamp": time.time(),
-                "ttl": 60,  # 60 seconds TTL
-            }
+        with tracer.start_as_current_span("leader_election_attempt") as span:
+            span.set_attribute("pod_name", self.pod_name)
+            span.set_attribute("election_subject", self.election_subject)
 
-            await self.nc.publish(self.election_subject, str(leader_claim).encode())
+            try:
+                # Publish leader claim
+                leader_claim = {
+                    "pod_name": self.pod_name,
+                    "timestamp": time.time(),
+                    "ttl": 60,  # 60 seconds TTL
+                }
 
-            # Wait a bit and check if we're still the most recent
-            await asyncio.sleep(2)
+                await self.nc.publish(self.election_subject, str(leader_claim).encode())
 
-            # Check current leader
-            current_leader = await self._get_current_leader()
+                # Wait a bit and check if we're still the most recent
+                await asyncio.sleep(2)
 
-            if current_leader and current_leader.get("pod_name") == self.pod_name:
-                self.is_leader = True
-                self.leader_info = current_leader
-                print(f"🎯 {self.pod_name} is now the leader")
-            else:
+                # Check current leader
+                current_leader = await self._get_current_leader()
+
+                if current_leader and current_leader.get("pod_name") == self.pod_name:
+                    self.is_leader = True
+                    self.leader_info = current_leader
+                    span.set_attribute("became_leader", True)
+                    print(f"🎯 {self.pod_name} is now the leader")
+                else:
+                    self.is_leader = False
+                    span.set_attribute("became_leader", False)
+                    if current_leader:
+                        span.set_attribute(
+                            "current_leader", current_leader.get("pod_name")
+                        )
+
+            except Exception as e:
+                print(f"Error trying to become leader: {e}")
+                span.set_attribute("error", str(e))
+                span.set_attribute("became_leader", False)
                 self.is_leader = False
-
-        except Exception as e:
-            print(f"Error trying to become leader: {e}")
-            self.is_leader = False
 
     async def _act_as_leader(self):
         """Act as the leader by sending heartbeats."""
-        try:
-            while self.is_leader:
-                # Send heartbeat
-                heartbeat = {
-                    "pod_name": self.pod_name,
-                    "timestamp": time.time(),
-                    "ttl": 60,
-                }
+        with tracer.start_as_current_span("leader_heartbeat") as span:
+            span.set_attribute("pod_name", self.pod_name)
+            heartbeat_count = 0
 
-                await self.nc.publish(self.election_subject, str(heartbeat).encode())
+            try:
+                while self.is_leader:
+                    # Send heartbeat
+                    heartbeat = {
+                        "pod_name": self.pod_name,
+                        "timestamp": time.time(),
+                        "ttl": 60,
+                    }
 
-                await asyncio.sleep(self.heartbeat_interval)
+                    await self.nc.publish(
+                        self.election_subject, str(heartbeat).encode()
+                    )
+                    heartbeat_count += 1
+                    span.set_attribute("heartbeat_count", heartbeat_count)
 
-        except Exception as e:
-            print(f"Error acting as leader: {e}")
-            self.is_leader = False
+                    await asyncio.sleep(self.heartbeat_interval)
+
+            except Exception as e:
+                print(f"Error acting as leader: {e}")
+                span.set_attribute("error", str(e))
+                self.is_leader = False
 
     async def _get_current_leader(self) -> dict | None:
         """Get the current leader information."""
