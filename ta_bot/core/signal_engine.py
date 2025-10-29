@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from otel_init import get_meter
+from otel_init import get_meter, get_tracer
 from ta_bot.core.indicators import Indicators
 from ta_bot.models.signal import Signal, SignalStrength, SignalType
 from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy
@@ -49,6 +49,9 @@ from ta_bot.strategies.shooting_star_reversal import ShootingStarReversalStrateg
 from ta_bot.strategies.volume_surge_breakout import VolumeSurgeBreakoutStrategy
 
 logger = logging.getLogger(__name__)
+
+# Get tracer for manual spans
+tracer = get_tracer("ta_bot.core.signal_engine")
 
 
 class SignalEngine:
@@ -145,96 +148,128 @@ class SignalEngine:
         Returns:
             List of trading signals
         """
-        # Start timing for latency metric
-        start_time = time.time()
+        with tracer.start_as_current_span("analyze_candles") as span:
+            # Add attributes to span
+            span.set_attribute("symbol", symbol)
+            span.set_attribute("timeframe", period)
+            span.set_attribute("candle_count", len(df) if df is not None else 0)
+            if enabled_strategies:
+                span.set_attribute("enabled_strategies_count", len(enabled_strategies))
+            if min_confidence is not None:
+                span.set_attribute("min_confidence", min_confidence)
+            if max_confidence is not None:
+                span.set_attribute("max_confidence", max_confidence)
 
-        if df is None or len(df) == 0:
-            logger.warning("No candle data provided for analysis")
-            return []
+            # Start timing for latency metric
+            start_time = time.time()
 
-        logger.info(f"=== Starting signal analysis for {symbol} {period} ===")
-        logger.info(f"Dataframe shape: {df.shape}")
+            if df is None or len(df) == 0:
+                logger.warning("No candle data provided for analysis")
+                span.set_attribute("result", "no_data")
+                return []
 
-        # Calculate all technical indicators
-        indicators = self._calculate_indicators(df)
-        logger.info(f"Calculated {len(indicators)} technical indicators")
+            logger.info(f"=== Starting signal analysis for {symbol} {period} ===")
+            logger.info(f"Dataframe shape: {df.shape}")
 
-        # Get current price from the latest candle
-        current_price = float(df["close"].iloc[-1])
-        logger.info(f"Current price: {current_price}")
+            # Calculate all technical indicators
+            indicators = self._calculate_indicators(df)
+            logger.info(f"Calculated {len(indicators)} technical indicators")
 
-        # Determine which strategies to run
-        strategies_to_run = self.strategies
-        if enabled_strategies:
-            # Filter to only enabled strategies
-            strategies_to_run = {
-                name: strategy
-                for name, strategy in self.strategies.items()
-                if name in enabled_strategies
-            }
-            logger.info(
-                f"Running {len(strategies_to_run)} enabled strategies (out of {len(self.strategies)} total)"
-            )
-        else:
-            logger.info(f"Running all {len(strategies_to_run)} strategies")
+            # Get current price from the latest candle
+            current_price = float(df["close"].iloc[-1])
+            logger.info(f"Current price: {current_price}")
+            span.set_attribute("current_price", current_price)
 
-        # Record strategies run count for this analysis cycle
-        self.strategies_run_counter.add(
-            len(strategies_to_run), {"symbol": symbol, "timeframe": period}
-        )
-
-        signals = []
-
-        # Run each strategy
-        for strategy_name, strategy in strategies_to_run.items():
-            logger.info(f"--- Running {strategy_name} strategy ---")
-            signal = self._run_strategy(
-                strategy, strategy_name, df, symbol, period, indicators, current_price
-            )
-            if signal:
-                # Apply confidence filtering if specified
-                if min_confidence is not None and signal.confidence < min_confidence:
-                    logger.info(
-                        f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} < min {min_confidence:.2f})"
-                    )
-                    continue
-                if max_confidence is not None and signal.confidence > max_confidence:
-                    logger.info(
-                        f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} > max {max_confidence:.2f})"
-                    )
-                    continue
-
-                signals.append(signal)
+            # Determine which strategies to run
+            strategies_to_run = self.strategies
+            if enabled_strategies:
+                # Filter to only enabled strategies
+                strategies_to_run = {
+                    name: strategy
+                    for name, strategy in self.strategies.items()
+                    if name in enabled_strategies
+                }
                 logger.info(
-                    f"✅ {strategy_name}: SIGNAL GENERATED - {signal.action} with {signal.confidence:.2f} confidence"
-                )
-
-                # Record signal generation metric
-                self.signal_counter.add(
-                    1,
-                    {
-                        "symbol": symbol,
-                        "timeframe": period,
-                        "strategy": strategy_name,
-                        "action": signal.action,
-                    },
+                    f"Running {len(strategies_to_run)} enabled strategies (out of {len(self.strategies)} total)"
                 )
             else:
-                logger.info(f"❌ {strategy_name}: No signal - conditions not met")
+                logger.info(f"Running all {len(strategies_to_run)} strategies")
 
-        # Calculate processing duration
-        duration_ms = (time.time() - start_time) * 1000
+            span.set_attribute("strategies_count", len(strategies_to_run))
 
-        # Record processing latency metric
-        self.signal_latency.record(
-            duration_ms,
-            {"symbol": symbol, "timeframe": period, "signal_count": len(signals)},
-        )
+            # Record strategies run count for this analysis cycle
+            self.strategies_run_counter.add(
+                len(strategies_to_run), {"symbol": symbol, "timeframe": period}
+            )
 
-        logger.info(
-            f"=== Strategy analysis complete: {len(signals)} signals generated in {duration_ms:.2f}ms ==="
-        )
-        return signals
+            signals = []
+
+            # Run each strategy
+            for strategy_name, strategy in strategies_to_run.items():
+                logger.info(f"--- Running {strategy_name} strategy ---")
+                signal = self._run_strategy(
+                    strategy,
+                    strategy_name,
+                    df,
+                    symbol,
+                    period,
+                    indicators,
+                    current_price,
+                )
+                if signal:
+                    # Apply confidence filtering if specified
+                    if (
+                        min_confidence is not None
+                        and signal.confidence < min_confidence
+                    ):
+                        logger.info(
+                            f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} < min {min_confidence:.2f})"
+                        )
+                        continue
+                    if (
+                        max_confidence is not None
+                        and signal.confidence > max_confidence
+                    ):
+                        logger.info(
+                            f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} > max {max_confidence:.2f})"
+                        )
+                        continue
+
+                    signals.append(signal)
+                    logger.info(
+                        f"✅ {strategy_name}: SIGNAL GENERATED - {signal.action} with {signal.confidence:.2f} confidence"
+                    )
+
+                    # Record signal generation metric
+                    self.signal_counter.add(
+                        1,
+                        {
+                            "symbol": symbol,
+                            "timeframe": period,
+                            "strategy": strategy_name,
+                            "action": signal.action,
+                        },
+                    )
+                else:
+                    logger.info(f"❌ {strategy_name}: No signal - conditions not met")
+
+            # Calculate processing duration
+            duration_ms = (time.time() - start_time) * 1000
+
+            # Record processing latency metric
+            self.signal_latency.record(
+                duration_ms,
+                {"symbol": symbol, "timeframe": period, "signal_count": len(signals)},
+            )
+
+            # Add final span attributes
+            span.set_attribute("signals_generated", len(signals))
+            span.set_attribute("processing_duration_ms", duration_ms)
+
+            logger.info(
+                f"=== Strategy analysis complete: {len(signals)} signals generated in {duration_ms:.2f}ms ==="
+            )
+            return signals
 
     def _calculate_indicators(self, df: pd.DataFrame) -> dict[str, Any]:
         """Calculate all technical indicators for the dataframe."""
@@ -282,94 +317,109 @@ class SignalEngine:
         current_price: float,
     ) -> Signal | None:
         """Run a single strategy and return signal if valid."""
-        try:
-            # Prepare metadata for strategy - pass indicators directly
-            metadata = {**indicators, "symbol": symbol, "timeframe": period}
-            # Run strategy analysis
-            signal = strategy.analyze(df, metadata)
+        with tracer.start_as_current_span("run_strategy") as span:
+            span.set_attribute("strategy_name", strategy_name)
+            span.set_attribute("symbol", symbol)
+            span.set_attribute("timeframe", period)
+            span.set_attribute("current_price", current_price)
 
-            # Record strategy execution (success)
-            self.strategy_execution_counter.add(
-                1,
-                {
-                    "strategy": strategy_name,
-                    "symbol": symbol,
-                    "timeframe": period,
-                    "status": "success",
-                    "signal_generated": "yes" if signal else "no",
-                },
-            )
+            try:
+                # Prepare metadata for strategy - pass indicators directly
+                metadata = {**indicators, "symbol": symbol, "timeframe": period}
+                # Run strategy analysis
+                signal = strategy.analyze(df, metadata)
 
-            if not signal:
-                logger.info(f"  {strategy_name}: No signal returned by strategy")
+                # Add signal info to span
+                if signal:
+                    span.set_attribute("signal_generated", True)
+                    span.set_attribute("signal_action", signal.action)
+                    span.set_attribute("signal_confidence", signal.confidence)
+                else:
+                    span.set_attribute("signal_generated", False)
+
+                # Record strategy execution (success)
+                self.strategy_execution_counter.add(
+                    1,
+                    {
+                        "strategy": strategy_name,
+                        "symbol": symbol,
+                        "timeframe": period,
+                        "status": "success",
+                        "signal_generated": "yes" if signal else "no",
+                    },
+                )
+
+                if not signal:
+                    logger.info(f"  {strategy_name}: No signal returned by strategy")
+                    return None
+
+                # Log strategy-specific details
+                logger.info(f"  {strategy_name}: Signal type: {signal.action}")
+                if signal.metadata:
+                    logger.info(f"  {strategy_name}: Metadata: {signal.metadata}")
+
+                # CRITICAL FIX: Ensure all signals have stop_loss and take_profit
+                # If strategy didn't set them, calculate using risk management
+                if signal.stop_loss is None or signal.take_profit is None:
+                    logger.info(
+                        f"  {strategy_name}: Calculating missing TP/SL using risk management"
+                    )
+
+                    # Map signal action to SignalType for risk management calculation
+                    signal_type = (
+                        SignalType.BUY if signal.action == "buy" else SignalType.SELL
+                    )
+
+                    # Calculate TP/SL based on ATR and price action
+                    stop_loss, take_profit = self._calculate_risk_management(
+                        current_price, indicators, signal_type
+                    )
+
+                    # Update signal with calculated values
+                    signal.stop_loss = stop_loss
+                    signal.take_profit = take_profit
+
+                    # Also add to metadata for transparency
+                    if signal.metadata is None:
+                        signal.metadata = {}
+                    signal.metadata["stop_loss_calculated"] = True
+                    signal.metadata["stop_loss"] = stop_loss
+                    signal.metadata["take_profit"] = take_profit
+
+                    logger.info(
+                        f"  {strategy_name}: Calculated TP/SL - SL: {stop_loss:.2f}, TP: {take_profit:.2f}"
+                    )
+                else:
+                    logger.info(
+                        f"  {strategy_name}: Using strategy-defined TP/SL - SL: {signal.stop_loss:.2f}, TP: {signal.take_profit:.2f}"
+                    )
+
+                # Validate signal
+                if not signal.validate():
+                    logger.warning(
+                        f"  {strategy_name}: Invalid signal generated - validation failed"
+                    )
+                    return None
+
+                logger.info(f"  {strategy_name}: Signal validated successfully")
+                return signal
+
+            except Exception as e:
+                logger.error(f"  {strategy_name}: Error during analysis: {e}")
+                span.set_attribute("error", str(e))
+
+                # Record strategy execution (failure)
+                self.strategy_execution_counter.add(
+                    1,
+                    {
+                        "strategy": strategy_name,
+                        "symbol": symbol,
+                        "timeframe": period,
+                        "status": "error",
+                        "signal_generated": "no",
+                    },
+                )
                 return None
-
-            # Log strategy-specific details
-            logger.info(f"  {strategy_name}: Signal type: {signal.action}")
-            if signal.metadata:
-                logger.info(f"  {strategy_name}: Metadata: {signal.metadata}")
-
-            # CRITICAL FIX: Ensure all signals have stop_loss and take_profit
-            # If strategy didn't set them, calculate using risk management
-            if signal.stop_loss is None or signal.take_profit is None:
-                logger.info(
-                    f"  {strategy_name}: Calculating missing TP/SL using risk management"
-                )
-
-                # Map signal action to SignalType for risk management calculation
-                signal_type = (
-                    SignalType.BUY if signal.action == "buy" else SignalType.SELL
-                )
-
-                # Calculate TP/SL based on ATR and price action
-                stop_loss, take_profit = self._calculate_risk_management(
-                    current_price, indicators, signal_type
-                )
-
-                # Update signal with calculated values
-                signal.stop_loss = stop_loss
-                signal.take_profit = take_profit
-
-                # Also add to metadata for transparency
-                if signal.metadata is None:
-                    signal.metadata = {}
-                signal.metadata["stop_loss_calculated"] = True
-                signal.metadata["stop_loss"] = stop_loss
-                signal.metadata["take_profit"] = take_profit
-
-                logger.info(
-                    f"  {strategy_name}: Calculated TP/SL - SL: {stop_loss:.2f}, TP: {take_profit:.2f}"
-                )
-            else:
-                logger.info(
-                    f"  {strategy_name}: Using strategy-defined TP/SL - SL: {signal.stop_loss:.2f}, TP: {signal.take_profit:.2f}"
-                )
-
-            # Validate signal
-            if not signal.validate():
-                logger.warning(
-                    f"  {strategy_name}: Invalid signal generated - validation failed"
-                )
-                return None
-
-            logger.info(f"  {strategy_name}: Signal validated successfully")
-            return signal
-
-        except Exception as e:
-            logger.error(f"  {strategy_name}: Error during analysis: {e}")
-
-            # Record strategy execution (failure)
-            self.strategy_execution_counter.add(
-                1,
-                {
-                    "strategy": strategy_name,
-                    "symbol": symbol,
-                    "timeframe": period,
-                    "status": "error",
-                    "signal_generated": "no",
-                },
-            )
-            return None
 
     def _calculate_signal_strength(self, confidence: float) -> SignalStrength:
         """Calculate signal strength based on confidence."""

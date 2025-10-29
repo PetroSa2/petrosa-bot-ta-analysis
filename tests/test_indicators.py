@@ -2,6 +2,8 @@
 Tests for the indicators module.
 """
 
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pandas as pd
 
@@ -510,3 +512,124 @@ class TestIndicators:
         assert isinstance(macd, pd.Series)
         assert isinstance(signal, pd.Series)
         assert isinstance(hist, pd.Series)
+
+
+class TestIndicatorTracing:
+    """Test cases for OpenTelemetry tracing in indicators."""
+
+    @patch("ta_bot.core.indicators.tracer")
+    def test_rsi_creates_span_with_attributes(self, mock_tracer):
+        """Test that RSI calculation creates span with correct attributes."""
+        mock_span = MagicMock()
+        mock_tracer.start_as_current_span.return_value.__enter__.return_value = (
+            mock_span
+        )
+
+        df = pd.DataFrame({"close": list(range(100, 120))})
+
+        result = Indicators.rsi(df, period=14)
+
+        # Verify span was created
+        mock_tracer.start_as_current_span.assert_called_once_with("calculate_rsi")
+
+        # Verify span attributes were set
+        mock_span.set_attribute.assert_any_call("period", 14)
+        mock_span.set_attribute.assert_any_call("data_points", 20)
+
+        assert isinstance(result, pd.Series)
+
+    @patch("ta_bot.core.indicators.tracer")
+    def test_macd_creates_span_with_attributes(self, mock_tracer):
+        """Test that MACD calculation creates span with correct attributes."""
+        mock_span = MagicMock()
+        mock_tracer.start_as_current_span.return_value.__enter__.return_value = (
+            mock_span
+        )
+
+        df = pd.DataFrame({"close": list(range(100, 150))})
+
+        macd, signal, hist = Indicators.macd(df, fast=12, slow=26, signal=9)
+
+        # Verify span was created
+        mock_tracer.start_as_current_span.assert_called_once_with("calculate_macd")
+
+        # Verify span attributes
+        mock_span.set_attribute.assert_any_call("fast", 12)
+        mock_span.set_attribute.assert_any_call("slow", 26)
+        mock_span.set_attribute.assert_any_call("signal", 9)
+        mock_span.set_attribute.assert_any_call("data_points", 50)
+
+    @patch("ta_bot.core.indicators.tracer")
+    def test_adx_creates_span_with_attributes(self, mock_tracer):
+        """Test that ADX calculation creates span with correct attributes."""
+        mock_span = MagicMock()
+        mock_tracer.start_as_current_span.return_value.__enter__.return_value = (
+            mock_span
+        )
+
+        df = pd.DataFrame(
+            {
+                "high": list(range(105, 125)),
+                "low": list(range(95, 115)),
+                "close": list(range(100, 120)),
+            }
+        )
+
+        result = Indicators.adx(df, period=14)
+
+        # Verify span was created
+        mock_tracer.start_as_current_span.assert_called_once_with("calculate_adx")
+
+        # Verify span attributes
+        mock_span.set_attribute.assert_any_call("period", 14)
+        mock_span.set_attribute.assert_any_call("data_points", 20)
+
+    @patch("ta_bot.core.indicators.tracer")
+    def test_bollinger_bands_creates_span_with_attributes(self, mock_tracer):
+        """Test that Bollinger Bands creates span with correct attributes."""
+        mock_span = MagicMock()
+        mock_tracer.start_as_current_span.return_value.__enter__.return_value = (
+            mock_span
+        )
+
+        df = pd.DataFrame({"close": list(range(100, 125))})
+
+        lower, middle, upper = Indicators.bollinger_bands(df, period=20, std=2.0)
+
+        # Verify span was created
+        mock_tracer.start_as_current_span.assert_called_once_with(
+            "calculate_bollinger_bands"
+        )
+
+        # Verify span attributes
+        mock_span.set_attribute.assert_any_call("period", 20)
+        mock_span.set_attribute.assert_any_call("std_dev", 2.0)
+        mock_span.set_attribute.assert_any_call("data_points", 25)
+
+    @patch("ta_bot.core.indicators.tracer")
+    def test_indicators_span_on_insufficient_data(self, mock_tracer):
+        """Test that span attributes are set correctly when data is insufficient."""
+        mock_span = MagicMock()
+        mock_tracer.start_as_current_span.return_value.__enter__.return_value = (
+            mock_span
+        )
+
+        df = pd.DataFrame({"close": [100, 101]})
+
+        # RSI with insufficient data
+        Indicators.rsi(df)
+        mock_span.set_attribute.assert_any_call("data_points", 2)
+
+        # Reset mock
+        mock_span.reset_mock()
+        mock_tracer.reset_mock()
+        mock_tracer.start_as_current_span.return_value.__enter__.return_value = (
+            mock_span
+        )
+
+        # ADX with insufficient data
+        df_adx = pd.DataFrame(
+            {"high": [105, 106], "low": [95, 96], "close": [100, 101]}
+        )
+        Indicators.adx(df_adx)
+        mock_span.set_attribute.assert_any_call("result", "insufficient_data")
