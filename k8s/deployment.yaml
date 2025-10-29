@@ -206,7 +206,7 @@ spec:
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 10
           failureThreshold: 3
         readinessProbe:
           httpGet:
@@ -214,7 +214,7 @@ spec:
             port: 8000
           initialDelaySeconds: 10
           periodSeconds: 5
-          timeoutSeconds: 5
+          timeoutSeconds: 10
           failureThreshold: 5
         startupProbe:
           httpGet:
@@ -222,7 +222,7 @@ spec:
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 10
           failureThreshold: 45
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
