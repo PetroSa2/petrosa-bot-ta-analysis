@@ -1,310 +1,401 @@
 # TA Bot Business Metrics Baseline
 
-**Last Updated**: Pending first verification (Issue #108)
-**Version Deployed**: v1.0.68+ (with metrics from PR #106)
-**Capture Date**: TBD
+**Purpose**: Document baseline metric values for future comparison and anomaly detection.
+
+**Captured**: *(To be filled after verification)*
+
+**Environment**: Production (petrosa-apps namespace)
+
+**Related**: Issue #108, PR #106
 
 ---
 
 ## Overview
 
-This document captures baseline metric values for the TA Bot to enable:
-- Performance regression detection
-- Anomaly identification
-- Capacity planning
-- Alert threshold validation
-
-**How to Update**: Re-run verification steps from `docs/RUNBOOK.md` after significant changes.
+This document captures baseline values for TA Bot business metrics to establish normal operating parameters. These values serve as:
+- **Performance benchmarks** for future optimization efforts
+- **Anomaly detection thresholds** for alerting
+- **Capacity planning** for scaling decisions
+- **Regression testing** baseline after deployments
 
 ---
 
-## Signal Generation Metrics
-
-### Overall Signal Production
+## Metric 1: Signal Generation
 
 **Metric**: `ta_bot_signals_generated_total`
 
-| Timeframe | Signals/Hour | Signals/Day | Top Strategy | BUY/SELL Ratio |
-|-----------|--------------|-------------|--------------|----------------|
-| 15m | TBD | TBD | TBD | TBD |
-| 1h | TBD | TBD | TBD | TBD |
-| Overall | TBD | TBD | TBD | TBD |
+**Description**: Total number of trading signals generated, labeled by action, strategy, and symbol.
 
-**Query to Capture**:
-```promql
-# Signals per hour (last 24h average)
-rate(ta_bot_signals_generated_total[24h]) * 3600
+### Current Values (To Be Filled)
 
-# By strategy
-sum by (strategy) (increase(ta_bot_signals_generated_total[24h]))
+```
+# Example format:
+Total signals (24h): ___
+Total signals (7d): ___
 
-# BUY vs SELL distribution
-sum by (action) (increase(ta_bot_signals_generated_total[24h]))
+By Action:
+  - BUY signals: ___ (___%)
+  - SELL signals: ___ (___%)
+  - CLOSE_LONG signals: ___ (___%)
+  - CLOSE_SHORT signals: ___ (___%)
+
+By Strategy (Top 5):
+  1. golden_trend_sync: ___ signals (___%)
+  2. rsi_oversold: ___ signals (___%)
+  3. macd_crossover: ___ signals (___%)
+  4. bollinger_breakout: ___ signals (___%)
+  5. momentum_pulse: ___ signals (___%)
+
+By Symbol (Top 5):
+  1. BTCUSDT: ___ signals
+  2. ETHUSDT: ___ signals
+  3. BNBUSDT: ___ signals
+  4. ADAUSDT: ___ signals
+  5. SOLUSDT: ___ signals
+
+Average Rate:
+  - Signals per hour: ~___
+  - Signals per day: ~___
 ```
 
-### Top Performing Strategies
+### Sample Prometheus Query
 
-| Rank | Strategy | Signals/Day | % of Total | Avg Confidence |
-|------|----------|-------------|------------|----------------|
-| 1 | TBD | TBD | TBD | TBD |
-| 2 | TBD | TBD | TBD | TBD |
-| 3 | TBD | TBD | TBD | TBD |
-| 4 | TBD | TBD | TBD | TBD |
-| 5 | TBD | TBD | TBD | TBD |
-
-**Query to Capture**:
 ```promql
-# Top 10 strategies by signal count
-topk(10, sum by (strategy) (increase(ta_bot_signals_generated_total[24h])))
+# Total signals in last 24h
+sum(increase(ta_bot_signals_generated_total[24h]))
+
+# By action
+sum by (action) (increase(ta_bot_signals_generated_total[24h]))
+
+# By strategy (top 5)
+topk(5, sum by (strategy) (increase(ta_bot_signals_generated_total[24h])))
+
+# By symbol (top 5)
+topk(5, sum by (symbol) (increase(ta_bot_signals_generated_total[24h])))
+
+# Signals per hour (average over 24h)
+rate(ta_bot_signals_generated_total[24h]) * 3600
 ```
 
 ---
 
-## Processing Performance Metrics
-
-### Signal Processing Latency
+## Metric 2: Signal Processing Duration
 
 **Metric**: `ta_bot_signal_processing_duration`
 
-| Percentile | Latency (ms) | Expected Range | Alert Threshold |
-|------------|--------------|----------------|-----------------|
-| p50 | TBD | 500-1500ms | N/A |
-| p95 | TBD | 1500-3000ms | N/A |
-| p99 | TBD | 2500-4500ms | >5000ms for 10min |
-| max | TBD | <8000ms | N/A |
+**Description**: Histogram of time taken to process each signal, labeled by strategy.
 
-**Query to Capture**:
+### Current Values (To Be Filled)
+
+```
+# Overall latency percentiles:
+p50 (median): ___ ms
+p75: ___ ms
+p90: ___ ms
+p95: ___ ms
+p99: ___ ms
+p99.9: ___ ms
+
+# By strategy (Top 5 slowest):
+1. ___: p95 = ___ ms
+2. ___: p95 = ___ ms
+3. ___: p95 = ___ ms
+4. ___: p95 = ___ ms
+5. ___: p95 = ___ ms
+
+# Average processing time: ___ ms
+```
+
+### Sample Prometheus Query
+
 ```promql
-# p50 latency
-histogram_quantile(0.50, rate(ta_bot_signal_processing_duration_bucket[5m]))
+# p50 latency (median)
+histogram_quantile(0.50, sum(rate(ta_bot_signal_processing_duration_bucket[5m])) by (le))
 
 # p95 latency
-histogram_quantile(0.95, rate(ta_bot_signal_processing_duration_bucket[5m]))
+histogram_quantile(0.95, sum(rate(ta_bot_signal_processing_duration_bucket[5m])) by (le))
 
 # p99 latency
-histogram_quantile(0.99, rate(ta_bot_signal_processing_duration_bucket[5m]))
+histogram_quantile(0.99, sum(rate(ta_bot_signal_processing_duration_bucket[5m])) by (le))
+
+# Average latency
+sum(rate(ta_bot_signal_processing_duration_sum[5m])) / sum(rate(ta_bot_signal_processing_duration_count[5m]))
+
+# By strategy (p95)
+histogram_quantile(0.95, sum(rate(ta_bot_signal_processing_duration_bucket[5m])) by (le, strategy))
 ```
 
-### By Symbol/Timeframe
+### Performance Targets
 
-| Symbol | Timeframe | p50 | p95 | p99 |
-|--------|-----------|-----|-----|-----|
-| BTCUSDT | 15m | TBD | TBD | TBD |
-| BTCUSDT | 1h | TBD | TBD | TBD |
-| ETHUSDT | 15m | TBD | TBD | TBD |
-| ETHUSDT | 1h | TBD | TBD | TBD |
-| ADAUSDT | 15m | TBD | TBD | TBD |
-| ADAUSDT | 1h | TBD | TBD | TBD |
-
-**Query to Capture**:
-```promql
-# Latency by symbol and timeframe
-histogram_quantile(0.99, rate(ta_bot_signal_processing_duration_bucket[5m])) by (symbol, timeframe)
-```
+- ✅ **Acceptable**: p95 < 2000ms
+- ⚠️ **Warning**: p95 between 2000-3000ms
+- ❌ **Critical**: p95 > 3000ms
 
 ---
 
-## Strategy Execution Metrics
-
-### Execution Success Rate
-
-**Metric**: `ta_bot_strategy_executions_total`
-
-| Category | Value | Expected Range | Alert Threshold |
-|----------|-------|----------------|-----------------|
-| Total Executions/Hour | TBD | 100-500 | N/A |
-| Success Rate | TBD | >95% | <95% for 5min |
-| Error Rate | TBD | <5% | >5% for 5min |
-| Most Reliable Strategy | TBD | 100% success | N/A |
-| Most Errors | TBD | N/A | N/A |
-
-**Query to Capture**:
-```promql
-# Overall success rate
-sum(rate(ta_bot_strategy_executions_total{status="success"}[5m]))
-/
-sum(rate(ta_bot_strategy_executions_total[5m]))
-
-# Error rate
-sum(rate(ta_bot_strategy_executions_total{status="error"}[5m]))
-/
-sum(rate(ta_bot_strategy_executions_total[5m]))
-
-# Executions per hour
-sum(rate(ta_bot_strategy_executions_total[1h])) * 3600
-```
-
-### Strategy Execution Breakdown
-
-| Strategy | Executions/Hour | Success Rate | Signal Hit Rate |
-|----------|-----------------|--------------|-----------------|
-| momentum_pulse | TBD | TBD | TBD |
-| golden_trend_sync | TBD | TBD | TBD |
-| band_fade_reversal | TBD | TBD | TBD |
-| range_break_pop | TBD | TBD | TBD |
-| divergence_trap | TBD | TBD | TBD |
-
-**Query to Capture**:
-```promql
-# Success rate by strategy
-sum by (strategy) (rate(ta_bot_strategy_executions_total{status="success"}[1h]))
-/
-sum by (strategy) (rate(ta_bot_strategy_executions_total[1h]))
-
-# Signal generation rate (signals / executions)
-sum by (strategy) (rate(ta_bot_strategy_executions_total{signal_generated="yes"}[1h]))
-/
-sum by (strategy) (rate(ta_bot_strategy_executions_total[1h]))
-```
-
----
-
-## Strategies Run Metrics
-
-### Strategies Per Analysis Cycle
+## Metric 3: Strategies Run
 
 **Metric**: `ta_bot_strategies_run_total`
 
-| Metric | Value | Expected Range | Notes |
-|--------|-------|----------------|-------|
-| Avg Strategies/Cycle | TBD | 28 (all enabled) | Depends on enabled config |
-| Rate (cycles/hour) | TBD | 50-200 | Depends on analysis frequency |
+**Description**: Total number of strategy analysis runs, labeled by strategy and symbol.
 
-**Query to Capture**:
+### Current Values (To Be Filled)
+
+```
+# Total runs (24h): ___
+# Total runs (7d): ___
+
+# By strategy (Top 5 most active):
+1. ___: ___ runs (___%)
+2. ___: ___ runs (___%)
+3. ___: ___ runs (___%)
+4. ___: ___ runs (___%)
+5. ___: ___ runs (___%)
+
+# By symbol:
+- BTCUSDT: ___ runs
+- ETHUSDT: ___ runs
+- (list all monitored symbols)
+
+# Average runs per strategy per hour: ~___
+```
+
+### Sample Prometheus Query
+
 ```promql
-# Strategies run per cycle
-rate(ta_bot_strategies_run_total[5m])
+# Total runs in last 24h
+sum(increase(ta_bot_strategies_run_total[24h]))
 
-# By symbol/timeframe
-rate(ta_bot_strategies_run_total[5m]) by (symbol, timeframe)
+# By strategy
+sum by (strategy) (increase(ta_bot_strategies_run_total[24h]))
+
+# By symbol
+sum by (symbol) (increase(ta_bot_strategies_run_total[24h]))
+
+# Runs per hour
+rate(ta_bot_strategies_run_total[1h]) * 3600
 ```
 
 ---
 
-## Configuration Change Metrics
+## Metric 4: Strategy Executions
 
-### Configuration Activity
+**Metric**: `ta_bot_strategy_executions_total`
+
+**Description**: Total strategy executions with success/error status, labeled by status and strategy.
+
+### Current Values (To Be Filled)
+
+```
+# Total executions (24h): ___
+# Successful: ___ (___%)
+# Failed: ___ (___%)
+
+# Success Rate: ___%
+# Error Rate: ___%
+
+# By strategy (success rate):
+1. ___: ___% success (___ total)
+2. ___: ___% success (___ total)
+3. ___: ___% success (___ total)
+
+# Strategies with errors (if any):
+- ___: ___ errors (error rate: ___%)
+  - Common error types: ___
+
+# Most reliable strategies (100% success rate):
+- ___
+- ___
+```
+
+### Sample Prometheus Query
+
+```promql
+# Total executions
+sum(increase(ta_bot_strategy_executions_total[24h]))
+
+# Success count
+sum(increase(ta_bot_strategy_executions_total{status="success"}[24h]))
+
+# Error count
+sum(increase(ta_bot_strategy_executions_total{status="error"}[24h]))
+
+# Success rate (%)
+sum(increase(ta_bot_strategy_executions_total{status="success"}[24h])) /
+sum(increase(ta_bot_strategy_executions_total[24h])) * 100
+
+# By strategy
+sum by (strategy, status) (increase(ta_bot_strategy_executions_total[24h]))
+```
+
+### Performance Targets
+
+- ✅ **Acceptable**: Success rate > 98%
+- ⚠️ **Warning**: Success rate between 95-98%
+- ❌ **Critical**: Success rate < 95%
+
+---
+
+## Metric 5: Configuration Changes
 
 **Metric**: `ta_bot_config_changes_total`
 
-| Period | Changes | Most Changed Strategy | Change Types |
-|--------|---------|----------------------|--------------|
-| Last 24h | TBD | TBD | create/update/delete |
-| Last 7 days | TBD | TBD | TBD |
-| Last 30 days | TBD | TBD | TBD |
+**Description**: Total configuration changes via runtime API, labeled by action and strategy.
 
-**Query to Capture**:
+### Current Values (To Be Filled)
+
+```
+# Total changes (24h): ___
+# Total changes (7d): ___
+# Total changes (30d): ___
+
+# By action:
+- create: ___ (___%)
+- update: ___ (___%)
+- delete: ___ (___%)
+
+# By strategy (most frequently changed):
+1. ___: ___ changes
+2. ___: ___ changes
+3. ___: ___ changes
+
+# Average changes per day: ~___
+# Peak change periods: ___
+```
+
+### Sample Prometheus Query
+
 ```promql
-# Changes in last 24h
-increase(ta_bot_config_changes_total[24h])
+# Total changes in last 7 days
+sum(increase(ta_bot_config_changes_total[7d]))
 
-# By action type
-sum by (action) (increase(ta_bot_config_changes_total[24h]))
+# By action
+sum by (action) (increase(ta_bot_config_changes_total[7d]))
 
-# Most changed strategy
-topk(5, sum by (strategy_id) (increase(ta_bot_config_changes_total[7d])))
+# By strategy
+sum by (strategy) (increase(ta_bot_config_changes_total[7d]))
+
+# Changes per day (average over 7d)
+sum(increase(ta_bot_config_changes_total[7d])) / 7
 ```
 
 ---
 
-## Resource Utilization Baseline
+## Operational Insights
 
-### Pod Resource Usage
+### Signal Generation Patterns
 
-| Metric | Per Pod | Total (3 replicas) | Limit | Utilization % |
-|--------|---------|-------------------|-------|---------------|
-| CPU (avg) | TBD | TBD | TBD | TBD |
-| CPU (peak) | TBD | TBD | TBD | TBD |
-| Memory (avg) | TBD | TBD | TBD | TBD |
-| Memory (peak) | TBD | TBD | TBD | TBD |
+*(To be filled after observation)*
 
-**Command to Capture**:
-```bash
-kubectl --kubeconfig=k8s/kubeconfig.yaml top pods -n petrosa-apps -l app=petrosa-ta-bot
+```
+Peak signal hours: ___
+Quiet periods: ___
+BUY/SELL ratio: ___
+Most active strategies: ___
+Most volatile symbols: ___
+```
+
+### Performance Characteristics
+
+```
+Average latency trend: ___
+Latency spikes observed: ___
+Strategies causing delays: ___
+Resource utilization correlation: ___
+```
+
+### Reliability Metrics
+
+```
+Overall uptime: ___%
+Strategy error patterns: ___
+Common failure modes: ___
+Recovery time: ___
+```
+
+### Configuration Activity
+
+```
+Typical config change frequency: ___
+Changes correlated with: ___
+Most tuned strategies: ___
+Config stability: ___
 ```
 
 ---
 
-## Verification Checklist
+## Alert Thresholds (Recommended)
 
-Use this checklist when updating baseline metrics:
+Based on baseline values, recommended Prometheus alert thresholds:
 
-- [ ] All 5 custom metrics visible in Prometheus
-- [ ] Grafana dashboard shows data in all 8 panels
-- [ ] Signal generation rate aligns with expected trading activity
-- [ ] Processing latency within acceptable ranges
-- [ ] Strategy execution success rate >95%
-- [ ] Configuration change frequency documented
-- [ ] Resource utilization within limits
-- [ ] No errors in TA Bot logs
-- [ ] All 3 replicas healthy
-- [ ] Leader election functioning (1 leader, 2 followers)
+### Signal Generation Rate
+
+```yaml
+# Alert if signal rate drops significantly
+- alert: TaBotLowSignalRate
+  expr: rate(ta_bot_signals_generated_total[1h]) < (BASELINE * 0.5)
+  for: 15m
+  annotations:
+    summary: "TA Bot signal generation rate is 50% below baseline"
+
+# Alert if signal rate spikes (possible issue)
+- alert: TaBotHighSignalRate
+  expr: rate(ta_bot_signals_generated_total[1h]) > (BASELINE * 2.0)
+  for: 15m
+  annotations:
+    summary: "TA Bot signal generation rate is 200% above baseline"
+```
+
+### Processing Latency
+
+```yaml
+# Alert if p95 latency exceeds 3 seconds
+- alert: TaBotHighLatency
+  expr: histogram_quantile(0.95, sum(rate(ta_bot_signal_processing_duration_bucket[5m])) by (le)) > 3.0
+  for: 10m
+  annotations:
+    summary: "TA Bot p95 signal processing latency > 3s"
+```
+
+### Strategy Error Rate
+
+```yaml
+# Alert if error rate exceeds 5%
+- alert: TaBotHighErrorRate
+  expr: |
+    sum(rate(ta_bot_strategy_executions_total{status="error"}[5m])) /
+    sum(rate(ta_bot_strategy_executions_total[5m])) > 0.05
+  for: 15m
+  annotations:
+    summary: "TA Bot strategy error rate > 5%"
+```
 
 ---
 
-## Baseline Capture Commands
+## Verification Schedule
 
-**Complete verification script**:
+Baseline values should be:
+- **Captured**: Within 1 week of metrics deployment
+- **Reviewed**: Monthly to identify trends
+- **Updated**: After major changes (new strategies, config tuning, infrastructure updates)
+
+---
+
+## Appendix: Data Collection Commands
 
 ```bash
-#!/bin/bash
-# Run this script to capture all baseline metrics
+# Collect all baseline data at once
+./scripts/collect-baseline-metrics.sh > baseline-$(date +%Y%m%d).txt
 
-echo "=== TA Bot Metrics Baseline Capture ==="
-echo "Date: $(date)"
-echo ""
-
-# Check pods
-echo "1. Pod Status:"
-kubectl --kubeconfig=k8s/kubeconfig.yaml get pods -n petrosa-apps -l app=petrosa-ta-bot
-echo ""
-
-# Query Prometheus for all metrics
-echo "2. Signal Generation (24h):"
-SIGNALS=$(curl -s "http://prometheus:9090/api/v1/query?query=sum(increase(ta_bot_signals_generated_total[24h]))" | jq -r '.data.result[0].value[1] // "N/A"')
-echo "  Total: $SIGNALS"
-echo ""
-
-echo "3. Top 5 Strategies:"
-curl -s "http://prometheus:9090/api/v1/query?query=topk(5, sum by (strategy) (increase(ta_bot_signals_generated_total[24h])))" | jq -r '.data.result[]? | "\(.metric.strategy): \(.value[1])"' || echo "  No data available"
-echo ""
-
-echo "4. Processing Latency:"
-for quantile in 0.50 0.95 0.99; do
-  latency=$(curl -s "http://prometheus:9090/api/v1/query?query=histogram_quantile($quantile, rate(ta_bot_signal_processing_duration_bucket[5m]))" | jq -r '.data.result[0].value[1] // "N/A"')
-  p_label=$(printf "%.0f" $(echo "$quantile * 100" | bc))
-  echo "  p${p_label}: ${latency}ms"
-done
-echo ""
-
-echo "5. Strategy Success Rate:"
-SUCCESS_RATE=$(curl -s "http://prometheus:9090/api/v1/query?query=sum(rate(ta_bot_strategy_executions_total{status='success'}[5m])) / sum(rate(ta_bot_strategy_executions_total[5m]))" | jq -r '.data.result[0].value[1] // "N/A"')
-if [ "$SUCCESS_RATE" != "N/A" ]; then
-  printf "  %.2f%%\n" $(echo "$SUCCESS_RATE * 100" | bc)
-else
-  echo "  N/A"
-fi
-echo ""
-
-echo "6. Config Changes (7d):"
-CHANGES=$(curl -s "http://prometheus:9090/api/v1/query?query=sum(increase(ta_bot_config_changes_total[7d]))" | jq -r '.data.result[0].value[1] // "N/A"')
-echo "  Total: $CHANGES"
-echo ""
-
-echo "=== Baseline Capture Complete ==="
-echo ""
-echo "Note: If values show 'N/A', metrics may not have data yet."
-echo "  - Ensure TA Bot has been running for at least 15 minutes"
-echo "  - Verify metrics are being scraped by Prometheus"
-echo "  - Check that signals have been generated"
+# Export to CSV for analysis
+./scripts/export-metrics-csv.sh > baseline-$(date +%Y%m%d).csv
 ```
 
 ---
 
 ## Notes
 
-- **First Verification**: Run after deploying v1.0.68+ with metrics
-- **Update Frequency**: After significant changes (new strategies, config updates, scaling)
-- **Anomaly Detection**: Compare current values to baseline to identify issues
-- **Alert Tuning**: Use baseline p99 latency +20% for alert thresholds
-- **Error Handling**: All queries use `// "N/A"` to handle missing data gracefully
+- Baseline values are environment-specific (production vs staging will differ)
+- Values will evolve as strategies are tuned and system matures
+- Keep historical baselines for trend analysis
+- Use baselines for capacity planning and scaling decisions

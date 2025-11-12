@@ -15,6 +15,22 @@ This runbook provides step-by-step procedures for common operational tasks and t
 
 ## Metrics Verification
 
+### Quick Verification
+
+**Automated Script** (Recommended):
+```bash
+# Run comprehensive verification script
+./scripts/verify-metrics.sh
+
+# Expected output:
+# ✅ ALL CHECKS PASSED
+```
+
+For detailed verification procedures, troubleshooting, and baseline documentation, see:
+- **[METRICS_VERIFICATION.md](./METRICS_VERIFICATION.md)** - Complete verification guide
+- **[METRICS_BASELINE.md](./METRICS_BASELINE.md)** - Baseline metrics template
+- **[verify-metrics.sh](../scripts/verify-metrics.sh)** - Automated verification script
+
 ### Prerequisites and Deployment Status
 
 **Required Version**: v1.0.68+ (contains metrics from PR #106)
