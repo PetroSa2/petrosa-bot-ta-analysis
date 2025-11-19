@@ -6,7 +6,7 @@ consistent structure that's easy for LLM agents to parse.
 """
 
 from datetime import datetime
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -528,5 +528,122 @@ class AppAuditTrailItem(BaseModel):
                 "changed_by": "llm_agent_v1",
                 "changed_at": "2025-10-21T14:45:00Z",
                 "reason": "Adding RSI strategy and lowering confidence for more signals",
+            }
+        }
+
+
+# -------------------------------------------------------------------------
+# Configuration Validation Models
+# -------------------------------------------------------------------------
+
+
+class ValidationError(BaseModel):
+    """Standardized validation error format."""
+
+    field: str = Field(..., description="Parameter name that failed validation")
+    message: str = Field(..., description="Human-readable error message")
+    code: str = Field(
+        ...,
+        description="Error code (e.g., 'INVALID_TYPE', 'OUT_OF_RANGE', 'UNKNOWN_PARAMETER')",
+    )
+    suggested_value: Any | None = Field(
+        None, description="Suggested correct value if applicable"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "field": "rsi_period",
+                "message": "rsi_period must be >= 2, got 1",
+                "code": "OUT_OF_RANGE",
+                "suggested_value": 14,
+            }
+        }
+
+
+class CrossServiceConflict(BaseModel):
+    """Cross-service configuration conflict."""
+
+    service: str = Field(..., description="Service name with conflicting configuration")
+    conflict_type: str = Field(
+        ..., description="Type of conflict (e.g., 'PARAMETER_CONFLICT')"
+    )
+    description: str = Field(..., description="Description of the conflict")
+    resolution: str = Field(..., description="Suggested resolution")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "service": "tradeengine",
+                "conflict_type": "PARAMETER_CONFLICT",
+                "description": "Conflicting leverage settings between services",
+                "resolution": "Use consistent leverage values across all services",
+            }
+        }
+
+
+class ValidationResponse(BaseModel):
+    """Standardized validation response across all services."""
+
+    validation_passed: bool = Field(
+        ..., description="Whether validation passed without errors"
+    )
+    errors: list[ValidationError] = Field(
+        default_factory=list, description="List of validation errors"
+    )
+    warnings: list[str] = Field(
+        default_factory=list, description="Non-blocking warnings"
+    )
+    suggested_fixes: list[str] = Field(
+        default_factory=list, description="Actionable suggestions to fix errors"
+    )
+    estimated_impact: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Estimated impact of configuration changes",
+    )
+    conflicts: list[CrossServiceConflict] = Field(
+        default_factory=list, description="Cross-service conflicts detected"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "validation_passed": True,
+                "errors": [],
+                "warnings": [],
+                "suggested_fixes": [],
+                "estimated_impact": {
+                    "risk_level": "low",
+                    "affected_scope": "strategy:rsi_extreme_reversal",
+                    "parameter_count": 2,
+                },
+                "conflicts": [],
+            }
+        }
+
+
+class ConfigValidationRequest(BaseModel):
+    """Request model for configuration validation."""
+
+    parameters: dict[str, Any] = Field(
+        ..., description="Configuration parameters to validate"
+    )
+    strategy_id: str | None = Field(
+        None,
+        description="Strategy identifier (required for strategy config validation)",
+    )
+    symbol: str | None = Field(
+        None, description="Trading symbol (optional, for symbol-specific validation)"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "parameters": {
+                    "rsi_period": 14,
+                    "oversold_threshold": 30,
+                },
+                "strategy_id": "rsi_extreme_reversal",
+                "symbol": "BTCUSDT",
             }
         }
