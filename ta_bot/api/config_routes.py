@@ -1420,6 +1420,10 @@ SERVICE_URLS = {
     ),
 }
 
+# Constants for conflict detection
+CONFLICT_TIMEOUT_SECONDS = 5.0  # Timeout for cross-service conflict checks
+MAX_ERROR_MESSAGES_TO_SHOW = 2  # Limit error messages shown in conflicts
+
 
 async def detect_cross_service_conflicts(
     parameters: dict[str, Any],
@@ -1441,7 +1445,7 @@ async def detect_cross_service_conflicts(
         List of CrossServiceConflict objects
     """
     conflicts = []
-    timeout = httpx.Timeout(5.0)  # Short timeout for conflict checks
+    timeout = httpx.Timeout(CONFLICT_TIMEOUT_SECONDS)
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         # Check realtime-strategies for strategy config conflicts (same strategy)
@@ -1457,7 +1461,6 @@ async def detect_cross_service_conflicts(
                 response = await client.post(
                     f"{SERVICE_URLS['realtime-strategies']}/api/v1/config/validate",
                     json=validation_request,
-                    timeout=5.0,
                 )
 
                 if response.status_code == 200:
@@ -1475,7 +1478,7 @@ async def detect_cross_service_conflicts(
                                         description=(
                                             f"realtime-strategies reports validation errors for "
                                             f"strategy {strategy_id}: "
-                                            f"{', '.join([e.get('message', '') for e in errors[:2]])}"
+                                            f"{', '.join([e.get('message', '') or 'Unknown error' for e in errors[:MAX_ERROR_MESSAGES_TO_SHOW]])}"
                                         ),
                                         resolution=(
                                             "Review realtime-strategies validation errors and "
@@ -1508,7 +1511,6 @@ async def detect_cross_service_conflicts(
                 response = await client.post(
                     f"{SERVICE_URLS['tradeengine']}/api/v1/config/validate",
                     json=validation_request,
-                    timeout=5.0,
                 )
 
                 if response.status_code == 200:
@@ -1525,7 +1527,7 @@ async def detect_cross_service_conflicts(
                                         description=(
                                             f"tradeengine reports validation errors for "
                                             f"trading parameters: "
-                                            f"{', '.join([e.get('message', '') for e in errors[:2]])}"
+                                            f"{', '.join([e.get('message', '') or 'Unknown error' for e in errors[:MAX_ERROR_MESSAGES_TO_SHOW]])}"
                                         ),
                                         resolution=(
                                             "Review tradeengine validation errors and "
