@@ -593,12 +593,16 @@ class StrategyConfigManager:
             "version": doc.get("version", 1),
             "source": source,
             "is_override": is_override,
-            "created_at": doc.get("created_at", datetime.utcnow()).isoformat()
-            if isinstance(doc.get("created_at"), datetime)
-            else doc.get("created_at", datetime.utcnow().isoformat()),
-            "updated_at": doc.get("updated_at", datetime.utcnow()).isoformat()
-            if isinstance(doc.get("updated_at"), datetime)
-            else doc.get("updated_at", datetime.utcnow().isoformat()),
+            "created_at": (
+                doc.get("created_at", datetime.utcnow()).isoformat()
+                if isinstance(doc.get("created_at"), datetime)
+                else doc.get("created_at", datetime.utcnow().isoformat())
+            ),
+            "updated_at": (
+                doc.get("updated_at", datetime.utcnow()).isoformat()
+                if isinstance(doc.get("updated_at"), datetime)
+                else doc.get("updated_at", datetime.utcnow().isoformat())
+            ),
         }
 
     async def _cache_refresh_loop(self) -> None:
