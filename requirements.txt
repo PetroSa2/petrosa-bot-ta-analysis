@@ -1,6 +1,7 @@
 
 aiohttp>=3.8.0
 fastapi>=0.104.0
+httpx>=0.26.0
 
 # Technical Analysis
 # ta-lib>=0.4.0  # Commented out - requires system dependencies

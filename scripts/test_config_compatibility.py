@@ -128,19 +128,21 @@ def test_strategy_with_config(strategy_class, strategy_name: str) -> bool:
 
         # Simulate pre-loaded config
         config = {
-            "parameters": {
-                "oversold_threshold": 30,
-                "extreme_threshold": 5,
-                "min_data_points": 78,
-                "base_confidence": 0.70,
-            }
-            if strategy_name == "RSI Extreme Reversal"
-            else {
-                "bb_period": 20,
-                "bb_std": 2.0,
-                "squeeze_threshold": 0.1,
-                "min_data_points": 25,
-            },
+            "parameters": (
+                {
+                    "oversold_threshold": 30,
+                    "extreme_threshold": 5,
+                    "min_data_points": 78,
+                    "base_confidence": 0.70,
+                }
+                if strategy_name == "RSI Extreme Reversal"
+                else {
+                    "bb_period": 20,
+                    "bb_std": 2.0,
+                    "squeeze_threshold": 0.1,
+                    "min_data_points": 25,
+                }
+            ),
             "version": 2,
             "source": "mongodb",
             "is_override": False,

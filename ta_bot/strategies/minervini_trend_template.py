@@ -119,9 +119,9 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
                 # 2. SMA150 > SMA200
                 "trend_consistency": current_sma150 > current_sma200,
                 # 3. SMA200 trending up for at least 20 periods
-                "long_term_uptrend": sma200.iloc[-1] > sma200.iloc[-21]
-                if len(sma200) >= 21
-                else False,
+                "long_term_uptrend": (
+                    sma200.iloc[-1] > sma200.iloc[-21] if len(sma200) >= 21 else False
+                ),
                 # 4. SMA50 > SMA150 and SMA50 > SMA200
                 "short_term_strength": (
                     current_sma50 > current_sma150 and current_sma50 > current_sma200

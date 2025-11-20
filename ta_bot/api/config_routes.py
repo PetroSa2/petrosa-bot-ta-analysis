@@ -7,7 +7,9 @@ for LLM agent integration.
 """
 
 import logging
+import os
 
+import httpx
 from fastapi import APIRouter, HTTPException, Path, Query, status
 
 from ta_bot.api.response_models import (
@@ -1019,9 +1021,10 @@ async def validate_config(request: ConfigValidationRequest):
         if any(param in request.parameters for param in high_risk_params):
             estimated_impact["risk_level"] = "medium"
 
-        # Cross-service conflict detection (placeholder - to be implemented)
-        conflicts = []
-        # TODO: Implement cross-service conflict detection
+        # Cross-service conflict detection
+        conflicts = await detect_cross_service_conflicts(
+            request.parameters, request.strategy_id, request.symbol
+        )
         # This would check against other services' configurations
 
         validation_response = ValidationResponse(
@@ -1405,3 +1408,134 @@ async def refresh_app_cache():
         return APIResponse(
             success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
         )
+
+
+# Service URLs for cross-service conflict detection
+SERVICE_URLS = {
+    "tradeengine": os.getenv("TRADEENGINE_URL", "http://petrosa-tradeengine:8080"),
+    "data-manager": os.getenv("DATA_MANAGER_URL", "http://petrosa-data-manager:8080"),
+    "realtime-strategies": os.getenv(
+        "REALTIME_STRATEGIES_URL", "http://petrosa-realtime-strategies:8080"
+    ),
+}
+
+
+async def detect_cross_service_conflicts(
+    parameters: dict[str, Any],
+    strategy_id: Optional[str] = None,
+    symbol: Optional[str] = None,
+) -> list[CrossServiceConflict]:
+    """
+    Detect cross-service configuration conflicts.
+
+    Queries other services' /api/v1/config/validate endpoints to check for
+    conflicting configurations.
+
+    Args:
+        parameters: Configuration parameters to check
+        strategy_id: Strategy identifier
+        symbol: Trading symbol (optional)
+
+    Returns:
+        List of CrossServiceConflict objects
+    """
+    conflicts = []
+    timeout = httpx.Timeout(5.0)  # Short timeout for conflict checks
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        # Check realtime-strategies for strategy config conflicts (same strategy)
+        if strategy_id:
+            try:
+                validation_request = {
+                    "parameters": parameters,
+                    "strategy_id": strategy_id,
+                }
+                if symbol:
+                    validation_request["symbol"] = symbol
+
+                response = await client.post(
+                    f"{SERVICE_URLS['realtime-strategies']}/api/v1/config/validate",
+                    json=validation_request,
+                    timeout=5.0,
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("success") and data.get("data"):
+                        validation_data = data["data"]
+                        # Check if the service reports conflicts or validation issues
+                        if not validation_data.get("validation_passed", True):
+                            errors = validation_data.get("errors", [])
+                            if errors:
+                                conflicts.append(
+                                    CrossServiceConflict(
+                                        service="realtime-strategies",
+                                        conflict_type="VALIDATION_CONFLICT",
+                                        description=(
+                                            f"realtime-strategies reports validation errors for "
+                                            f"strategy {strategy_id}: "
+                                            f"{', '.join([e.get('message', '') for e in errors[:2]])}"
+                                        ),
+                                        resolution=(
+                                            "Review realtime-strategies validation errors and "
+                                            "ensure parameter compatibility"
+                                        ),
+                                    )
+                                )
+
+            except httpx.TimeoutException:
+                logger.debug("Timeout checking realtime-strategies for conflicts")
+            except Exception as e:
+                logger.debug(f"Error checking realtime-strategies conflicts: {e}")
+
+        # Check tradeengine for trading parameter conflicts
+        if any(
+            param in parameters
+            for param in ["leverage", "stop_loss_pct", "take_profit_pct"]
+        ):
+            try:
+                validation_request = {
+                    "parameters": {
+                        k: v
+                        for k, v in parameters.items()
+                        if k in ["leverage", "stop_loss_pct", "take_profit_pct"]
+                    },
+                }
+                if symbol:
+                    validation_request["symbol"] = symbol
+
+                response = await client.post(
+                    f"{SERVICE_URLS['tradeengine']}/api/v1/config/validate",
+                    json=validation_request,
+                    timeout=5.0,
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("success") and data.get("data"):
+                        validation_data = data["data"]
+                        if not validation_data.get("validation_passed", True):
+                            errors = validation_data.get("errors", [])
+                            if errors:
+                                conflicts.append(
+                                    CrossServiceConflict(
+                                        service="tradeengine",
+                                        conflict_type="VALIDATION_CONFLICT",
+                                        description=(
+                                            f"tradeengine reports validation errors for "
+                                            f"trading parameters: "
+                                            f"{', '.join([e.get('message', '') for e in errors[:2]])}"
+                                        ),
+                                        resolution=(
+                                            "Review tradeengine validation errors and "
+                                            "ensure parameter compatibility"
+                                        ),
+                                    )
+                                )
+
+            except httpx.TimeoutException:
+                logger.debug("Timeout checking tradeengine for conflicts")
+            except Exception as e:
+                logger.debug(f"Error checking tradeengine conflicts: {e}")
+
+    return conflicts
