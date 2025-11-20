@@ -8,6 +8,7 @@ for LLM agent integration.
 
 import logging
 import os
+from typing import Any, Optional
 
 import httpx
 from fastapi import APIRouter, HTTPException, Path, Query, status
