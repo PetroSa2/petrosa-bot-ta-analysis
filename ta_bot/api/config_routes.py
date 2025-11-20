@@ -1423,8 +1423,8 @@ SERVICE_URLS = {
 
 async def detect_cross_service_conflicts(
     parameters: dict[str, Any],
-    strategy_id: Optional[str] = None,
-    symbol: Optional[str] = None,
+    strategy_id: str | None = None,
+    symbol: str | None = None,
 ) -> list[CrossServiceConflict]:
     """
     Detect cross-service configuration conflicts.
