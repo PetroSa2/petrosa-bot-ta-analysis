@@ -28,6 +28,7 @@ from ta_bot.api.response_models import (
     ValidationError,
     ValidationResponse,
 )
+from ta_bot.middleware.rate_limiter import ConfigRateLimiter
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
 from ta_bot.strategies.defaults import get_parameter_schema, get_strategy_defaults
@@ -40,6 +41,7 @@ router = APIRouter()
 # Global config manager instances (should be initialized on app startup)
 _config_manager: StrategyConfigManager | None = None
 _app_config_manager: AppConfigManager | None = None
+_rate_limiter: ConfigRateLimiter | None = None
 
 
 def set_config_manager(manager: StrategyConfigManager) -> None:
@@ -72,6 +74,55 @@ def get_app_config_manager() -> AppConfigManager:
             detail="Application configuration manager not initialized",
         )
     return _app_config_manager
+
+
+def set_rate_limiter(limiter: ConfigRateLimiter) -> None:
+    """Set the global rate limiter instance."""
+    global _rate_limiter
+    _rate_limiter = limiter
+
+
+def get_rate_limiter() -> ConfigRateLimiter | None:
+    """Get the global rate limiter instance (optional)."""
+    return _rate_limiter
+
+
+async def check_and_record_rate_limit(
+    changed_by: str, endpoint: str, allow_emergency: bool = False
+) -> None:
+    """
+    Check rate limit and raise 429 if exceeded.
+
+    Args:
+        changed_by: Agent making the change
+        endpoint: API endpoint
+        allow_emergency: Allow bypass for emergency ops
+
+    Raises:
+        HTTPException: 429 if rate limit exceeded
+    """
+    limiter = get_rate_limiter()
+    if not limiter:
+        # Rate limiting not enabled
+        return
+
+    result = await limiter.check_rate_limit(changed_by, endpoint, allow_emergency)
+
+    if not result["allowed"]:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "rate_limit_exceeded",
+                "reason": result["reason"],
+                "message": "Too many configuration changes",
+                "retry_after": result.get("retry_after", 3600),
+                "quota_remaining": result.get("quota_remaining", 0),
+            },
+            headers={"Retry-After": str(result.get("retry_after", 3600))},
+        )
+
+    # Record the change
+    await limiter.record_change(changed_by, endpoint)
 
 
 @router.get(
@@ -522,6 +573,13 @@ async def update_global_config(
 ):
     """Create or update global configuration for a strategy."""
     try:
+        # Check rate limit
+        await check_and_record_rate_limit(
+            changed_by=request.changed_by,
+            endpoint=f"/strategies/{strategy_id}/config",
+            allow_emergency=False,
+        )
+
         manager = get_config_manager()
 
         success, config, errors = await manager.set_config(
@@ -619,6 +677,13 @@ async def update_symbol_config(
 ):
     """Create or update symbol-specific configuration for a strategy."""
     try:
+        # Check rate limit
+        await check_and_record_rate_limit(
+            changed_by=request.changed_by,
+            endpoint=f"/strategies/{strategy_id}/symbols/{symbol}/config",
+            allow_emergency=False,
+        )
+
         manager = get_config_manager()
 
         success, config, errors = await manager.set_config(
@@ -1188,6 +1253,13 @@ async def get_application_config():
 async def update_application_config(request: AppConfigUpdateRequest):
     """Update application configuration."""
     try:
+        # Check rate limit
+        await check_and_record_rate_limit(
+            changed_by=request.changed_by,
+            endpoint="/app/config",
+            allow_emergency=False,
+        )
+
         manager = get_app_config_manager()
 
         # Get current config to merge with updates
@@ -1406,6 +1478,55 @@ async def refresh_app_cache():
         )
     except Exception as e:
         logger.error(f"Error refreshing application config cache: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
+@router.get(
+    "/config/rate-limits",
+    response_model=APIResponse[dict[str, Any]],
+    summary="Get rate limit quota status",
+    description="""
+    **For LLM Agents**: Check your rate limit quota before making configuration changes.
+
+    Returns:
+    - changes_in_window: Number of changes made in current time window
+    - quota_remaining: How many more changes allowed
+    - quota_reset_at: When quota resets
+    - cooldown_seconds: Minimum time between changes
+
+    Example: `GET /api/v1/config/rate-limits?changed_by=llm-agent`
+    """,
+)
+async def get_rate_limit_status(
+    changed_by: str = Query("llm-agent", description="Agent identifier"),
+):
+    """Get current rate limit quota status."""
+    try:
+        limiter = get_rate_limiter()
+
+        if not limiter:
+            return APIResponse(
+                success=True,
+                data={
+                    "rate_limiting_enabled": False,
+                    "message": "Rate limiting not configured for this service",
+                },
+            )
+
+        status_data = await limiter.get_quota_status(changed_by)
+
+        return APIResponse(
+            success=True,
+            data={
+                "rate_limiting_enabled": True,
+                **status_data,
+            },
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching rate limit status: {e}")
         return APIResponse(
             success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
         )
