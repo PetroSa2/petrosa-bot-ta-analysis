@@ -54,6 +54,15 @@ try:
 except Exception as e:
     logger.warning(f"Could not register configuration API routes: {e}")
 
+# Register performance metrics API routes
+try:
+    from ta_bot.api.metrics_routes import router as metrics_router
+
+    app.include_router(metrics_router)
+    logger.info("Performance metrics API routes registered at /api/v1/metrics")
+except Exception as e:
+    logger.warning(f"Could not register metrics API routes: {e}")
+
 # Instrument FastAPI for OpenTelemetry traces
 try:
     from otel_init import instrument_fastapi_app
