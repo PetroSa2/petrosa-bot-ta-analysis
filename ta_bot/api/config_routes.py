@@ -1542,3 +1542,145 @@ async def detect_cross_service_conflicts(
                 logger.debug(f"Error checking tradeengine conflicts: {e}")
 
     return conflicts
+
+
+# ============================================================================
+# Configuration Rollback Endpoints
+# ============================================================================
+
+
+@router.post(
+    "/config/application/rollback",
+    response_model=APIResponse[dict[str, Any]],
+    summary="Rollback application configuration to previous version",
+    description="""
+    **For LLM Agents**: Use this to quickly revert configuration changes that caused issues.
+
+    Supports three rollback modes:
+    - `version=previous` - Rollback to immediately previous configuration
+    - `version=5` - Rollback to specific version number
+    - `version=507f...` - Rollback to specific audit record ID
+
+    **Safety**: Configuration is validated before rollback to prevent breaking changes.
+
+    **Example Request**: `POST /api/v1/config/application/rollback?version=previous&reason=High+latency`
+
+    **Example Response**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "enabled_strategies": ["momentum_pulse"],
+        "min_confidence": 0.7
+      },
+      "metadata": {
+        "rolled_back_from": "507f1f77bcf86cd799439013",
+        "rollback_reason": "High latency after config change"
+      }
+    }
+    ```
+    """,
+)
+async def rollback_app_config(
+    version: str = Query(
+        ..., description="Target version: 'previous', version number, or audit ID"
+    ),
+    reason: str = Query(..., description="Reason for rollback"),
+    changed_by: str = Query(
+        default="llm_agent", description="Who is performing rollback"
+    ),
+):
+    """Rollback application configuration to a previous version."""
+    try:
+        app_config_manager = get_app_config_manager()
+
+        success, restored_config, errors = await app_config_manager.rollback_config(
+            target_version=version,
+            reason=reason,
+            changed_by=changed_by,
+        )
+
+        if not success:
+            return APIResponse(
+                success=False,
+                error={
+                    "code": "ROLLBACK_FAILED",
+                    "message": f"Failed to rollback configuration: {', '.join(errors)}",
+                },
+            )
+
+        return APIResponse(
+            success=True,
+            data=restored_config,
+            metadata={
+                "rolled_back_to": version,
+                "rollback_reason": reason,
+                "changed_by": changed_by,
+            },
+        )
+
+    except Exception as e:
+        logger.error(f"Error during config rollback: {e}")
+        return APIResponse(
+            success=False,
+            error={"code": "INTERNAL_ERROR", "message": str(e)},
+        )
+
+
+@router.post(
+    "/config/application/restore",
+    response_model=APIResponse[dict[str, Any]],
+    summary="Restore application configuration from audit ID",
+    description="""
+    **For LLM Agents**: Restore a specific configuration by its audit record ID.
+
+    This is useful when you know the exact audit ID you want to restore.
+
+    **Safety**: Configuration is validated before restore.
+
+    **Example Request**: `POST /api/v1/config/application/restore?audit_id=507f1f77bcf86cd799439012&reason=Restore+known+good+config`
+    """,
+)
+async def restore_app_config(
+    audit_id: str = Query(..., description="Audit record ID to restore from"),
+    reason: str = Query(..., description="Reason for restore"),
+    changed_by: str = Query(
+        default="llm_agent", description="Who is performing restore"
+    ),
+):
+    """Restore application configuration from a specific audit record."""
+    try:
+        # Use rollback with audit ID
+        app_config_manager = get_app_config_manager()
+
+        success, restored_config, errors = await app_config_manager.rollback_config(
+            target_version=audit_id,
+            reason=reason,
+            changed_by=changed_by,
+        )
+
+        if not success:
+            return APIResponse(
+                success=False,
+                error={
+                    "code": "RESTORE_FAILED",
+                    "message": f"Failed to restore configuration: {', '.join(errors)}",
+                },
+            )
+
+        return APIResponse(
+            success=True,
+            data=restored_config,
+            metadata={
+                "restored_from_audit_id": audit_id,
+                "restore_reason": reason,
+                "changed_by": changed_by,
+            },
+        )
+
+    except Exception as e:
+        logger.error(f"Error during config restore: {e}")
+        return APIResponse(
+            success=False,
+            error={"code": "INTERNAL_ERROR", "message": str(e)},
+        )
