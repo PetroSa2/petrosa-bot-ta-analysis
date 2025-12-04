@@ -55,7 +55,7 @@ kubectl --kubeconfig=k8s/kubeconfig.yaml get configmap -n petrosa-apps -l app=pe
 #### Option B: Deploy Local NATS for Testing
 ```bash
 # Run NATS locally for testing
-docker run -d --name nats-server -p 4222:4222 -p 8222:8222 nats:latest
+docker run -d --name nats-server -p 4222:4222 -p 8222:8222 nats:2.10
 
 # Or use the data extractor's NATS server if it's accessible
 ```

@@ -60,12 +60,12 @@ run_stage() {
             ;;
         "build")
             print_status "Building Docker image..."
-            docker build -t yurisa2/petrosa-ta-bot:latest .
+            docker build -t yurisa2/petrosa-ta-bot:dev .
             print_success "Docker build completed"
             ;;
         "container")
             print_status "Testing Docker container..."
-            docker run --rm yurisa2/petrosa-ta-bot:latest python -c "import ta_bot; print('TA Bot imported successfully')"
+            docker run --rm yurisa2/petrosa-ta-bot:dev python -c "import ta_bot; print('TA Bot imported successfully')"
             print_success "Container test completed"
             ;;
         "deploy")
