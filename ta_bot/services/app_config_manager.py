@@ -365,6 +365,188 @@ class AppConfigManager:
         self._invalidate_cache()
         logger.info("Application configuration cache cleared")
 
+    async def get_config_history(self, limit: int = 10) -> list[dict[str, Any]]:
+        """
+        Get configuration version history.
+
+        Args:
+            limit: Number of historical versions to return
+
+        Returns:
+            List of previous configurations with metadata
+        """
+        try:
+            # Get audit trail
+            audit_records = await self.get_audit_trail(limit=limit)
+
+            # Extract configurations from audit trail
+            history = []
+            for record in audit_records:
+                if record.new_config:
+                    history.append(
+                        {
+                            "id": record.id,
+                            "version": record.new_config.get("version", 0),
+                            "parameters": record.new_config,
+                            "changed_by": record.changed_by,
+                            "changed_at": record.changed_at,
+                            "reason": record.reason or "",
+                        }
+                    )
+
+            return history
+
+        except Exception as e:
+            logger.error(f"Failed to get config history: {e}")
+            return []
+
+    async def get_previous_config(self) -> dict[str, Any] | None:
+        """
+        Get the immediately previous configuration.
+
+        Returns:
+            Previous configuration or None if no history
+        """
+        try:
+            history = await self.get_config_history(limit=2)
+            if len(history) >= 2:
+                # Return the second-to-last config (previous)
+                return history[1]
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get previous config: {e}")
+            return None
+
+    async def get_config_by_version(self, version: int) -> dict[str, Any] | None:
+        """
+        Get configuration by version number.
+
+        Args:
+            version: Version number to retrieve
+
+        Returns:
+            Configuration at that version or None
+        """
+        try:
+            # Get full audit trail
+            audit_records = await self.get_audit_trail(limit=100)
+
+            for record in audit_records:
+                if record.new_config and record.new_config.get("version") == version:
+                    return {
+                        "id": record.id,
+                        "version": version,
+                        "parameters": record.new_config,
+                        "changed_by": record.changed_by,
+                        "changed_at": record.changed_at,
+                        "reason": record.reason or "",
+                    }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get config by version {version}: {e}")
+            return None
+
+    async def get_config_by_id(self, config_id: str) -> dict[str, Any] | None:
+        """
+        Get configuration by audit ID.
+
+        Args:
+            config_id: Audit record ID
+
+        Returns:
+            Configuration or None
+        """
+        try:
+            audit_records = await self.get_audit_trail(limit=100)
+
+            for record in audit_records:
+                if record.id == config_id and record.new_config:
+                    return {
+                        "id": record.id,
+                        "version": record.new_config.get("version", 0),
+                        "parameters": record.new_config,
+                        "changed_by": record.changed_by,
+                        "changed_at": record.changed_at,
+                        "reason": record.reason or "",
+                    }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get config by ID {config_id}: {e}")
+            return None
+
+    async def rollback_config(
+        self,
+        version_spec: str,
+        changed_by: str,
+        reason: str,
+        validate_before_restore: bool = True,
+    ) -> tuple[bool, dict[str, Any] | None, list[str]]:
+        """
+        Rollback configuration to a previous version.
+
+        Args:
+            version_spec: 'previous' or version number
+            changed_by: Who is performing the rollback
+            reason: Reason for rollback
+            validate_before_restore: Validate config before restoring
+
+        Returns:
+            Tuple of (success, restored_config, errors)
+        """
+        try:
+            # Get target configuration
+            if version_spec == "previous":
+                target_config = await self.get_previous_config()
+            else:
+                try:
+                    version_num = int(version_spec)
+                    target_config = await self.get_config_by_version(version_num)
+                except ValueError:
+                    return False, None, [f"Invalid version spec: {version_spec}"]
+
+            if not target_config:
+                return (
+                    False,
+                    None,
+                    [f"Configuration version '{version_spec}' not found"],
+                )
+
+            # Optionally validate old config
+            if validate_before_restore:
+                validation_result = validate_app_config(target_config["parameters"])
+                if not validation_result.valid:
+                    return (
+                        False,
+                        None,
+                        [
+                            f"Previous configuration no longer valid: {validation_result.errors}"
+                        ],
+                    )
+
+            # Restore configuration
+            rollback_reason = f"ROLLBACK to v{target_config['version']}: {reason}"
+            success, restored_config, errors = await self.set_config(
+                config=target_config["parameters"],
+                changed_by=changed_by,
+                reason=rollback_reason,
+            )
+
+            if success:
+                logger.info(
+                    f"Successfully rolled back to version {target_config['version']}"
+                )
+
+            return success, restored_config, errors
+
+        except Exception as e:
+            logger.error(f"Rollback failed: {e}")
+            return False, None, [str(e)]
+
     # -------------------------------------------------------------------------
     # Private Methods
     # -------------------------------------------------------------------------
