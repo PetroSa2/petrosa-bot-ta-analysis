@@ -1542,3 +1542,93 @@ async def detect_cross_service_conflicts(
                 logger.debug(f"Error checking tradeengine conflicts: {e}")
 
     return conflicts
+
+
+# ============================================================================
+# Configuration Rollback Endpoints
+# ============================================================================
+
+
+@router.post(
+    "/config/application/rollback",
+    response_model=APIResponse[dict[str, Any]],
+    summary="Rollback application configuration",
+    description="""
+    **For LLM Agents**: Rollback configuration to previous version.
+
+    Modes: version=previous | version=5 | version=<audit_id>
+    """,
+)
+async def rollback_app_config(
+    version: str = Query(...),
+    reason: str = Query(...),
+    changed_by: str = Query(default="llm_agent"),
+):
+    """Rollback application configuration."""
+    try:
+        app_config_manager = get_app_config_manager()
+        success, restored_config, errors = await app_config_manager.rollback_config(
+            target_version=version,
+            reason=reason,
+            changed_by=changed_by,
+        )
+
+        if not success:
+            return APIResponse(
+                success=False,
+                error={
+                    "code": "ROLLBACK_FAILED",
+                    "message": f"Failed: {', '.join(errors)}",
+                },
+            )
+
+        return APIResponse(
+            success=True,
+            data=restored_config,
+            metadata={"rolled_back_to": version, "reason": reason},
+        )
+    except Exception as e:
+        logger.error(f"Error during rollback: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
+@router.post(
+    "/config/application/restore",
+    response_model=APIResponse[dict[str, Any]],
+    summary="Restore configuration from audit ID",
+)
+async def restore_app_config(
+    audit_id: str = Query(...),
+    reason: str = Query(...),
+    changed_by: str = Query(default="llm_agent"),
+):
+    """Restore configuration from audit record."""
+    try:
+        app_config_manager = get_app_config_manager()
+        success, restored_config, errors = await app_config_manager.rollback_config(
+            target_version=audit_id,
+            reason=reason,
+            changed_by=changed_by,
+        )
+
+        if not success:
+            return APIResponse(
+                success=False,
+                error={
+                    "code": "RESTORE_FAILED",
+                    "message": f"Failed: {', '.join(errors)}",
+                },
+            )
+
+        return APIResponse(
+            success=True,
+            data=restored_config,
+            metadata={"restored_from": audit_id, "reason": reason},
+        )
+    except Exception as e:
+        logger.error(f"Error during restore: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
