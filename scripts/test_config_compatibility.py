@@ -295,9 +295,12 @@ def test_performance() -> bool:
         print(f"  Time WITH config: {time_with_config*1000:.1f}ms (20 iterations)")
 
         # Calculate overhead
+        assert time_no_config > 0  # Should have taken some time
+        assert time_with_config > 0  # Should have taken some time
         if time_no_config > 0:
             overhead = ((time_with_config - time_no_config) / time_no_config) * 100
             print(f"  Overhead: {overhead:.1f}%")
+            assert isinstance(overhead, (int, float))  # Overhead should be numeric
 
             if overhead < 50:
                 print(
