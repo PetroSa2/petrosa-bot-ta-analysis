@@ -41,19 +41,29 @@ fi
 echo -e "${GREEN}✅ Found Prometheus pod: $PROMETHEUS_POD${NC}"
 echo ""
 
+# Function to URL-encode a string
+url_encode() {
+  local string="$1"
+  python3 -c "import urllib.parse; print(urllib.parse.quote('$string'))" 2>/dev/null || echo "$string"
+}
+
 # Function to query Prometheus
 query_prometheus() {
   local query="$1"
+  local encoded_query
+  encoded_query=$(url_encode "$query")
   kubectl exec -n monitoring "$PROMETHEUS_POD" -- \
-    wget -q -O- --timeout=10 "http://localhost:9090/api/v1/query?query=${query}" 2>/dev/null | \
+    wget -q -O- --timeout=10 "http://localhost:9090/api/v1/query?query=${encoded_query}" 2>/dev/null | \
     jq -r '.data.result[] | "\(.metric | to_entries | map("\(.key)=\"\(.value)\"") | join(",")) \(.value[1])"' 2>/dev/null || echo ""
 }
 
 # Function to query Prometheus and get sum
 query_sum() {
   local query="$1"
+  local encoded_query
+  encoded_query=$(url_encode "$query")
   kubectl exec -n monitoring "$PROMETHEUS_POD" -- \
-    wget -q -O- --timeout=10 "http://localhost:9090/api/v1/query?query=${query}" 2>/dev/null | \
+    wget -q -O- --timeout=10 "http://localhost:9090/api/v1/query?query=${encoded_query}" 2>/dev/null | \
     jq -r '.data.result[0].value[1] // "0"' 2>/dev/null || echo "0"
 }
 
@@ -93,7 +103,11 @@ if [ -n "$ACTIONS" ]; then
     ACTION=$(echo "$line" | grep -oP 'action="\K[^"]+')
     COUNT=$(echo "$line" | awk '{print $NF}')
     if [ -n "$ACTION" ] && [ -n "$COUNT" ]; then
-      PCT=$(awk "BEGIN {printf \"%.1f\", ($COUNT / $TOTAL_24H) * 100}" 2>/dev/null || echo "0")
+      if [ "$TOTAL_24H" != "0" ] && [ -n "$TOTAL_24H" ] && [ "$TOTAL_24H" != "null" ]; then
+        PCT=$(awk "BEGIN {printf \"%.1f\", ($COUNT / $TOTAL_24H) * 100}" 2>/dev/null || echo "0")
+      else
+        PCT="0"
+      fi
       echo "  - ${ACTION}: $COUNT (${PCT}%)" >> "$OUTPUT_FILE"
     fi
   done
@@ -111,7 +125,11 @@ if [ -n "$STRATEGIES" ]; then
     STRATEGY=$(echo "$line" | grep -oP 'strategy="\K[^"]+')
     COUNT=$(echo "$line" | awk '{print $NF}')
     if [ -n "$STRATEGY" ] && [ -n "$COUNT" ]; then
-      PCT=$(awk "BEGIN {printf \"%.1f\", ($COUNT / $TOTAL_24H) * 100}" 2>/dev/null || echo "0")
+      if [ "$TOTAL_24H" != "0" ] && [ -n "$TOTAL_24H" ] && [ "$TOTAL_24H" != "null" ]; then
+        PCT=$(awk "BEGIN {printf \"%.1f\", ($COUNT / $TOTAL_24H) * 100}" 2>/dev/null || echo "0")
+      else
+        PCT="0"
+      fi
       echo "$RANK. ${STRATEGY}: $COUNT signals (${PCT}%)" >> "$OUTPUT_FILE"
       RANK=$((RANK + 1))
     fi
@@ -139,7 +157,11 @@ else
 fi
 
 # Average rate
-SIGNALS_PER_HOUR=$(awk "BEGIN {printf \"%.1f\", $TOTAL_24H / 24}" 2>/dev/null || echo "0")
+if [ "$TOTAL_24H" != "0" ] && [ -n "$TOTAL_24H" ] && [ "$TOTAL_24H" != "null" ]; then
+  SIGNALS_PER_HOUR=$(awk "BEGIN {printf \"%.1f\", $TOTAL_24H / 24}" 2>/dev/null || echo "0")
+else
+  SIGNALS_PER_HOUR="0"
+fi
 SIGNALS_PER_DAY="$TOTAL_24H"
 echo "" >> "$OUTPUT_FILE"
 echo "Average Rate:" >> "$OUTPUT_FILE"
