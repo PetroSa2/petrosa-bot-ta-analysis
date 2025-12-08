@@ -30,6 +30,7 @@ For detailed verification procedures, troubleshooting, and baseline documentatio
 - **[METRICS_VERIFICATION.md](./METRICS_VERIFICATION.md)** - Complete verification guide
 - **[METRICS_BASELINE.md](./METRICS_BASELINE.md)** - Baseline metrics template
 - **[verify-metrics.sh](../scripts/verify-metrics.sh)** - Automated verification script
+- **[collect-baseline-metrics.sh](../scripts/collect-baseline-metrics.sh)** - Baseline metrics collection script
 
 ### Prerequisites and Deployment Status
 
@@ -143,6 +144,30 @@ curl -s "http://localhost:9090/api/v1/query?query=ta_bot_signals_generated_total
 | Metrics endpoint returns empty | OTel not initialized | Check `OTEL_ENABLED=true` in deployment |
 | Metrics not in Prometheus | Scraping not configured | Add ServiceMonitor or Prometheus scrape config |
 | Old metric values | Cache issue | Restart Prometheus or wait for scrape interval |
+
+### Collecting Baseline Metrics
+
+After verifying metrics are working, collect baseline values for documentation:
+
+**Automated Collection** (Recommended):
+```bash
+# Collect all baseline metrics from Prometheus
+./scripts/collect-baseline-metrics.sh
+
+# Output saved to /tmp/baseline-metrics-YYYYMMDD-HHMMSS.txt
+# Review and copy relevant sections to docs/METRICS_BASELINE.md
+```
+
+**Manual Collection**:
+1. Query Prometheus for each metric using queries from `METRICS_BASELINE.md`
+2. Document current values in the baseline template
+3. Update "Captured" date in `METRICS_BASELINE.md`
+4. Add operational insights based on observed patterns
+
+**After Collection**:
+- Update `docs/METRICS_BASELINE.md` with collected values
+- Capture dashboard screenshots (see `dashboards/screenshots/README.md`)
+- Set up alert thresholds based on baseline values
 
 ---
 
