@@ -1,97 +1,58 @@
-# TA Bot Grafana Dashboard Screenshots
+# TA Bot Business Metrics Dashboard Screenshots
 
-This directory contains screenshots of the TA Bot business metrics Grafana dashboard for documentation purposes.
+**Purpose**: Visual documentation of the TA Bot business metrics dashboard for reference and onboarding.
 
-## Purpose
+**Related**: Issue #108, PR #106 (metrics implementation)
 
-- **Documentation**: Visual reference for dashboard layout and metrics
-- **Baseline Recording**: Capture initial metric values after deployment
-- **Troubleshooting**: Compare current dashboard with baseline
-- **Onboarding**: Help new team members understand monitoring setup
+---
+
+## Screenshot Guidelines
+
+When capturing screenshots of the Grafana dashboard:
+
+1. **Time Range**: Use "Last 24 hours" to show recent activity
+2. **Resolution**: Minimum 1920x1080 for clarity
+3. **Format**: PNG format preferred
+4. **Naming**: Use descriptive names like:
+   - `dashboard-overview.png` - Full dashboard view
+   - `signal-generation-panel.png` - Signal generation metrics
+   - `processing-latency-panel.png` - Latency histogram
+   - `strategy-executions-panel.png` - Strategy execution metrics
 
 ## Required Screenshots
 
-After dashboard is imported and verified (Issue #108), capture:
+- [ ] Full dashboard overview (all 8 panels visible)
+- [ ] Signal generation counter panel
+- [ ] Signal processing duration histogram
+- [ ] Strategies run counter panel
+- [ ] Strategy executions (success/error) panel
+- [ ] Configuration changes counter panel
+- [ ] Any additional panels showing key insights
 
-1. **`01-overview.png`** - Full dashboard view showing all 8 panels
-2. **`02-signal-generation.png`** - Signal generation counter by strategy
-3. **`03-processing-latency.png`** - Signal processing duration histogram
-4. **`04-strategies-run.png`** - Strategies run counter by symbol
-5. **`05-strategy-executions.png`** - Strategy execution success/error rates
-6. **`06-config-changes.png`** - Configuration change counter over time
-7. **`07-time-series.png`** - Time series graphs showing trends
-8. **`08-current-values.png`** - Current metric values and gauges
+## Upload Instructions
 
-## How to Capture
+1. Import dashboard into Grafana (see `docs/METRICS_VERIFICATION.md`)
+2. Navigate to dashboard and set appropriate time range
+3. Capture screenshots using browser screenshot tool or `Cmd+Shift+4` (macOS)
+4. Save screenshots to this directory with descriptive names
+5. Update this README to list captured screenshots
 
-### Option 1: Grafana UI Screenshot
+## Dashboard Location
 
+**Grafana Dashboard**: `dashboards/ta-bot-business-metrics.json`
+
+**Import Command**:
 ```bash
-# 1. Access Grafana
-GRAFANA_URL=$(kubectl get ingress grafana -n monitoring -o jsonpath='{.spec.rules[0].host}')
-GRAFANA_PASS=$(kubectl get secret grafana-admin -n monitoring -o jsonpath='{.data.password}' | base64 --decode)
+# Via Grafana UI:
+# Dashboards → Import → Upload JSON file → Select dashboards/ta-bot-business-metrics.json
 
-echo "Open: https://${GRAFANA_URL}"
-echo "User: admin"
-echo "Pass: ${GRAFANA_PASS}"
-
-# 2. Navigate to TA Bot dashboard
-# 3. Use browser screenshot tool or Grafana's built-in "Share" > "Image" export
-```
-
-### Option 2: Automated Screenshot (with Grafana API)
-
-```bash
-# Install grafana-image-renderer (if available)
-# Then use Grafana API to render dashboard images
-
-GRAFANA_API_KEY=$(kubectl get secret grafana-api-key -n monitoring -o jsonpath='{.data.key}' | base64 --decode)
-
-curl "https://${GRAFANA_URL}/render/d-solo/ta-bot-business-metrics/ta-bot-business-metrics?orgId=1&panelId=1&width=1000&height=500&tz=UTC" \
+# Or via API:
+curl -X POST "${GRAFANA_URL}/api/dashboards/db" \
   -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
-  -o 01-overview.png
+  -H "Content-Type: application/json" \
+  -d @dashboards/ta-bot-business-metrics.json
 ```
 
-### Option 3: Manual Screenshots
+---
 
-1. Login to Grafana
-2. Navigate to **Dashboards** > **TA Bot Business Metrics**
-3. Use OS screenshot tool:
-   - **macOS**: Cmd+Shift+4
-   - **Windows**: Win+Shift+S
-   - **Linux**: Depends on distro (often PrtSc or Shift+PrtSc)
-4. Save to this directory with appropriate naming
-
-## Naming Convention
-
-Use descriptive prefixes to indicate content:
-- `01-`, `02-`, etc. for sequence
-- Lowercase with hyphens
-- `.png` format preferred (high quality)
-
-## Update Schedule
-
-Screenshots should be updated:
-- ✅ **Initial**: After metrics verification (Issue #108)
-- 🔄 **After Major Changes**: Dashboard layout changes, new metrics added
-- 📅 **Quarterly**: To reflect evolving baseline values
-- 🐛 **After Incidents**: To document before/after states
-
-## Usage in Documentation
-
-Reference screenshots in documentation:
-```markdown
-![TA Bot Dashboard Overview](./dashboards/screenshots/01-overview.png)
-```
-
-Or link directly:
-```markdown
-[View Dashboard Screenshot](./dashboards/screenshots/01-overview.png)
-```
-
-## Notes
-
-- Screenshots show production data - review for sensitive information before committing
-- Ensure dashboard is in a representative state (not during an incident)
-- Include timestamp/date range visible in screenshot
-- Crop or annotate as needed for clarity
+**Note**: Screenshots should be captured after baseline metrics are documented to show actual production data.
