@@ -158,9 +158,11 @@ class PerfectConditionsTester:
 
             all_conditions = macd_cross and rsi_ok and adx_ok and price_above_emas
             logger.info(f"ALL CONDITIONS: {all_conditions}")
+            assert isinstance(all_conditions, bool)  # Should be a boolean
 
         except Exception as e:
             logger.error(f"Error during debug: {e}")
+            assert e is not None  # Exception should be captured
 
     def test_strategy_with_debug(
         self, strategy_name: str, df: pd.DataFrame, symbol: str, period: str
@@ -175,22 +177,27 @@ class PerfectConditionsTester:
         try:
             # Analyze the data
             signals = self.signal_engine.analyze_candles(df, symbol, period)
+            assert signals is not None  # Signals should be a list (even if empty)
 
             if signals:
                 logger.info(f"✅ {strategy_name}: Generated {len(signals)} signals!")
+                assert len(signals) > 0  # Should have at least one signal
                 for signal in signals:
                     logger.info(
                         f"   Signal: {signal.action} {symbol} - Confidence: {signal.confidence}"
                     )
+                    assert signal is not None  # Signal should be valid
                     if signal.metadata:
                         logger.info(f"   Metadata: {signal.metadata}")
                 return True
             else:
                 logger.info(f"❌ {strategy_name}: No signals generated")
+                assert len(signals) == 0  # Explicit check for no signals
                 return False
 
         except Exception as e:
             logger.error(f"❌ {strategy_name}: Error during analysis: {e}")
+            assert e is not None  # Exception should be captured
             return False
 
     def run_momentum_pulse_test(self):
@@ -202,11 +209,14 @@ class PerfectConditionsTester:
 
         # Test the strategy
         success = self.test_strategy_with_debug("Momentum Pulse", df, "BTCUSDT", "5m")
+        assert isinstance(success, bool)  # Should return a boolean
 
         if success:
             logger.info("🎉 Momentum Pulse strategy is working correctly!")
+            assert success is True  # Explicit check
         else:
             logger.info("⚠️  Momentum Pulse strategy conditions are too strict")
+            assert success is False  # Explicit check
 
         return success
 

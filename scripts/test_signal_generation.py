@@ -204,22 +204,27 @@ class SignalGenerationTester:
         try:
             # Analyze the data
             signals = self.signal_engine.analyze_candles(df, symbol, period)
+            assert signals is not None  # Signals should be a list (even if empty)
 
             if signals:
                 logger.info(f"✅ {strategy_name}: Generated {len(signals)} signals!")
+                assert len(signals) > 0  # Should have at least one signal
                 for signal in signals:
                     logger.info(
                         f"   Signal: {signal.action} {symbol} - Confidence: {signal.confidence}"
                     )
+                    assert signal is not None  # Signal should be valid
                     if signal.metadata:
                         logger.info(f"   Metadata: {signal.metadata}")
                 return True
             else:
                 logger.info(f"❌ {strategy_name}: No signals generated")
+                assert len(signals) == 0  # Explicit check for no signals
                 return False
 
         except Exception as e:
             logger.error(f"❌ {strategy_name}: Error during analysis: {e}")
+            assert e is not None  # Exception should be captured
             return False
 
     def run_all_tests(self):

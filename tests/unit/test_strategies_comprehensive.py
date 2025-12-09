@@ -34,8 +34,12 @@ class TestBaseStrategy:
         df = pd.DataFrame()
         metadata = {}
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(NotImplementedError) as exc_info:
             strategy.analyze(df, metadata)
+        assert (
+            "analyze" in str(exc_info.value).lower()
+            or "not implemented" in str(exc_info.value).lower()
+        )
 
     def test_get_current_values_with_pandas_series(self):
         """Test _get_current_values with pandas Series indicators."""
@@ -768,6 +772,11 @@ class TestStrategyEdgeCases:
         df = df.drop(columns=[missing_column])
 
         metadata = {"symbol": "BTCUSDT", "period": "15m"}
+
+        # Should raise an error or handle missing column
+        with pytest.raises((KeyError, ValueError, AttributeError)) as exc_info:
+            strategy.analyze(df, metadata)
+        assert exc_info.value is not None
 
         # Should handle missing columns gracefully
         try:
