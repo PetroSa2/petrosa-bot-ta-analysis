@@ -334,21 +334,21 @@ def flush_telemetry(timeout_seconds: float = 5.0) -> None:
             try:
                 # force_flush() accepts a timeout parameter
                 tracer_provider.force_flush(timeout_millis=int(timeout_seconds * 1000))
-                print("✅ Traces flushed successfully")
+                logger.info("✅ Traces flushed successfully")
             except TypeError:
                 # Fallback for providers that don't accept timeout
                 tracer_provider.force_flush()
-                print("✅ Traces flushed successfully")
+                logger.info("✅ Traces flushed successfully")
 
         # Flush metrics (with timeout if supported)
         meter_provider = metrics.get_meter_provider()
         if hasattr(meter_provider, "force_flush"):
             try:
                 meter_provider.force_flush(timeout_millis=int(timeout_seconds * 1000))
-                print("✅ Metrics flushed successfully")
+                logger.info("✅ Metrics flushed successfully")
             except TypeError:
                 meter_provider.force_flush()
-                print("✅ Metrics flushed successfully")
+                logger.info("✅ Metrics flushed successfully")
 
         # Flush logs (with timeout if supported)
         global _global_logger_provider
@@ -359,10 +359,10 @@ def flush_telemetry(timeout_seconds: float = 5.0) -> None:
                 _global_logger_provider.force_flush(
                     timeout_millis=int(timeout_seconds * 1000)
                 )
-                print("✅ Logs flushed successfully")
+                logger.info("✅ Logs flushed successfully")
             except TypeError:
                 _global_logger_provider.force_flush()
-                print("✅ Logs flushed successfully")
+                logger.info("✅ Logs flushed successfully")
 
         # Ensure we don't exceed total timeout
         elapsed = time.time() - start_time
@@ -372,7 +372,7 @@ def flush_telemetry(timeout_seconds: float = 5.0) -> None:
             time.sleep(min(0.5, remaining_time))
 
     except Exception as e:
-        print(f"⚠️  Error flushing telemetry: {e}")
+        logger.error(f"⚠️  Error flushing telemetry: {e}")
 
 
 def shutdown_telemetry() -> None:
@@ -390,13 +390,13 @@ def shutdown_telemetry() -> None:
         tracer_provider = trace.get_tracer_provider()
         if hasattr(tracer_provider, "shutdown"):
             tracer_provider.shutdown()
-            print("✅ Trace provider shut down successfully")
+            logger.info("✅ Trace provider shut down successfully")
 
         # Shutdown metrics
         meter_provider = metrics.get_meter_provider()
         if hasattr(meter_provider, "shutdown"):
             meter_provider.shutdown()
-            print("✅ Metrics provider shut down successfully")
+            logger.info("✅ Metrics provider shut down successfully")
 
         # Shutdown logs
         global _global_logger_provider
@@ -404,10 +404,10 @@ def shutdown_telemetry() -> None:
             _global_logger_provider, "shutdown"
         ):
             _global_logger_provider.shutdown()
-            print("✅ Log provider shut down successfully")
+            logger.info("✅ Log provider shut down successfully")
 
     except Exception as e:
-        print(f"⚠️  Error shutting down telemetry: {e}")
+        logger.error(f"⚠️  Error shutting down telemetry: {e}")
 
 
 def setup_signal_handlers() -> None:
@@ -448,6 +448,11 @@ def setup_signal_handlers() -> None:
         shutdown_telemetry()
 
         logger.info("Telemetry shutdown complete")
+        # Note: For asyncio applications, the main event loop should handle
+        # graceful shutdown. sys.exit() here ensures telemetry is flushed
+        # even if the event loop doesn't complete cleanup in time.
+        # The application's main loop should also call flush_telemetry()
+        # and shutdown_telemetry() in its shutdown sequence.
         sys.exit(0)
 
     # Register signal handlers
