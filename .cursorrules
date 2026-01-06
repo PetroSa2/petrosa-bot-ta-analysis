@@ -21,6 +21,7 @@ The TA Bot bridges historical data (from data-extractor) with signal generation,
 
 - **Ecosystem Architecture**: See master § System Architecture Overview → Signal Generation Layer
 - **Work Tracking**: See master § Centralized Work Tracking with GitHub Projects
+- **GitHub CLI Profile**: See master § Prerequisites & Installation → GitHub CLI Profile Configuration (CRITICAL: Always use `yurisa2` profile)
 - **NATS Topics**: See master § NATS Message Bus → `signals.trading` (output only)
 - **Database Architecture**: See master § Database Architecture (MySQL historical data, MongoDB config)
 - **Deployment Patterns**: See master § TA Bot Configuration
