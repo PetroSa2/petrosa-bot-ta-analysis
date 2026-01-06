@@ -45,6 +45,10 @@ async def main():
         # 3. Attach OTel logging handler LAST (after logging is configured)
         attach_logging_handler()
 
+        # 4. Setup graceful shutdown signal handlers for telemetry flushing
+        # This ensures telemetry data is flushed on SIGTERM/SIGINT (e.g., pod termination)
+        otel_init.setup_signal_handlers()
+
         # Initialize components
         config = Config()
         signal_engine = SignalEngine()
