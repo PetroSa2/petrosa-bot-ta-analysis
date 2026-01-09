@@ -303,6 +303,10 @@ class TestSignalEngineTracing:
         mock_span.set_attribute.assert_any_call("symbol", "BTCUSDT")
         mock_span.set_attribute.assert_any_call("timeframe", "15m")
 
+        # Verify business context attributes are present
+        # Note: strategy.name, signal.type, signal.strength are set in _run_strategy
+        # which is called when signals are generated
+
     def test_run_strategy_creates_span(self, sample_candles, mock_tracer):
         """Test that _run_strategy creates span with attributes."""
         from unittest.mock import patch
@@ -325,6 +329,17 @@ class TestSignalEngineTracing:
             call[0][0] for call in mock_tracer_obj.start_as_current_span.call_args_list
         ]
         assert "run_strategy" in calls or "analyze_candles" in calls
+
+        # Verify business context attributes are set with dot notation
+        if signals:  # Only check if signals were generated
+            mock_span.set_attribute.assert_any_call("strategy.name", "momentum_pulse")
+            mock_span.set_attribute.assert_any_call("signal.type", signals[0].action)
+            mock_span.set_attribute.assert_any_call(
+                "signal.strength", signals[0].strength.value
+            )
+            mock_span.set_attribute.assert_any_call(
+                "signal.confidence", signals[0].confidence
+            )
 
 
 if __name__ == "__main__":
