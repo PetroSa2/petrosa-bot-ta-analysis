@@ -306,6 +306,8 @@ class TestSignalEngineTracing:
         # Verify business context attributes are present
         # Note: strategy.name, signal.type, signal.strength are set in _run_strategy
         # which is called when signals are generated
+        # Ensure test has explicit assertion
+        assert mock_span.set_attribute.called
 
     def test_run_strategy_creates_span(self, sample_candles, mock_tracer):
         """Test that _run_strategy creates span with attributes."""
@@ -331,8 +333,11 @@ class TestSignalEngineTracing:
         assert "run_strategy" in calls or "analyze_candles" in calls
 
         # Verify business context attributes are set with dot notation
+        # Always verify strategy.name is set (regardless of signal generation)
+        mock_span.set_attribute.assert_any_call("strategy.name", "momentum_pulse")
+
+        # If signals were generated, verify additional signal attributes
         if signals:  # Only check if signals were generated
-            mock_span.set_attribute.assert_any_call("strategy.name", "momentum_pulse")
             mock_span.set_attribute.assert_any_call("signal.type", signals[0].action)
             mock_span.set_attribute.assert_any_call(
                 "signal.strength", signals[0].strength.value
