@@ -318,7 +318,8 @@ class SignalEngine:
     ) -> Signal | None:
         """Run a single strategy and return signal if valid."""
         with tracer.start_as_current_span("run_strategy") as span:
-            span.set_attribute("strategy_name", strategy_name)
+            # Business context attributes using dot notation for consistency
+            span.set_attribute("strategy.name", strategy_name)
             span.set_attribute("symbol", symbol)
             span.set_attribute("timeframe", period)
             span.set_attribute("current_price", current_price)
@@ -329,11 +330,12 @@ class SignalEngine:
                 # Run strategy analysis
                 signal = strategy.analyze(df, metadata)
 
-                # Add signal info to span
+                # Add signal info to span with dot notation
                 if signal:
                     span.set_attribute("signal_generated", True)
-                    span.set_attribute("signal_action", signal.action)
-                    span.set_attribute("signal_confidence", signal.confidence)
+                    span.set_attribute("signal.type", signal.action)
+                    span.set_attribute("signal.strength", signal.strength.value)
+                    span.set_attribute("signal.confidence", signal.confidence)
                 else:
                     span.set_attribute("signal_generated", False)
 
