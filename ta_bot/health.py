@@ -19,6 +19,11 @@ from prometheus_client import (
     generate_latest,
 )
 
+try:
+    from petrosa_otel import config_rate_limit_middleware
+except ImportError:
+    config_rate_limit_middleware = None
+
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics
@@ -44,6 +49,11 @@ SERVICE_UPTIME = Gauge("service_uptime_seconds", "Service uptime in seconds")
 # Global variables for health status
 start_time = time.time()
 app = FastAPI(title="TA Bot Health API", version="1.0.0")
+
+# Register rate limit middleware
+if config_rate_limit_middleware:
+    app.middleware("http")(config_rate_limit_middleware)
+    logger.info("Configuration rate limit middleware registered")
 
 # Register configuration API routes
 try:
@@ -182,6 +192,18 @@ async def root():
             "uptime": get_uptime(),
         }
     )
+
+
+def set_config_manager(manager) -> None:
+    """Set the global strategy config manager instance."""
+    # This might be needed if health.py manages its own router
+    pass
+
+
+def set_rate_limiter(limiter) -> None:
+    """Set the global rate limiter instance."""
+    app.state.rate_limiter = limiter
+    logger.info("Rate limiter instance registered with health app")
 
 
 async def start_health_server(

@@ -237,7 +237,7 @@ class DataManagerConfigClient:
 
         try:
             async with self._session.get(
-                f"{self.base_url}/config/strategies"
+                f"{self.base_url}/api/v1/config/strategies"
             ) as response:
                 if response.status == 200:
                     data = await response.json()
@@ -249,6 +249,73 @@ class DataManagerConfigClient:
         except Exception as e:
             logger.error(f"Error listing strategy configs: {e}")
             return []
+
+    async def get_app_audit_trail(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Get application configuration audit trail."""
+        if not self._session:
+            await self.connect()
+        try:
+            async with self._session.get(
+                f"{self.base_url}/api/v1/config/audit/application?limit={limit}"
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return []
+        except Exception as e:
+            logger.error(f"Error fetching app audit trail: {e}")
+            return []
+
+    async def get_strategy_audit_trail(
+        self, strategy_id: str, symbol: str | None = None, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        """Get strategy configuration audit trail."""
+        if not self._session:
+            await self.connect()
+        try:
+            url = f"{self.base_url}/api/v1/config/audit/strategies/{strategy_id}?limit={limit}"
+            if symbol:
+                url += f"&symbol={symbol}"
+            async with self._session.get(url) as response:
+                if response.status == 200:
+                    return await response.json()
+                return []
+        except Exception as e:
+            logger.error(f"Error fetching strategy audit trail: {e}")
+            return []
+
+    async def rollback_app_config(
+        self, changed_by: str, target_version: int | None = None, reason: str | None = None
+    ) -> bool:
+        """Rollback application configuration."""
+        if not self._session:
+            await self.connect()
+        try:
+            payload = {"changed_by": changed_by, "target_version": target_version, "reason": reason}
+            async with self._session.post(
+                f"{self.base_url}/api/v1/config/rollback/application", json=payload
+            ) as response:
+                return response.status == 200
+        except Exception as e:
+            logger.error(f"Error rolling back app config: {e}")
+            return False
+
+    async def rollback_strategy_config(
+        self, strategy_id: str, changed_by: str, symbol: str | None = None, 
+        target_version: int | None = None, reason: str | None = None
+    ) -> bool:
+        """Rollback strategy configuration."""
+        if not self._session:
+            await self.connect()
+        try:
+            payload = {"changed_by": changed_by, "target_version": target_version, "reason": reason}
+            url = f"{self.base_url}/api/v1/config/rollback/strategies/{strategy_id}"
+            if symbol:
+                url += f"?symbol={symbol}"
+            async with self._session.post(url, json=payload) as response:
+                return response.status == 200
+        except Exception as e:
+            logger.error(f"Error rolling back strategy config: {e}")
+            return False
 
     async def delete_strategy_config(
         self, strategy_id: str, symbol: str | None = None
