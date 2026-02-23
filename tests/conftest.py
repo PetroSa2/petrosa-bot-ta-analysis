@@ -2,11 +2,22 @@
 Shared pytest fixtures and configuration for TA Bot tests.
 """
 
+import os
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock
 
 import numpy as np
 import pandas as pd
 import pytest
+
+# Disable OpenTelemetry auto-initialization during tests
+os.environ["OTEL_NO_AUTO_INIT"] = "1"
+os.environ["OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED"] = "false"
+
+
+def pytest_configure(config):
+    """Setup before any tests are run."""
+    os.environ["OTEL_NO_AUTO_INIT"] = "1"
 
 
 @pytest.fixture(scope="session")
@@ -34,10 +45,9 @@ def sample_candles_data():
     for change in price_changes[1:]:
         prices.append(prices[-1] * (1 + change))
 
+    volatility = 0.005  # 0.5%
     data = []
-    for i, (timestamp, price) in enumerate(zip(timestamps, prices, strict=True)):
-        # Create realistic OHLCV data
-        volatility = abs(price_changes[i]) * 2
+    for i, price in enumerate(prices):
         high = price * (1 + volatility)
         low = price * (1 - volatility)
         open_price = price * (1 + np.random.normal(0, volatility * 0.5))
@@ -46,7 +56,7 @@ def sample_candles_data():
 
         data.append(
             {
-                "timestamp": timestamp.isoformat(),
+                "timestamp": timestamps[i],
                 "open": open_price,
                 "high": high,
                 "low": low,
@@ -59,48 +69,37 @@ def sample_candles_data():
 
 
 @pytest.fixture
-def mock_nats_message():
-    """Create a mock NATS message for testing."""
-    return {
-        "symbol": "BTCUSDT",
-        "period": "15m",
-        "candles": [
-            {
-                "timestamp": "2024-01-01T00:00:00Z",
-                "open": 50000.0,
-                "high": 50100.0,
-                "low": 49900.0,
-                "close": 50050.0,
-                "volume": 1000.0,
-            }
-        ],
-    }
+def mock_signal_engine():
+    """Create a mock signal engine."""
+    engine = MagicMock()
+    return engine
 
 
 @pytest.fixture
-def mock_signal_data():
-    """Create mock signal data for testing."""
-    return {
-        "symbol": "BTCUSDT",
-        "period": "15m",
-        "signal": "BUY",
-        "confidence": 0.74,
-        "strategy": "momentum_pulse",
-        "metadata": {
-            "rsi": 58.3,
-            "macd_hist": 0.0012,
-            "adx": 27,
-            "ema21": 50025.0,
-            "ema50": 49980.0,
-            "close": 50050.0,
-        },
-        "timestamp": "2024-01-01T00:00:00Z",
-    }
+def mock_data_manager_client():
+    """Create a mock data manager client."""
+    client = MagicMock()
+    return client
 
 
-def _create_sample_candles_data():
-    """Create sample OHLCV data for testing."""
-    # Generate sample price data with some trend
+@pytest.fixture
+def mock_nats_listener():
+    """Create a mock NATS listener."""
+    listener = MagicMock()
+    return listener
+
+
+@pytest.fixture
+def mock_mongodb_client():
+    """Create a mock MongoDB client."""
+    client = MagicMock()
+    return client
+
+
+# Function-level version of sample_candles_data if needed
+@pytest.fixture
+def candles_df():
+    """Generate a sample DataFrame for indicator testing."""
     base_price = 50000
     num_candles = 100
 
@@ -122,10 +121,9 @@ def _create_sample_candles_data():
     for change in price_changes[1:]:
         prices.append(prices[-1] * (1 + change))
 
+    volatility = 0.005  # 0.5%
     data = []
-    for i, (timestamp, price) in enumerate(zip(timestamps, prices, strict=True)):
-        # Create realistic OHLCV data
-        volatility = abs(price_changes[i]) * 2
+    for i, price in enumerate(prices):
         high = price * (1 + volatility)
         low = price * (1 - volatility)
         open_price = price * (1 + np.random.normal(0, volatility * 0.5))
@@ -134,7 +132,7 @@ def _create_sample_candles_data():
 
         data.append(
             {
-                "timestamp": timestamp.isoformat(),
+                "timestamp": timestamps[i],
                 "open": open_price,
                 "high": high,
                 "low": low,
@@ -144,53 +142,3 @@ def _create_sample_candles_data():
         )
 
     return pd.DataFrame(data)
-
-
-@pytest.fixture
-def signals():
-    """Create sample signals for testing."""
-    from ta_bot.core.signal_engine import SignalEngine
-    from ta_bot.models.signal import Signal
-
-    # Create sample data
-    df = _create_sample_candles_data()
-
-    # Initialize signal engine
-    signal_engine = SignalEngine()
-
-    # Generate signals
-    signals = signal_engine.analyze_candles(df, "BTCUSDT", "15m")
-
-    # If no signals generated, create a mock signal
-    if not signals:
-        signals = [
-            Signal(
-                strategy_id="momentum_pulse_test",
-                symbol="BTCUSDT",
-                action="buy",
-                confidence=0.74,
-                current_price=50000.0,
-                price=50000.0,
-                timeframe="15m",
-                metadata={"rsi": 58.3, "macd_hist": 0.0012},
-            )
-        ]
-
-    return signals
-
-
-@pytest.fixture
-def signal():
-    """Create a single sample signal for testing."""
-    from ta_bot.models.signal import Signal
-
-    return Signal(
-        strategy_id="momentum_pulse_test",
-        symbol="BTCUSDT",
-        action="buy",
-        confidence=0.74,
-        current_price=50000.0,
-        price=50000.0,
-        timeframe="15m",
-        metadata={"rsi": 58.3, "macd_hist": 0.0012},
-    )

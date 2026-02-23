@@ -7,8 +7,18 @@ Main entry point for the TA bot microservice.
 import asyncio
 import logging
 
-# Import OpenTelemetry initialization early
-import otel_init  # noqa: F401
+# Optional OpenTelemetry imports
+try:
+    from petrosa_otel import (
+        attach_logging_handler,
+        initialize_telemetry_standard,
+        setup_signal_handlers,
+    )
+except ImportError:
+    initialize_telemetry_standard = None
+    attach_logging_handler = None
+    setup_signal_handlers = None
+
 from ta_bot.api import config_routes
 from ta_bot.config import Config
 from ta_bot.core.signal_engine import SignalEngine
@@ -29,25 +39,25 @@ async def main():
     """Main entry point for the TA bot."""
     try:
         # 1. Setup OpenTelemetry FIRST (before any logging configuration)
-        from petrosa_otel import attach_logging_handler, initialize_telemetry_standard
-
-        initialize_telemetry_standard(
-            service_name="ta-bot",
-            service_type="fastapi",
-            enable_fastapi=True,
-            enable_mongodb=True,
-            enable_mysql=True,
-        )
+        if initialize_telemetry_standard and not os.getenv("OTEL_NO_AUTO_INIT"):
+            initialize_telemetry_standard(
+                service_name="ta-bot",
+                service_type="fastapi",
+                enable_fastapi=True,
+                enable_mongodb=True,
+                enable_mysql=True,
+            )
 
         # 2. Setup logging (may call basicConfig)
         # Note: logging is already configured at module level
 
         # 3. Attach OTel logging handler LAST (after logging is configured)
-        attach_logging_handler()
+        if attach_logging_handler:
+            attach_logging_handler()
 
         # 4. Setup graceful shutdown signal handlers for telemetry flushing
-        # This ensures telemetry data is flushed on SIGTERM/SIGINT (e.g., pod termination)
-        otel_init.setup_signal_handlers()
+        if setup_signal_handlers:
+            setup_signal_handlers()
 
         # Initialize components
         config = Config()

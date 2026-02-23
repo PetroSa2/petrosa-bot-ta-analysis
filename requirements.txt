@@ -1,7 +1,6 @@
 
 aiohttp>=3.8.0
-fastapi>=0.104.0
-httpx>=0.26.0
+fastapi>=0.110.0
 
 # Technical Analysis
 # ta-lib>=0.4.0  # Commented out - requires system dependencies
@@ -11,6 +10,7 @@ git+https://github.com/xgboosted/pandas-ta-classic.git
 
 # Health checks
 healthcheck>=1.3.0
+httpx>=0.26.0
 motor>=3.3.2
 nats-py>=2.0.0
 numpy>=2.0.0
@@ -48,6 +48,7 @@ pymysql>=1.1.0
 # Environment and configuration
 python-dotenv>=1.0.0
 requests>=2.31.0
+starlette>=0.37.0
 
 # Logging and monitoring
 structlog>=23.0.0
