@@ -163,6 +163,13 @@ class RSIExtremeReversalStrategy(BaseStrategy):
         extremeness = max(0, (25 - rsi_value) / 25) if rsi_value < 25 else 0
 
         # Prepare metadata for signal
+        recent_support = df["low"].tail(5).min()
+        if pd.isna(recent_support) or recent_support <= 0:
+            recent_support = close * 0.99
+        stop_loss = min(recent_support, close * 0.99)
+        risk_amount = max(close - stop_loss, close * 0.005)
+        take_profit = close + (risk_amount * 2.0)
+
         signal_metadata = {
             "rsi_2": rsi_value,
             "rsi_momentum": rsi_momentum,
@@ -170,6 +177,8 @@ class RSIExtremeReversalStrategy(BaseStrategy):
             "extremeness": extremeness,
             "threshold_type": "extreme" if extremely_oversold else "oversold",
             "strategy_origin": f"quantzed_screening_{'08' if extremely_oversold else '09'}",
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
         }
 
         signal = Signal(
@@ -179,6 +188,8 @@ class RSIExtremeReversalStrategy(BaseStrategy):
             confidence=final_confidence,
             current_price=close,
             price=close,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             timeframe=timeframe,
             metadata=signal_metadata,
         )
