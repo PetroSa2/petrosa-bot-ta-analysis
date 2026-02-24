@@ -73,7 +73,9 @@ class TestShutdownTelemetry:
             shutdown_telemetry()
             assert True
         except Exception:
-            assert False, "shutdown_telemetry should handle missing providers gracefully"
+            assert False, (
+                "shutdown_telemetry should handle missing providers gracefully"
+            )
 
     def test_shutdown_telemetry_handles_exceptions(self):
         """Test that shutdown_telemetry handles provider exceptions gracefully."""

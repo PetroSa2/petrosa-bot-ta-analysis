@@ -24,6 +24,7 @@ from ta_bot.api.response_models import (
     ConfigValidationRequest,
     CrossServiceConflict,
     ParameterSchemaItem,
+    RollbackRequest,
     StrategyListItem,
     ValidationError,
     ValidationResponse,
