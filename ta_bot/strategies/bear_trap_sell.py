@@ -13,12 +13,14 @@ This is the opposite of the Bear Trap Buy - here bulls get trapped
 in long positions as the price fails to sustain above key resistance.
 """
 
+import logging
 from datetime import datetime
-from typing import Optional
+from typing import Any
 
 import pandas as pd
 
-from ta_bot.models.signal import Signal, SignalStrength, SignalType
+from ta_bot.core.indicators import Indicators
+from ta_bot.models.signal import Signal, SignalStrength
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 
@@ -36,8 +38,10 @@ class BearTrapSellStrategy(BaseStrategy):
         self.name = "Bear Trap Sell"
         self.description = "Identifies bearish reversals when price fails to sustain above EMA80 after brief breakout"
         self.min_periods = 125  # Need sufficient data for EMA80
+        self.logger = logging.getLogger(__name__)
+        self.indicators = Indicators()
 
-    def analyze(self, data: pd.DataFrame, metadata: dict) -> Signal | None:
+    def analyze(self, data: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """
         Analyze market data for bear trap sell opportunities.
 
@@ -107,12 +111,14 @@ class BearTrapSellStrategy(BaseStrategy):
                 confidence = min(0.85, 0.60 + (failure_ratio * 0.25))
 
                 return Signal(
+                    strategy_id="bear_trap_sell",
                     symbol=symbol,
-                    strategy=self.name,
-                    signal_type=SignalType.SELL,
-                    strength=SignalStrength.MEDIUM,
+                    action="sell",
                     confidence=confidence,
-                    entry_price=entry_price,
+                    current_price=current_close,
+                    price=entry_price,
+                    timeframe=metadata.get("timeframe", "15m"),
+                    strength=SignalStrength.MEDIUM,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
                     timestamp=datetime.utcnow().isoformat(),

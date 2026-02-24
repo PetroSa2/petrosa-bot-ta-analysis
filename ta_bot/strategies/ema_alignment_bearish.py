@@ -12,12 +12,14 @@ This is the bearish counterpart to the EMA Alignment Bullish strategy,
 confirming strong downtrend conditions with multiple EMA confirmations.
 """
 
+import logging
 from datetime import datetime
-from typing import Optional
+from typing import Any
 
 import pandas as pd
 
-from ta_bot.models.signal import Signal, SignalStrength, SignalType
+from ta_bot.core.indicators import Indicators
+from ta_bot.models.signal import Signal, SignalStrength
 from ta_bot.strategies.base_strategy import BaseStrategy
 
 
@@ -36,8 +38,10 @@ class EMAAlignmentBearishStrategy(BaseStrategy):
             "Confirms strong bearish trends using EMA alignment and slope analysis"
         )
         self.min_periods = 125  # Need sufficient data for EMA80
+        self.logger = logging.getLogger(__name__)
+        self.indicators = Indicators()
 
-    def analyze(self, data: pd.DataFrame, metadata: dict) -> Signal | None:
+    def analyze(self, data: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """
         Analyze market data for bearish EMA alignment opportunities.
 
@@ -118,12 +122,14 @@ class EMAAlignmentBearishStrategy(BaseStrategy):
                 )
 
                 return Signal(
+                    strategy_id="ema_alignment_bearish",
                     symbol=symbol,
-                    strategy=self.name,
-                    signal_type=SignalType.SELL,
-                    strength=SignalStrength.HIGH,  # Strong trend confirmation
+                    action="sell",
                     confidence=confidence,
-                    entry_price=entry_price,
+                    current_price=current_close,
+                    price=entry_price,
+                    timeframe=metadata.get("timeframe", "15m"),
+                    strength=SignalStrength.STRONG,  # Strong trend confirmation
                     stop_loss=stop_loss,
                     take_profit=take_profit,
                     timestamp=datetime.utcnow().isoformat(),
