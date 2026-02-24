@@ -1,0 +1,703 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.6, pytest-7.4.4, pluggy-1.6.0 -- /usr/local/bin/python3
+cachedir: .pytest_cache
+metadata: {'Python': '3.11.6', 'Platform': 'macOS-15.3.1-arm64-arm-64bit', 'Packages': {'pytest': '7.4.4', 'pluggy': '1.6.0'}, 'Plugins': {'asyncio': '0.23.5', 'timeout': '2.1.0', 'langsmith': '0.6.2', 'metadata': '3.1.1', 'cov': '4.1.0', 'mock': '3.12.0', 'anyio': '3.7.1', 'typeguard': '2.13.3', 'xdist': '3.5.0'}, 'AWS_REGION': 'us-west-2'}
+rootdir: /Users/yurisa2/petrosa/petrosa-bot-ta-analysis
+configfile: pytest.ini
+plugins: asyncio-0.23.5, timeout-2.1.0, langsmith-0.6.2, metadata-3.1.1, cov-4.1.0, mock-3.12.0, anyio-3.7.1, typeguard-2.13.3, xdist-3.5.0
+asyncio: mode=Mode.STRICT
+collecting ... collected 466 items
+
+tests/test_app_config_manager.py::TestAppConfigManager::test_start PASSED [  0%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_stop PASSED [  0%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_get_config_from_cache PASSED [  0%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_get_config_from_data_manager PASSED [  0%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_get_config_from_mongodb PASSED [  1%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_get_config_defaults PASSED [  1%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_set_config_validation_only PASSED [  1%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_set_config_invalid PASSED [  1%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_set_config_success PASSED [  1%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_refresh_cache PASSED [  2%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_get_audit_trail PASSED [  2%]
+tests/test_app_config_manager.py::TestAppConfigManager::test_cache_expiration PASSED [  2%]
+tests/test_app_config_models.py::TestAppConfig::test_app_config_creation_with_all_fields PASSED [  2%]
+tests/test_app_config_models.py::TestAppConfig::test_app_config_creation_minimal PASSED [  3%]
+tests/test_app_config_models.py::TestAppConfig::test_app_config_defaults PASSED [  3%]
+tests/test_app_config_models.py::TestAppConfig::test_app_config_json_schema_extra PASSED [  3%]
+tests/test_app_config_models.py::TestAppConfig::test_app_config_with_metadata PASSED [  3%]
+tests/test_app_config_models.py::TestAppConfigAudit::test_app_config_audit_create_action PASSED [  3%]
+tests/test_app_config_models.py::TestAppConfigAudit::test_app_config_audit_update_action PASSED [  4%]
+tests/test_app_config_models.py::TestAppConfigAudit::test_app_config_audit_delete_action PASSED [  4%]
+tests/test_app_config_models.py::TestAppConfigAudit::test_app_config_audit_defaults PASSED [  4%]
+tests/test_app_config_models.py::TestAppConfigAudit::test_app_config_audit_with_metadata PASSED [  4%]
+tests/test_app_config_models.py::TestAppConfigAudit::test_app_config_audit_json_schema_extra PASSED [  4%]
+tests/test_app_config_validator.py::TestValidateAppConfig::test_validate_valid_config PASSED [  5%]
+tests/test_app_config_validator.py::TestValidateAppConfig::test_validate_config_with_invalid_strategy PASSED [  5%]
+tests/test_app_config_validator.py::TestValidateAppConfig::test_validate_config_with_multiple_errors PASSED [  5%]
+tests/test_app_config_validator.py::TestValidateEnabledStrategies::test_validate_valid_strategies PASSED [  5%]
+tests/test_app_config_validator.py::TestValidateEnabledStrategies::test_validate_empty_strategies PASSED [  6%]
+tests/test_app_config_validator.py::TestValidateEnabledStrategies::test_validate_non_list_strategies PASSED [  6%]
+tests/test_app_config_validator.py::TestValidateEnabledStrategies::test_validate_duplicate_strategies PASSED [  6%]
+tests/test_app_config_validator.py::TestValidateEnabledStrategies::test_validate_unknown_strategy PASSED [  6%]
+tests/test_app_config_validator.py::TestValidateEnabledStrategies::test_validate_non_string_strategy PASSED [  6%]
+tests/test_app_config_validator.py::TestValidateSymbols::test_validate_valid_symbols PASSED [  7%]
+tests/test_app_config_validator.py::TestValidateSymbols::test_validate_empty_symbols PASSED [  7%]
+tests/test_app_config_validator.py::TestValidateSymbols::test_validate_non_list_symbols PASSED [  7%]
+tests/test_app_config_validator.py::TestValidateSymbols::test_validate_lowercase_symbol PASSED [  7%]
+tests/test_app_config_validator.py::TestValidateSymbols::test_validate_invalid_format_symbol PASSED [  7%]
+tests/test_app_config_validator.py::TestValidateSymbols::test_validate_duplicate_symbols PASSED [  8%]
+tests/test_app_config_validator.py::TestValidateSymbols::test_validate_non_string_symbol PASSED [  8%]
+tests/test_app_config_validator.py::TestValidateCandlePeriods::test_validate_valid_periods PASSED [  8%]
+tests/test_app_config_validator.py::TestValidateCandlePeriods::test_validate_empty_periods PASSED [  8%]
+tests/test_app_config_validator.py::TestValidateCandlePeriods::test_validate_non_list_periods PASSED [  9%]
+tests/test_app_config_validator.py::TestValidateCandlePeriods::test_validate_invalid_period PASSED [  9%]
+tests/test_app_config_validator.py::TestValidateCandlePeriods::test_validate_duplicate_periods PASSED [  9%]
+tests/test_app_config_validator.py::TestValidateCandlePeriods::test_validate_non_string_period PASSED [  9%]
+tests/test_app_config_validator.py::TestValidateConfidenceThresholds::test_validate_valid_thresholds PASSED [  9%]
+tests/test_app_config_validator.py::TestValidateConfidenceThresholds::test_validate_min_out_of_range PASSED [ 10%]
+tests/test_app_config_validator.py::TestValidateConfidenceThresholds::test_validate_max_out_of_range PASSED [ 10%]
+tests/test_app_config_validator.py::TestValidateConfidenceThresholds::test_validate_min_greater_than_max PASSED [ 10%]
+tests/test_app_config_validator.py::TestValidateConfidenceThresholds::test_validate_min_equals_max PASSED [ 10%]
+tests/test_app_config_validator.py::TestValidateConfidenceThresholds::test_validate_non_numeric_values PASSED [ 10%]
+tests/test_app_config_validator.py::TestValidateConfidenceThresholds::test_validate_none_values PASSED [ 11%]
+tests/test_app_config_validator.py::TestValidateMaxPositions::test_validate_valid_max_positions PASSED [ 11%]
+tests/test_app_config_validator.py::TestValidateMaxPositions::test_validate_zero_max_positions PASSED [ 11%]
+tests/test_app_config_validator.py::TestValidateMaxPositions::test_validate_negative_max_positions PASSED [ 11%]
+tests/test_app_config_validator.py::TestValidateMaxPositions::test_validate_non_integer_max_positions PASSED [ 12%]
+tests/test_app_config_validator.py::TestValidatePositionSizes::test_validate_valid_position_sizes PASSED [ 12%]
+tests/test_app_config_validator.py::TestValidatePositionSizes::test_validate_empty_position_sizes PASSED [ 12%]
+tests/test_app_config_validator.py::TestValidatePositionSizes::test_validate_non_list_position_sizes PASSED [ 12%]
+tests/test_app_config_validator.py::TestValidatePositionSizes::test_validate_non_integer_position_size PASSED [ 12%]
+tests/test_app_config_validator.py::TestValidatePositionSizes::test_validate_negative_position_size PASSED [ 13%]
+tests/test_app_config_validator.py::TestValidatePositionSizes::test_validate_zero_position_size PASSED [ 13%]
+tests/test_basic.py::test_import_ta_bot PASSED                           [ 13%]
+tests/test_basic.py::test_import_signal_engine PASSED                    [ 13%]
+tests/test_basic.py::test_import_strategies PASSED                       [ 13%]
+tests/test_basic.py::test_import_models PASSED                           [ 14%]
+tests/test_basic.py::test_basic_functionality PASSED                     [ 14%]
+tests/test_bump_version.py::TestBumpVersionScript::test_script_exists PASSED [ 14%]
+tests/test_bump_version.py::TestBumpVersionScript::test_script_is_executable PASSED [ 14%]
+tests/test_bump_version.py::TestBumpVersionScript::test_patch_version_bump PASSED [ 15%]
+tests/test_bump_version.py::TestBumpVersionScript::test_minor_version_bump PASSED [ 15%]
+tests/test_bump_version.py::TestBumpVersionScript::test_major_version_bump PASSED [ 15%]
+tests/test_bump_version.py::TestBumpVersionScript::test_version_without_v_prefix PASSED [ 15%]
+tests/test_bump_version.py::TestBumpVersionScript::test_initial_version_patch PASSED [ 15%]
+tests/test_bump_version.py::TestBumpVersionScript::test_initial_version_minor PASSED [ 16%]
+tests/test_bump_version.py::TestBumpVersionScript::test_initial_version_major PASSED [ 16%]
+tests/test_bump_version.py::TestBumpVersionScript::test_large_version_numbers PASSED [ 16%]
+tests/test_bump_version.py::TestBumpVersionScript::test_major_bump_resets_minor_and_patch PASSED [ 16%]
+tests/test_bump_version.py::TestBumpVersionScript::test_minor_bump_resets_patch PASSED [ 16%]
+tests/test_bump_version.py::TestBumpVersionScript::test_missing_arguments_fails PASSED [ 17%]
+tests/test_bump_version.py::TestBumpVersionScript::test_missing_bump_type_fails PASSED [ 17%]
+tests/test_bump_version.py::TestBumpVersionScript::test_invalid_bump_type_fails PASSED [ 17%]
+tests/test_bump_version.py::TestBumpVersionScript::test_invalid_version_format_fails PASSED [ 17%]
+tests/test_bump_version.py::TestBumpVersionScript::test_invalid_version_with_letters_fails PASSED [ 18%]
+tests/test_bump_version.py::TestBumpVersionScript::test_version_with_extra_parts_fails PASSED [ 18%]
+tests/test_bump_version.py::TestVersionBumpEdgeCases::test_zero_version_components PASSED [ 18%]
+tests/test_bump_version.py::TestVersionBumpEdgeCases::test_single_digit_versions PASSED [ 18%]
+tests/test_bump_version.py::TestVersionBumpEdgeCases::test_double_digit_versions PASSED [ 18%]
+tests/test_bump_version.py::TestVersionBumpEdgeCases::test_triple_digit_versions PASSED [ 19%]
+tests/test_bump_version.py::TestVersionBumpEdgeCases::test_case_sensitive_bump_type PASSED [ 19%]
+tests/test_bump_version.py::TestVersionBumpIntegration::test_sequential_patch_bumps PASSED [ 19%]
+tests/test_bump_version.py::TestVersionBumpIntegration::test_mixed_bump_sequence PASSED [ 19%]
+tests/test_bump_version.py::TestVersionBumpIntegration::test_output_format_consistency PASSED [ 19%]
+tests/test_bump_version.py::TestVersionBumpIntegration::test_stderr_logging PASSED [ 20%]
+tests/test_bump_version.py::TestVersionBumpDocumentation::test_script_has_usage_message PASSED [ 20%]
+tests/test_bump_version.py::TestVersionBumpDocumentation::test_script_shows_valid_bump_types PASSED [ 20%]
+tests/test_bump_version.py::TestVersionBumpDocumentation::test_script_shows_example_format PASSED [ 20%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_exists PASSED [ 21%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_is_executable PASSED [ 21%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_syntax_is_valid PASSED [ 21%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_has_shebang PASSED [ 21%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_has_required_functions PASSED [ 21%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_handles_division_by_zero PASSED [ 22%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_has_url_encoding PASSED [ 22%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_has_error_handling PASSED [ 22%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_outputs_to_file PASSED [ 22%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScript::test_script_checks_prometheus_availability PASSED [ 22%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScriptDocumentation::test_script_has_usage_comments PASSED [ 23%]
+tests/test_collect_baseline_metrics.py::TestCollectBaselineMetricsScriptDocumentation::test_script_describes_output_format PASSED [ 23%]
+tests/test_confidence.py::TestConfidenceCalculator::test_momentum_pulse_confidence_basic PASSED [ 23%]
+tests/test_confidence.py::TestConfidenceCalculator::test_momentum_pulse_confidence_low_rsi_only PASSED [ 23%]
+tests/test_confidence.py::TestConfidenceCalculator::test_calculate_confidence_with_known_strategy PASSED [ 24%]
+tests/test_confidence.py::TestConfidenceCalculator::test_calculate_confidence_unknown_strategy_returns_default PASSED [ 24%]
+tests/test_confidence.py::TestConfidenceTracing::test_momentum_pulse_confidence_creates_span PASSED [ 24%]
+tests/test_confidence.py::TestConfidenceTracing::test_calculate_confidence_creates_span PASSED [ 24%]
+tests/test_confidence.py::TestConfidenceTracing::test_calculate_confidence_unknown_strategy_sets_default_flag PASSED [ 24%]
+tests/test_config.py::TestConfig::test_config_default_values PASSED      [ 25%]
+tests/test_config.py::TestConfig::test_config_enabled_strategies PASSED  [ 25%]
+tests/test_config.py::TestConfig::test_config_candle_periods PASSED      [ 25%]
+tests/test_config.py::TestConfig::test_config_symbols PASSED             [ 25%]
+tests/test_config.py::TestConfig::test_config_position_sizes PASSED      [ 25%]
+tests/test_config.py::TestConfig::test_config_nats_url_from_env SKIPPED  [ 26%]
+tests/test_config.py::TestConfig::test_config_api_endpoint_from_env SKIPPED [ 26%]
+tests/test_config.py::TestConfig::test_config_custom_values PASSED       [ 26%]
+tests/test_config.py::TestConfig::test_config_dataclass_behavior PASSED  [ 26%]
+tests/test_config.py::TestConfig::test_config_repr PASSED                [ 27%]
+tests/test_config_backward_compatibility.py::TestBackwardCompatibility::test_strategy_without_config_manager PASSED [ 27%]
+tests/test_config_backward_compatibility.py::TestBackwardCompatibility::test_multiple_strategies_without_config PASSED [ 27%]
+tests/test_config_backward_compatibility.py::TestBackwardCompatibility::test_signal_format_unchanged PASSED [ 27%]
+tests/test_config_backward_compatibility.py::TestBackwardCompatibility::test_signal_validation_unchanged PASSED [ 27%]
+tests/test_config_backward_compatibility.py::TestConfigSystemIntegration::test_strategy_with_config_in_metadata PASSED [ 28%]
+tests/test_config_backward_compatibility.py::TestConfigSystemIntegration::test_strategy_uses_custom_parameters PASSED [ 28%]
+tests/test_config_backward_compatibility.py::TestConfigSystemIntegration::test_config_metadata_added_to_signal PASSED [ 28%]
+tests/test_config_backward_compatibility.py::TestSignalGenerationRobustness::test_signal_generation_with_insufficient_data PASSED [ 28%]
+tests/test_config_backward_compatibility.py::TestSignalGenerationRobustness::test_signal_generation_with_empty_dataframe PASSED [ 28%]
+tests/test_config_backward_compatibility.py::TestSignalGenerationRobustness::test_signal_generation_with_missing_metadata PASSED [ 29%]
+tests/test_config_backward_compatibility.py::TestSignalGenerationRobustness::test_signal_to_dict_works PASSED [ 29%]
+tests/test_config_backward_compatibility.py::TestPerformanceRegression::test_signal_generation_performance PASSED [ 29%]
+tests/test_config_backward_compatibility.py::TestPerformanceRegression::test_config_loading_performance PASSED [ 29%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_initialization PASSED [ 30%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_initialization_with_defaults PASSED [ 30%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_connect_success PASSED [ 30%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_connect_unhealthy PASSED [ 30%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_disconnect PASSED [ 30%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_fetch_candles_success PASSED [ 31%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_fetch_candles_no_data PASSED [ 31%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_fetch_candles_missing_columns PASSED [ 31%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_fetch_candles_api_error PASSED [ 31%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_persist_signal_success PASSED [ 31%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_persist_signal_failure PASSED [ 32%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_persist_signals_batch_success PASSED [ 32%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_persist_signals_batch_empty PASSED [ 32%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_persist_signals_batch_partial_success PASSED [ 32%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_health_check_success PASSED [ 33%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_health_check_failure PASSED [ 33%]
+tests/test_data_manager_client_service.py::TestDataManagerClient::test_async_context_manager PASSED [ 33%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_initialization PASSED [ 33%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_initialization_with_custom_params PASSED [ 33%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_connect_success PASSED [ 34%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_connect_failure PASSED [ 34%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_disconnect PASSED [ 34%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_get_app_config_success PASSED [ 34%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_get_app_config_failure PASSED [ 34%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_set_app_config_success PASSED [ 35%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_set_app_config_failure PASSED [ 35%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_get_strategy_config_success PASSED [ 35%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_get_strategy_config_with_symbol PASSED [ 35%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_set_strategy_config_success PASSED [ 36%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_set_strategy_config_failure PASSED [ 36%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_list_strategy_configs_success FAILED [ 36%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_list_strategy_configs_failure FAILED [ 36%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_delete_strategy_config_success PASSED [ 36%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_delete_strategy_config_with_symbol PASSED [ 37%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_get_default_config PASSED [ 37%]
+tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_get_default_strategy_config PASSED [ 37%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_health_check_healthy PASSED [ 37%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_health_check_with_nats_publisher PASSED [ 37%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_health_check_with_disconnected_nats PASSED [ 38%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_readiness_check PASSED [ 38%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_liveness_check PASSED [ 38%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_metrics_endpoint PASSED [ 38%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_root_endpoint PASSED [ 39%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_get_uptime_formatting PASSED [ 39%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_get_health_status_legacy PASSED [ 39%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_get_readiness_status_legacy PASSED [ 39%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_get_liveness_status_legacy PASSED [ 39%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_health_with_environment_variables PASSED [ 40%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_health_with_nats_disabled PASSED [ 40%]
+tests/test_health_endpoints.py::TestHealthEndpoints::test_readiness_with_nats_disabled PASSED [ 40%]
+tests/test_indicators.py::TestIndicators::test_rsi_basic PASSED          [ 40%]
+tests/test_indicators.py::TestIndicators::test_rsi_insufficient_data PASSED [ 40%]
+tests/test_indicators.py::TestIndicators::test_macd_basic PASSED         [ 41%]
+tests/test_indicators.py::TestIndicators::test_macd_insufficient_data PASSED [ 41%]
+tests/test_indicators.py::TestIndicators::test_adx_basic PASSED          [ 41%]
+tests/test_indicators.py::TestIndicators::test_adx_insufficient_data PASSED [ 41%]
+tests/test_indicators.py::TestIndicators::test_bollinger_bands_basic PASSED [ 42%]
+tests/test_indicators.py::TestIndicators::test_bollinger_bands_insufficient_data PASSED [ 42%]
+tests/test_indicators.py::TestIndicators::test_ema_basic PASSED          [ 42%]
+tests/test_indicators.py::TestIndicators::test_ema_insufficient_data PASSED [ 42%]
+tests/test_indicators.py::TestIndicators::test_atr_basic PASSED          [ 42%]
+tests/test_indicators.py::TestIndicators::test_vwap_basic PASSED         [ 43%]
+tests/test_indicators.py::TestIndicators::test_volume_sma_basic PASSED   [ 43%]
+tests/test_indicators.py::TestIndicators::test_price_range_basic PASSED  [ 43%]
+tests/test_indicators.py::TestIndicators::test_candle_wick_ratio_basic PASSED [ 43%]
+tests/test_indicators.py::TestIndicators::test_is_inside_candle_basic PASSED [ 43%]
+tests/test_indicators.py::TestIndicators::test_is_outside_candle_basic PASSED [ 44%]
+tests/test_indicators.py::TestIndicators::test_indicators_with_nan_values PASSED [ 44%]
+tests/test_indicators.py::TestIndicators::test_indicators_with_constant_values PASSED [ 44%]
+tests/test_indicators.py::TestIndicators::test_indicators_with_extreme_values PASSED [ 44%]
+tests/test_indicators.py::TestIndicatorTracing::test_rsi_creates_span_with_attributes PASSED [ 45%]
+tests/test_indicators.py::TestIndicatorTracing::test_macd_creates_span_with_attributes PASSED [ 45%]
+tests/test_indicators.py::TestIndicatorTracing::test_adx_creates_span_with_attributes PASSED [ 45%]
+tests/test_indicators.py::TestIndicatorTracing::test_bollinger_bands_creates_span_with_attributes PASSED [ 45%]
+tests/test_indicators.py::TestIndicatorTracing::test_indicators_span_on_insufficient_data PASSED [ 45%]
+tests/test_leader_election_tracing.py::TestLeaderElectionTracing::test_try_become_leader_creates_span PASSED [ 46%]
+tests/test_leader_election_tracing.py::TestLeaderElectionTracing::test_try_become_leader_not_elected PASSED [ 46%]
+tests/test_leader_election_tracing.py::TestLeaderElectionTracing::test_act_as_leader_creates_span_per_heartbeat PASSED [ 46%]
+tests/test_leader_election_tracing.py::TestLeaderElectionTracing::test_try_become_leader_error_sets_span_attribute PASSED [ 46%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_insufficient_data PASSED [ 46%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_missing_indicators PASSED [ 47%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_no_macd_cross PASSED [ 47%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_rsi_out_of_range PASSED [ 47%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_adx_too_low PASSED [ 47%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_price_below_emas PASSED [ 48%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_successful_signal PASSED [ 48%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_with_volume_data PASSED [ 48%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_edge_case_rsi_50 PASSED [ 48%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_edge_case_rsi_65 PASSED [ 48%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_edge_case_adx_20 PASSED [ 49%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_missing_macd_signal PASSED [ 49%]
+tests/test_momentum_pulse.py::TestMomentumPulseStrategy::test_analyze_missing_volume PASSED [ 49%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_initialization_with_uri PASSED [ 49%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_initialization_with_individual_params PASSED [ 50%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_initialization_with_data_manager PASSED [ 50%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_connect_with_data_manager PASSED [ 50%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_connect_with_mysql PASSED [ 50%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_disconnect_with_data_manager PASSED [ 50%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_disconnect_with_mysql PASSED [ 51%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_fetch_candles_with_data_manager PASSED [ 51%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_fetch_candles_with_mysql PASSED [ 51%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_fetch_candles_unsupported_period PASSED [ 51%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_persist_signal_with_data_manager PASSED [ 51%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_persist_signal_with_mysql PASSED [ 52%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_persist_signals_batch_with_data_manager PASSED [ 52%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_persist_signals_batch_with_mysql PASSED [ 52%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_persist_signals_batch_empty PASSED [ 52%]
+tests/test_mysql_client_service.py::TestMySQLClient::test_deep_sanitize_for_json PASSED [ 53%]
+tests/test_nats_listener_service.py::TestNATSListener::test_initialization PASSED [ 53%]
+tests/test_nats_listener_service.py::TestNATSListener::test_start PASSED [ 53%]
+tests/test_nats_listener_service.py::TestNATSListener::test_subscribe_to_candle_data PASSED [ 53%]
+tests/test_nats_listener_service.py::TestNATSListener::test_handle_candle_message_not_leader PASSED [ 53%]
+tests/test_nats_listener_service.py::TestNATSListener::test_handle_candle_message_invalid_format PASSED [ 54%]
+tests/test_nats_listener_service.py::TestNATSListener::test_handle_candle_message_unsupported_symbol PASSED [ 54%]
+tests/test_nats_listener_service.py::TestNATSListener::test_handle_candle_message_unsupported_timeframe PASSED [ 54%]
+tests/test_nats_listener_service.py::TestNATSListener::test_handle_candle_message_no_candle_data PASSED [ 54%]
+tests/test_nats_listener_service.py::TestNATSListener::test_handle_candle_message_with_signals PASSED [ 54%]
+tests/test_nats_listener_service.py::TestNATSListener::test_handle_candle_message_with_runtime_config PASSED [ 55%]
+tests/test_nats_listener_service.py::TestNATSListener::test_stop PASSED  [ 55%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_inject_context_adds_trace_headers_field FAILED [ 55%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_inject_context_contains_traceparent FAILED [ 55%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_inject_context_modifies_in_place FAILED [ 56%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_extract_context_from_injected_message PASSED [ 56%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_extract_context_from_empty_message FAILED [ 56%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_has_trace_context_returns_true_after_injection FAILED [ 56%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_has_trace_context_returns_false_for_empty_message PASSED [ 56%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_remove_trace_context_removes_headers FAILED [ 57%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorEdgeCases::test_inject_context_with_existing_trace_headers FAILED [ 57%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorEdgeCases::test_extract_context_with_malformed_headers PASSED [ 57%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorEdgeCases::test_has_trace_context_with_empty_headers_dict PASSED [ 57%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorEdgeCases::test_remove_trace_context_on_message_without_headers PASSED [ 57%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorIntegration::test_end_to_end_trace_propagation FAILED [ 58%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorIntegration::test_multi_service_trace_propagation FAILED [ 58%]
+tests/test_nats_trace_propagator.py::TestNATSTracePropagatorIntegration::test_message_without_trace_creates_new_trace FAILED [ 58%]
+tests/test_nats_trace_propagator.py::TestConvenienceFunctions::test_convenience_functions_exist PASSED [ 58%]
+tests/test_nats_trace_propagator.py::TestConvenienceFunctions::test_convenience_functions_work FAILED [ 59%]
+tests/test_otel_graceful_shutdown.py::TestFlushTelemetry::test_flush_telemetry_with_all_providers FAILED [ 59%]
+tests/test_otel_graceful_shutdown.py::TestFlushTelemetry::test_flush_telemetry_without_providers PASSED [ 59%]
+tests/test_otel_graceful_shutdown.py::TestShutdownTelemetry::test_shutdown_telemetry_with_all_providers SKIPPED [ 59%]
+tests/test_otel_graceful_shutdown.py::TestShutdownTelemetry::test_shutdown_telemetry_handles_exceptions SKIPPED [ 59%]
+tests/test_otel_graceful_shutdown.py::TestSetupSignalHandlers::test_setup_signal_handlers_registers_handlers PASSED [ 60%]
+tests/test_publisher_service.py::TestSignalPublisher::test_start_without_rest PASSED [ 60%]
+tests/test_publisher_service.py::TestSignalPublisher::test_start_with_rest PASSED [ 60%]
+tests/test_publisher_service.py::TestSignalPublisher::test_start_nats_connection_failure PASSED [ 60%]
+tests/test_publisher_service.py::TestSignalPublisher::test_stop PASSED   [ 60%]
+tests/test_publisher_service.py::TestSignalPublisher::test_publish_signals_empty PASSED [ 61%]
+tests/test_publisher_service.py::TestSignalPublisher::test_publish_signals_via_nats PASSED [ 61%]
+tests/test_publisher_service.py::TestSignalPublisher::test_publish_signals_nats_not_connected PASSED [ 61%]
+tests/test_publisher_service.py::TestSignalPublisher::test_publish_via_rest_session_not_started PASSED [ 61%]
+tests/test_publisher_service.py::TestSignalPublisher::test_publish_via_rest_success PASSED [ 62%]
+tests/test_publisher_service.py::TestSignalPublisher::test_publish_via_rest_failure PASSED [ 62%]
+tests/test_publisher_service.py::TestSignalPublisher::test_publish_via_nats_error PASSED [ 62%]
+tests/test_publisher_service.py::TestSignalPublisher::test_publish_batch PASSED [ 62%]
+tests/test_publisher_service.py::TestSignalPublisher::test_publish_batch_empty PASSED [ 62%]
+tests/test_publisher_service.py::TestSignalPublisher::test_signal_to_dict_conversion PASSED [ 63%]
+tests/test_rollback.py::test_strategy_config_rollback PASSED             [ 63%]
+tests/test_rollback.py::test_app_config_rollback PASSED                  [ 63%]
+tests/test_signal_engine.py::TestSignalEngine::test_signal_engine_initialization PASSED [ 63%]
+tests/test_signal_engine.py::TestSignalEngine::test_analyze_candles_with_sufficient_data PASSED [ 63%]
+tests/test_signal_engine.py::TestSignalEngine::test_analyze_candles_insufficient_data PASSED [ 64%]
+tests/test_signal_engine.py::TestSignalEngine::test_indicators_calculation PASSED [ 64%]
+tests/test_signal_engine.py::TestSignalEngine::test_strategy_execution PASSED [ 64%]
+tests/test_signal_engine.py::TestSignalModel::test_signal_creation PASSED [ 64%]
+tests/test_signal_engine.py::TestSignalModel::test_signal_validation PASSED [ 65%]
+tests/test_signal_engine.py::TestSignalModel::test_signal_to_dict PASSED [ 65%]
+tests/test_signal_engine.py::TestConfidenceCalculator::test_momentum_pulse_confidence PASSED [ 65%]
+tests/test_signal_engine.py::TestConfidenceCalculator::test_confidence_bounds PASSED [ 65%]
+tests/test_signal_engine.py::TestSignalEngineTracing::test_analyze_candles_creates_span PASSED [ 65%]
+tests/test_signal_engine.py::TestSignalEngineTracing::test_run_strategy_creates_span PASSED [ 66%]
+tests/test_signal_flow.py::test_signal_generation PASSED                 [ 66%]
+tests/test_signal_flow.py::test_signal_serialization PASSED              [ 66%]
+tests/test_signal_flow.py::test_signal_validation PASSED                 [ 66%]
+tests/test_signal_flow.py::test_trade_engine_compatibility PASSED        [ 66%]
+tests/test_signal_format.py::test_signal_creation PASSED                 [ 67%]
+tests/test_signal_format.py::test_signal_serialization PASSED            [ 67%]
+tests/test_signal_format.py::test_signal_validation PASSED               [ 67%]
+tests/test_signal_format.py::test_trade_engine_compatibility PASSED      [ 67%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_base_strategy_initialization PASSED [ 68%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_analyze_method_not_implemented PASSED [ 68%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_get_current_values_with_pandas_series PASSED [ 68%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_get_current_values_with_empty_series PASSED [ 68%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_get_current_values_with_list_indicators PASSED [ 68%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_get_current_values_with_scalar_indicators PASSED [ 69%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_get_previous_values PASSED [ 69%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_check_cross_above PASSED [ 69%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_check_cross_below PASSED [ 69%]
+tests/unit/test_strategies_comprehensive.py::TestBaseStrategy::test_check_between PASSED [ 69%]
+tests/unit/test_strategies_comprehensive.py::TestMomentumPulseStrategy::test_momentum_pulse_initialization PASSED [ 70%]
+tests/unit/test_strategies_comprehensive.py::TestMomentumPulseStrategy::test_momentum_pulse_analyze_with_valid_data PASSED [ 70%]
+tests/unit/test_strategies_comprehensive.py::TestMomentumPulseStrategy::test_momentum_pulse_buy_signal_conditions PASSED [ 70%]
+tests/unit/test_strategies_comprehensive.py::TestMomentumPulseStrategy::test_momentum_pulse_sell_signal_conditions PASSED [ 70%]
+tests/unit/test_strategies_comprehensive.py::TestMomentumPulseStrategy::test_momentum_pulse_insufficient_data PASSED [ 71%]
+tests/unit/test_strategies_comprehensive.py::TestMomentumPulseStrategy::test_momentum_pulse_edge_case_flat_market PASSED [ 71%]
+tests/unit/test_strategies_comprehensive.py::TestBandFadeReversalStrategy::test_band_fade_reversal_initialization PASSED [ 71%]
+tests/unit/test_strategies_comprehensive.py::TestBandFadeReversalStrategy::test_band_fade_reversal_analyze PASSED [ 71%]
+tests/unit/test_strategies_comprehensive.py::TestBandFadeReversalStrategy::test_band_fade_reversal_buy_at_lower_band PASSED [ 71%]
+tests/unit/test_strategies_comprehensive.py::TestBandFadeReversalStrategy::test_band_fade_reversal_sell_at_upper_band PASSED [ 72%]
+tests/unit/test_strategies_comprehensive.py::TestEMAPullbackContinuationStrategy::test_ema_pullback_continuation_initialization PASSED [ 72%]
+tests/unit/test_strategies_comprehensive.py::TestEMAPullbackContinuationStrategy::test_ema_pullback_continuation_uptrend_pullback PASSED [ 72%]
+tests/unit/test_strategies_comprehensive.py::TestEMAPullbackContinuationStrategy::test_ema_pullback_continuation_downtrend_pullback PASSED [ 72%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyPerformance::test_strategy_execution_time PASSED [ 72%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyPerformance::test_strategy_memory_usage PASSED [ 73%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyEdgeCases::test_strategy_with_nan_values PASSED [ 73%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyEdgeCases::test_strategy_with_empty_dataframe PASSED [ 73%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyEdgeCases::test_strategy_with_single_row PASSED [ 73%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyEdgeCases::test_strategy_with_extreme_values PASSED [ 74%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyEdgeCases::test_strategy_with_missing_columns[open] PASSED [ 74%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyEdgeCases::test_strategy_with_missing_columns[high] PASSED [ 74%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyEdgeCases::test_strategy_with_missing_columns[low] PASSED [ 74%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyEdgeCases::test_strategy_with_missing_columns[close] PASSED [ 74%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyEdgeCases::test_strategy_with_missing_columns[volume] PASSED [ 75%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyMetadata::test_signal_metadata_completeness PASSED [ 75%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyMetadata::test_signal_price_accuracy PASSED [ 75%]
+tests/unit/test_strategies_comprehensive.py::TestStrategyMetadata::test_confidence_score_range PASSED [ 75%]
+tests/unit/test_strategy_layer_coverage.py::test_strategy_registry_has_expected_coverage PASSED [ 75%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[BandFadeReversalStrategy] PASSED [ 76%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[DivergenceTrapStrategy] PASSED [ 76%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[GoldenTrendSyncStrategy] PASSED [ 76%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[IchimokuCloudMomentumStrategy] PASSED [ 76%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[LiquidityGrabReversalStrategy] PASSED [ 77%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[MeanReversionScalperStrategy] PASSED [ 77%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[MomentumPulseStrategy] PASSED [ 77%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[MultiTimeframeTrendContinuationStrategy] PASSED [ 77%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[OrderFlowImbalanceStrategy] PASSED [ 77%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[RangeBreakPopStrategy] PASSED [ 78%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[VolumeSurgeBreakoutStrategy] PASSED [ 78%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[BollingerBreakoutSignalsStrategy] PASSED [ 78%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[BollingerSqueezeAlertStrategy] PASSED [ 78%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[EMAAlignmentBullishStrategy] PASSED [ 78%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[EMAMomentumReversalStrategy] PASSED [ 79%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[EMAPullbackContinuationStrategy] PASSED [ 79%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[FoxTrapReversalStrategy] PASSED [ 79%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[HammerReversalPatternStrategy] PASSED [ 79%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[InsideBarBreakoutStrategy] PASSED [ 80%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[RSIExtremeReversalStrategy] PASSED [ 80%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[BearTrapBuyStrategy] PASSED [ 80%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[BearTrapSellStrategy] PASSED [ 80%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[DojiReversalStrategy] PASSED [ 80%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[EMAAlignmentBearishStrategy] PASSED [ 81%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[EMASlopeReversalSellStrategy] PASSED [ 81%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[InsideBarSellStrategy] PASSED [ 81%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[MinerviniTrendTemplateStrategy] PASSED [ 81%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_smoke_runs_with_standardized_mock_ohlcv[ShootingStarReversalStrategy] PASSED [ 81%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[BandFadeReversalStrategy] PASSED [ 82%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[DivergenceTrapStrategy] PASSED [ 82%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[GoldenTrendSyncStrategy] PASSED [ 82%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[IchimokuCloudMomentumStrategy] PASSED [ 82%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[LiquidityGrabReversalStrategy] PASSED [ 83%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[MeanReversionScalperStrategy] PASSED [ 83%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[MomentumPulseStrategy] PASSED [ 83%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[MultiTimeframeTrendContinuationStrategy] PASSED [ 83%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[OrderFlowImbalanceStrategy] PASSED [ 83%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[RangeBreakPopStrategy] PASSED [ 84%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[VolumeSurgeBreakoutStrategy] PASSED [ 84%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[BollingerBreakoutSignalsStrategy] PASSED [ 84%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[BollingerSqueezeAlertStrategy] PASSED [ 84%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[EMAAlignmentBullishStrategy] PASSED [ 84%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[EMAMomentumReversalStrategy] PASSED [ 85%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[EMAPullbackContinuationStrategy] PASSED [ 85%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[FoxTrapReversalStrategy] PASSED [ 85%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[HammerReversalPatternStrategy] PASSED [ 85%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[InsideBarBreakoutStrategy] PASSED [ 86%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[RSIExtremeReversalStrategy] PASSED [ 86%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[BearTrapBuyStrategy] PASSED [ 86%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[BearTrapSellStrategy] PASSED [ 86%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[DojiReversalStrategy] PASSED [ 86%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[EMAAlignmentBearishStrategy] PASSED [ 87%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[EMASlopeReversalSellStrategy] PASSED [ 87%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[InsideBarSellStrategy] PASSED [ 87%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[MinerviniTrendTemplateStrategy] PASSED [ 87%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_insufficient_data[ShootingStarReversalStrategy] PASSED [ 87%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[BandFadeReversalStrategy] PASSED [ 88%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[DivergenceTrapStrategy] PASSED [ 88%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[GoldenTrendSyncStrategy] PASSED [ 88%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[IchimokuCloudMomentumStrategy] PASSED [ 88%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[LiquidityGrabReversalStrategy] PASSED [ 89%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[MeanReversionScalperStrategy] PASSED [ 89%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[MomentumPulseStrategy] PASSED [ 89%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[MultiTimeframeTrendContinuationStrategy] PASSED [ 89%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[OrderFlowImbalanceStrategy] PASSED [ 89%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[RangeBreakPopStrategy] PASSED [ 90%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[VolumeSurgeBreakoutStrategy] PASSED [ 90%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[BollingerBreakoutSignalsStrategy] PASSED [ 90%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[BollingerSqueezeAlertStrategy] PASSED [ 90%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[EMAAlignmentBullishStrategy] PASSED [ 90%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[EMAMomentumReversalStrategy] PASSED [ 91%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[EMAPullbackContinuationStrategy] PASSED [ 91%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[FoxTrapReversalStrategy] PASSED [ 91%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[HammerReversalPatternStrategy] PASSED [ 91%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[InsideBarBreakoutStrategy] PASSED [ 92%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[RSIExtremeReversalStrategy] PASSED [ 92%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[BearTrapBuyStrategy] PASSED [ 92%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[BearTrapSellStrategy] PASSED [ 92%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[DojiReversalStrategy] PASSED [ 92%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[EMAAlignmentBearishStrategy] PASSED [ 93%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[EMASlopeReversalSellStrategy] PASSED [ 93%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[InsideBarSellStrategy] PASSED [ 93%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[MinerviniTrendTemplateStrategy] PASSED [ 93%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_missing_indicators_scenario[ShootingStarReversalStrategy] PASSED [ 93%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[BandFadeReversalStrategy] PASSED [ 94%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[DivergenceTrapStrategy] PASSED [ 94%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[GoldenTrendSyncStrategy] PASSED [ 94%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[IchimokuCloudMomentumStrategy] PASSED [ 94%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[LiquidityGrabReversalStrategy] PASSED [ 95%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[MeanReversionScalperStrategy] PASSED [ 95%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[MomentumPulseStrategy] PASSED [ 95%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[MultiTimeframeTrendContinuationStrategy] PASSED [ 95%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[OrderFlowImbalanceStrategy] PASSED [ 95%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[RangeBreakPopStrategy] PASSED [ 96%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[VolumeSurgeBreakoutStrategy] PASSED [ 96%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[BollingerBreakoutSignalsStrategy] PASSED [ 96%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[BollingerSqueezeAlertStrategy] PASSED [ 96%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[EMAAlignmentBullishStrategy] PASSED [ 96%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[EMAMomentumReversalStrategy] PASSED [ 97%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[EMAPullbackContinuationStrategy] PASSED [ 97%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[FoxTrapReversalStrategy] PASSED [ 97%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[HammerReversalPatternStrategy] PASSED [ 97%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[InsideBarBreakoutStrategy] PASSED [ 98%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[RSIExtremeReversalStrategy] PASSED [ 98%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[BearTrapBuyStrategy] PASSED [ 98%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[BearTrapSellStrategy] PASSED [ 98%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[DojiReversalStrategy] PASSED [ 98%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[EMAAlignmentBearishStrategy] PASSED [ 99%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[EMASlopeReversalSellStrategy] PASSED [ 99%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[InsideBarSellStrategy] PASSED [ 99%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[MinerviniTrendTemplateStrategy] PASSED [ 99%]
+tests/unit/test_strategy_layer_coverage.py::test_each_strategy_handles_extreme_volatility_and_signal_consistency[ShootingStarReversalStrategy] PASSED [100%]
+
+=================================== FAILURES ===================================
+________ TestDataManagerConfigClient.test_list_strategy_configs_success ________
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/unittest/mock.py:939: in assert_called_with
+    raise AssertionError(_error_message()) from cause
+E   AssertionError: expected call not found.
+E   Expected: get('http://petrosa-data-manager:8000/config/strategies')
+E   Actual: get('http://petrosa-data-manager:8000/api/v1/config/strategies')
+
+During handling of the above exception, another exception occurred:
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/unittest/mock.py:951: in assert_called_once_with
+    return self.assert_called_with(*args, **kwargs)
+E   AssertionError: expected call not found.
+E   Expected: get('http://petrosa-data-manager:8000/config/strategies')
+E   Actual: get('http://petrosa-data-manager:8000/api/v1/config/strategies')
+E
+E   pytest introspection follows:
+E
+E   Args:
+E   assert ('http://petr.../strategies',) == ('http://petr.../strategies',)
+E     At index 0 diff: 'http://petrosa-data-manager:8000/api/v1/config/strategies' != 'http://petrosa-data-manager:8000/config/strategies'
+E     Full diff:
+E     - ('http://petrosa-data-manager:8000/config/strategies',)
+E     + ('http://petrosa-data-manager:8000/api/v1/config/strategies',)
+E     ?                                    +++++++
+
+During handling of the above exception, another exception occurred:
+tests/test_data_manager_config_client.py:340: in test_list_strategy_configs_success
+    client._session.get.assert_called_once_with(
+E   AssertionError: expected call not found.
+E   Expected: get('http://petrosa-data-manager:8000/config/strategies')
+E   Actual: get('http://petrosa-data-manager:8000/api/v1/config/strategies')
+E
+E   pytest introspection follows:
+E
+E   Args:
+E   assert ('http://petr.../strategies',) == ('http://petr.../strategies',)
+E     At index 0 diff: 'http://petrosa-data-manager:8000/api/v1/config/strategies' != 'http://petrosa-data-manager:8000/config/strategies'
+E     Full diff:
+E     - ('http://petrosa-data-manager:8000/config/strategies',)
+E     + ('http://petrosa-data-manager:8000/api/v1/config/strategies',)
+E     ?                                    +++++++
+________ TestDataManagerConfigClient.test_list_strategy_configs_failure ________
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/unittest/mock.py:939: in assert_called_with
+    raise AssertionError(_error_message()) from cause
+E   AssertionError: expected call not found.
+E   Expected: get('http://petrosa-data-manager:8000/config/strategies')
+E   Actual: get('http://petrosa-data-manager:8000/api/v1/config/strategies')
+
+During handling of the above exception, another exception occurred:
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/unittest/mock.py:951: in assert_called_once_with
+    return self.assert_called_with(*args, **kwargs)
+E   AssertionError: expected call not found.
+E   Expected: get('http://petrosa-data-manager:8000/config/strategies')
+E   Actual: get('http://petrosa-data-manager:8000/api/v1/config/strategies')
+E
+E   pytest introspection follows:
+E
+E   Args:
+E   assert ('http://petr.../strategies',) == ('http://petr.../strategies',)
+E     At index 0 diff: 'http://petrosa-data-manager:8000/api/v1/config/strategies' != 'http://petrosa-data-manager:8000/config/strategies'
+E     Full diff:
+E     - ('http://petrosa-data-manager:8000/config/strategies',)
+E     + ('http://petrosa-data-manager:8000/api/v1/config/strategies',)
+E     ?                                    +++++++
+
+During handling of the above exception, another exception occurred:
+tests/test_data_manager_config_client.py:355: in test_list_strategy_configs_failure
+    client._session.get.assert_called_once_with(
+E   AssertionError: expected call not found.
+E   Expected: get('http://petrosa-data-manager:8000/config/strategies')
+E   Actual: get('http://petrosa-data-manager:8000/api/v1/config/strategies')
+E
+E   pytest introspection follows:
+E
+E   Args:
+E   assert ('http://petr.../strategies',) == ('http://petr.../strategies',)
+E     At index 0 diff: 'http://petrosa-data-manager:8000/api/v1/config/strategies' != 'http://petrosa-data-manager:8000/config/strategies'
+E     Full diff:
+E     - ('http://petrosa-data-manager:8000/config/strategies',)
+E     + ('http://petrosa-data-manager:8000/api/v1/config/strategies',)
+E     ?                                    +++++++
+------------------------------ Captured log call -------------------------------
+ERROR    ta_bot.services.data_manager_config_client:data_manager_config_client.py:250 Error listing strategy configs: Connection refused
+__ TestNATSTracePropagatorBasic.test_inject_context_adds_trace_headers_field ___
+tests/test_nats_trace_propagator.py:48: in test_inject_context_adds_trace_headers_field
+    assert NATSTracePropagator.TRACE_HEADERS_FIELD in result
+E   AssertionError: assert '_otel_trace_headers' in {'action': 'BUY', 'symbol': 'BTCUSDT'}
+E    +  where '_otel_trace_headers' = NATSTracePropagator.TRACE_HEADERS_FIELD
+____ TestNATSTracePropagatorBasic.test_inject_context_contains_traceparent _____
+tests/test_nats_trace_propagator.py:63: in test_inject_context_contains_traceparent
+    trace_headers = result[NATSTracePropagator.TRACE_HEADERS_FIELD]
+E   KeyError: '_otel_trace_headers'
+______ TestNATSTracePropagatorBasic.test_inject_context_modifies_in_place ______
+tests/test_nats_trace_propagator.py:87: in test_inject_context_modifies_in_place
+    assert NATSTracePropagator.TRACE_HEADERS_FIELD in message
+E   AssertionError: assert '_otel_trace_headers' in {'symbol': 'BTCUSDT'}
+E    +  where '_otel_trace_headers' = NATSTracePropagator.TRACE_HEADERS_FIELD
+_____ TestNATSTracePropagatorBasic.test_extract_context_from_empty_message _____
+tests/test_nats_trace_propagator.py:126: in test_extract_context_from_empty_message
+    assert span.get_span_context().span_id != 0
+E   assert 0 != 0
+E    +  where 0 = SpanContext(trace_id=0x00000000000000000000000000000000, span_id=0x0000000000000000, trace_flags=0x00, trace_state=[], is_remote=False).span_id
+E    +    where SpanContext(trace_id=0x00000000000000000000000000000000, span_id=0x0000000000000000, trace_flags=0x00, trace_state=[], is_remote=False) = <bound method NonRecordingSpan.get_span_context of NonRecordingSpan(SpanContext(trace_id=0x00000000000000000000000000000000, span_id=0x0000000000000000, trace_flags=0x00, trace_state=[], is_remote=False))>()
+E    +      where <bound method NonRecordingSpan.get_span_context of NonRecordingSpan(SpanContext(trace_id=0x00000000000000000000000000000000, span_id=0x0000000000000000, trace_flags=0x00, trace_state=[], is_remote=False))> = NonRecordingSpan(SpanContext(trace_id=0x00000000000000000000000000000000, span_id=0x0000000000000000, trace_flags=0x00, trace_state=[], is_remote=False)).get_span_context
+_ TestNATSTracePropagatorBasic.test_has_trace_context_returns_true_after_injection _
+tests/test_nats_trace_propagator.py:140: in test_has_trace_context_returns_true_after_injection
+    assert NATSTracePropagator.has_trace_context(message) is True
+E   AssertionError: assert False is True
+E    +  where False = <function NATSTracePropagator.has_trace_context at 0x12212cea0>({'symbol': 'BTCUSDT'})
+E    +    where <function NATSTracePropagator.has_trace_context at 0x12212cea0> = NATSTracePropagator.has_trace_context
+____ TestNATSTracePropagatorBasic.test_remove_trace_context_removes_headers ____
+tests/test_nats_trace_propagator.py:156: in test_remove_trace_context_removes_headers
+    assert NATSTracePropagator.has_trace_context(message) is True
+E   AssertionError: assert False is True
+E    +  where False = <function NATSTracePropagator.has_trace_context at 0x12212cea0>({'symbol': 'BTCUSDT'})
+E    +    where <function NATSTracePropagator.has_trace_context at 0x12212cea0> = NATSTracePropagator.has_trace_context
+_ TestNATSTracePropagatorEdgeCases.test_inject_context_with_existing_trace_headers _
+tests/test_nats_trace_propagator.py:188: in test_inject_context_with_existing_trace_headers
+    assert trace_headers["traceparent"] != "fake-trace-id"
+E   AssertionError: assert 'fake-trace-id' != 'fake-trace-id'
+_____ TestNATSTracePropagatorIntegration.test_end_to_end_trace_propagation _____
+tests/test_nats_trace_propagator.py:261: in test_end_to_end_trace_propagation
+    assert len(spans) >= 1  # At least one span captured
+E   assert 0 >= 1
+E    +  where 0 = len(())
+___ TestNATSTracePropagatorIntegration.test_multi_service_trace_propagation ____
+tests/test_nats_trace_propagator.py:299: in test_multi_service_trace_propagation
+    assert len(spans) == 3
+E   assert 0 == 3
+E    +  where 0 = len(())
+_ TestNATSTracePropagatorIntegration.test_message_without_trace_creates_new_trace _
+tests/test_nats_trace_propagator.py:320: in test_message_without_trace_creates_new_trace
+    assert trace_id_1 != trace_id_2
+E   assert 0 != 0
+___________ TestConvenienceFunctions.test_convenience_functions_work ___________
+tests/test_nats_trace_propagator.py:356: in test_convenience_functions_work
+    assert has_trace_context(message) is True
+E   AssertionError: assert False is True
+E    +  where False = <function NATSTracePropagator.has_trace_context at 0x12212cea0>({'symbol': 'BTCUSDT'})
+__________ TestFlushTelemetry.test_flush_telemetry_with_all_providers __________
+tests/test_otel_graceful_shutdown.py:35: in test_flush_telemetry_with_all_providers
+    with patch(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/unittest/mock.py:1427: in __enter__
+    self.target = self.getter()
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pkgutil.py:715: in resolve_name
+    result = getattr(result, p)
+E   AttributeError: module 'petrosa_otel' has no attribute 'trace'
+
+---------- coverage: platform darwin, python 3.11.6-final-0 ----------
+Name                                                      Stmts   Miss  Cover   Missing
+---------------------------------------------------------------------------------------
+ta_bot/__init__.py                                            0      0   100%
+ta_bot/config.py                                             32      0   100%
+ta_bot/core/__init__.py                                       0      0   100%
+ta_bot/core/confidence.py                                    77      8    90%   56, 62, 77, 82, 94, 99, 111, 116
+ta_bot/core/indicators.py                                   112      0   100%
+ta_bot/core/signal_engine.py                                182     30    84%   159, 161, 167-169, 225-228, 233-236, 386, 401-404, 409-424, 428-435, 446, 450, 454-455, 462-463
+ta_bot/health.py                                            111     30    73%   24-25, 64-65, 71, 179-181, 200, 205-206, 213-224, 231-232, 236-243, 247-248
+ta_bot/main.py                                               79     79     0%   2-203
+ta_bot/models/__init__.py                                     0      0   100%
+ta_bot/models/app_config.py                                  31      0   100%
+ta_bot/models/signal.py                                     101      5    95%   69, 105, 126, 135, 160
+ta_bot/services/__init__.py                                   0      0   100%
+ta_bot/services/app_config_manager.py                       180     41    77%   142-143, 158-164, 253-254, 258-278, 281, 297-298, 367-375, 388, 412-414, 477, 479, 488, 495
+ta_bot/services/app_config_validator.py                     131      1    99%   324
+ta_bot/services/data_manager_client.py                      108     17    84%   85-86, 148-162, 197-201, 238-240
+ta_bot/services/data_manager_config_client.py               172     70    59%   74-75, 85, 95-96, 119, 141-142, 162, 174-179, 203, 221-222, 236, 246-247, 255-266, 272-284, 293-307, 318-333, 349, 361-366
+ta_bot/services/leader_election.py                           68     14    79%   36-41, 44-45, 109-111, 115-121, 125
+ta_bot/services/mysql_client.py                             191     55    71%   23, 76, 86-88, 92-94, 132-134, 153-154, 160-162, 194-197, 211-218, 228, 242-243, 249-251, 266-269, 302-309, 317-318, 328-330, 348-354, 394-401
+ta_bot/services/nats_listener.py                            125     15    88%   84-86, 150-151, 228, 244-249, 259, 269-270
+ta_bot/services/publisher.py                                110     20    82%   80, 119-120, 179, 188-212, 217-218, 236-237
+ta_bot/strategies/__init__.py                                29      0   100%
+ta_bot/strategies/band_fade_reversal.py                      43      4    91%   75, 80-85
+ta_bot/strategies/base_strategy.py                           88     16    82%   81, 106-110, 115-119, 139, 157-161, 166-170, 189-190
+ta_bot/strategies/bear_trap_buy.py                           43     20    53%   61-100, 126
+ta_bot/strategies/bear_trap_sell.py                          48     24    50%   64-113, 139
+ta_bot/strategies/bollinger_breakout_signals.py              54      1    98%   67
+ta_bot/strategies/bollinger_squeeze_alert.py                 41      2    95%   65, 74
+ta_bot/strategies/divergence_trap.py                         58     19    67%   51, 63, 76-81, 91, 96-103, 128-136
+ta_bot/strategies/doji_reversal.py                           56     28    50%   67, 77-142
+ta_bot/strategies/ema_alignment_bearish.py                   50     26    48%   64-124, 155
+ta_bot/strategies/ema_alignment_bullish.py                   53     16    70%   62, 105-109, 123-156
+ta_bot/strategies/ema_momentum_reversal.py                   95     14    85%   70, 74, 83, 104-106, 127-129, 153, 186, 194-196
+ta_bot/strategies/ema_pullback_continuation.py               80     12    85%   75, 79, 106-108, 128-130, 147-151, 160
+ta_bot/strategies/ema_slope_reversal_sell.py                 47     13    72%   64, 88-134
+ta_bot/strategies/fox_trap_reversal.py                      106     19    82%   74, 101-103, 120-124, 151-153, 170-174, 186-191, 205, 219
+ta_bot/strategies/golden_trend_sync.py                       39     10    74%   59-65, 89-98
+ta_bot/strategies/hammer_reversal_pattern.py                 48     24    50%   62, 79-161
+ta_bot/strategies/ichimoku_cloud_momentum.py                 71      5    93%   46, 51, 84, 163-164
+ta_bot/strategies/inside_bar_breakout.py                     76     49    36%   67, 71, 90-200
+ta_bot/strategies/inside_bar_sell.py                         45     22    51%   61-103, 131
+ta_bot/strategies/liquidity_grab_reversal.py                 93     43    54%   56-104, 120, 153, 160, 193, 201-226
+ta_bot/strategies/mean_reversion_scalper.py                  55      9    84%   63, 72-74, 81, 90, 96, 107-108
+ta_bot/strategies/minervini_trend_template.py                56     17    70%   75, 109, 142-198
+ta_bot/strategies/momentum_pulse.py                          34      1    97%   78
+ta_bot/strategies/multi_timeframe_trend_continuation.py      93     73    22%   58-119, 137-153, 157-197, 201-205, 211-226
+ta_bot/strategies/order_flow_imbalance.py                   115     45    61%   58-116, 132, 155-156, 169, 192-193, 206, 218, 230, 240-244, 248-255
+ta_bot/strategies/range_break_pop.py                         40      1    98%   72
+ta_bot/strategies/rsi_extreme_reversal.py                    85      8    91%   81-82, 113, 128-130, 150, 168
+ta_bot/strategies/shooting_star_reversal.py                  47     18    62%   71, 81-126
+ta_bot/strategies/volume_surge_breakout.py                   71     51    28%   61-128, 143-158, 162-175
+ta_bot/utils/__init__.py                                      2      0   100%
+ta_bot/utils/logger.py                                       22     22     0%   8-134
+ta_bot/utils/nats_trace_propagator.py                        29      1    97%   67
+---------------------------------------------------------------------------------------
+TOTAL                                                      3722    998    73%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+
+Required test coverage of 40% reached. Total coverage: 73.19%
+=========================== short test summary info ============================
+FAILED tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_list_strategy_configs_success
+FAILED tests/test_data_manager_config_client.py::TestDataManagerConfigClient::test_list_strategy_configs_failure
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_inject_context_adds_trace_headers_field
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_inject_context_contains_traceparent
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_inject_context_modifies_in_place
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_extract_context_from_empty_message
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_has_trace_context_returns_true_after_injection
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorBasic::test_remove_trace_context_removes_headers
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorEdgeCases::test_inject_context_with_existing_trace_headers
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorIntegration::test_end_to_end_trace_propagation
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorIntegration::test_multi_service_trace_propagation
+FAILED tests/test_nats_trace_propagator.py::TestNATSTracePropagatorIntegration::test_message_without_trace_creates_new_trace
+FAILED tests/test_nats_trace_propagator.py::TestConvenienceFunctions::test_convenience_functions_work
+FAILED tests/test_otel_graceful_shutdown.py::TestFlushTelemetry::test_flush_telemetry_with_all_providers
+=========== 14 failed, 448 passed, 4 skipped, 26 warnings in 10.29s ============

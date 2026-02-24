@@ -37,45 +37,50 @@ class Indicators:
         df: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9
     ) -> tuple[pd.Series, pd.Series, pd.Series]:
         """Calculate MACD indicator."""
-        with tracer.start_as_current_span("calculate_macd") as span:
-            span.set_attribute("fast", fast)
-            span.set_attribute("slow", slow)
-            span.set_attribute("signal", signal)
-            span.set_attribute("data_points", len(df))
+        try:
+            with tracer.start_as_current_span("calculate_macd") as span:
+                span.set_attribute("fast", fast)
+                span.set_attribute("slow", slow)
+                span.set_attribute("signal", signal)
+                span.set_attribute("data_points", len(df))
 
-            macd_result = df.ta.macd(
-                close=df["close"], fast=fast, slow=slow, signal=signal
-            )
-            if macd_result is None or macd_result.empty:
-                # Return empty series for insufficient data
-                span.set_attribute("result", "insufficient_data")
-                empty_series = pd.Series(dtype=float)
-                return empty_series, empty_series, empty_series
+                macd_result = df.ta.macd(
+                    close=df["close"], fast=fast, slow=slow, signal=signal
+                )
+                if macd_result is None or macd_result.empty:
+                    # Return empty series for insufficient data
+                    span.set_attribute("result", "insufficient_data")
+                    empty_series = pd.Series(dtype=float)
+                    return empty_series, empty_series, empty_series
 
-            # Handle different column naming conventions between pandas-ta versions
-            macd_col = f"MACD_{fast}_{slow}_{signal}"
-            macds_col = (
-                f"MACDS_{fast}_{slow}_{signal}"
-                if f"MACDS_{fast}_{slow}_{signal}" in macd_result.columns
-                else f"MACDs_{fast}_{slow}_{signal}"
-            )
-            macdh_col = (
-                f"MACDH_{fast}_{slow}_{signal}"
-                if f"MACDH_{fast}_{slow}_{signal}" in macd_result.columns
-                else f"MACDh_{fast}_{slow}_{signal}"
-            )
+                # Handle different column naming conventions between pandas-ta versions
+                macd_col = f"MACD_{fast}_{slow}_{signal}"
+                macds_col = (
+                    f"MACDS_{fast}_{slow}_{signal}"
+                    if f"MACDS_{fast}_{slow}_{signal}" in macd_result.columns
+                    else f"MACDs_{fast}_{slow}_{signal}"
+                )
+                macdh_col = (
+                    f"MACDH_{fast}_{slow}_{signal}"
+                    if f"MACDH_{fast}_{slow}_{signal}" in macd_result.columns
+                    else f"MACDh_{fast}_{slow}_{signal}"
+                )
 
-            macd_line = macd_result[macd_col]
-            signal_line = macd_result[macds_col]
-            histogram = macd_result[macdh_col]
+                macd_line = macd_result[macd_col]
+                signal_line = macd_result[macds_col]
+                histogram = macd_result[macdh_col]
 
-            # Add result values to span
-            if not macd_line.empty:
-                span.set_attribute("macd_value", float(macd_line.iloc[-1]))
-                span.set_attribute("signal_value", float(signal_line.iloc[-1]))
-                span.set_attribute("histogram_value", float(histogram.iloc[-1]))
+                # Add result values to span
+                if not macd_line.empty:
+                    span.set_attribute("macd_value", float(macd_line.iloc[-1]))
+                    span.set_attribute("signal_value", float(signal_line.iloc[-1]))
+                    span.set_attribute("histogram_value", float(histogram.iloc[-1]))
 
-            return macd_line, signal_line, histogram
+                return macd_line, signal_line, histogram
+        except Exception as e:
+            # If there's an error in MACD calculation, return empty series
+            empty_series = pd.Series(dtype=float)
+            return empty_series, empty_series, empty_series
 
     @staticmethod
     def adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
