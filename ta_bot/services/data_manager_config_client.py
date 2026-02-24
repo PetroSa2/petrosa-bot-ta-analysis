@@ -6,7 +6,7 @@ Provides configuration management through the data management service instead of
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import aiohttp
 

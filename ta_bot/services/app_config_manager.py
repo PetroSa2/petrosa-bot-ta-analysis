@@ -12,7 +12,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.app_config import AppConfig, AppConfigAudit

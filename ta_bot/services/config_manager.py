@@ -13,7 +13,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from otel_init import get_meter
 from ta_bot.db.mongodb_client import MongoDBClient
