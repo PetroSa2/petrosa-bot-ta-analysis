@@ -5,11 +5,11 @@ Signal data model for trading signals.
 import math
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Literal, Optional
 
 
-class SignalType(str, Enum):
+class SignalType(StrEnum):
     """Signal types for trading actions"""
 
     BUY = "buy"
@@ -18,7 +18,7 @@ class SignalType(str, Enum):
     CLOSE = "close"
 
 
-class SignalStrength(str, Enum):
+class SignalStrength(StrEnum):
     """Signal strength levels"""
 
     WEAK = "weak"
@@ -27,7 +27,7 @@ class SignalStrength(str, Enum):
     EXTREME = "extreme"
 
 
-class StrategyMode(str, Enum):
+class StrategyMode(StrEnum):
     """Strategy processing modes"""
 
     DETERMINISTIC = "deterministic"
@@ -35,7 +35,7 @@ class StrategyMode(str, Enum):
     LLM_REASONING = "llm_reasoning"
 
 
-class OrderType(str, Enum):
+class OrderType(StrEnum):
     """Supported order types"""
 
     MARKET = "market"
@@ -46,7 +46,7 @@ class OrderType(str, Enum):
     TAKE_PROFIT_LIMIT = "take_profit_limit"
 
 
-class TimeInForce(str, Enum):
+class TimeInForce(StrEnum):
     """Order time in force options"""
 
     GTC = "GTC"

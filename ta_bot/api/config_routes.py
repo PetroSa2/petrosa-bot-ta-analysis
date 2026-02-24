@@ -8,7 +8,7 @@ for LLM agent integration.
 
 import logging
 import os
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Path, Query, status
@@ -24,6 +24,7 @@ from ta_bot.api.response_models import (
     ConfigValidationRequest,
     CrossServiceConflict,
     ParameterSchemaItem,
+    RollbackRequest,
     StrategyListItem,
     ValidationError,
     ValidationResponse,
@@ -725,6 +726,74 @@ async def delete_global_config(
         )
 
 
+@router.post(
+    "/strategies/{strategy_id}/rollback",
+    response_model=APIResponse[ConfigResponse],
+    summary="Rollback strategy configuration",
+    description="""
+    **For LLM Agents**: Revert strategy configuration to a previous version.
+
+    Use this if a recent configuration change caused issues or poor performance.
+    You can either rollback to the immediately preceding version or specify a target version.
+
+    **Example Request**: `POST /api/v1/strategies/rsi_extreme_reversal/rollback`
+    ```json
+    {
+      "changed_by": "llm_agent_v1",
+      "reason": "Previous configuration had better win rate",
+      "target_version": 2
+    }
+    ```
+    """,
+    tags=["configuration"],
+)
+async def rollback_strategy_config(
+    request: RollbackRequest,
+    strategy_id: str = Path(..., description="Strategy identifier"),
+    symbol: str = Query(None, description="Optional symbol filter"),
+):
+    """Rollback strategy configuration."""
+    try:
+        manager = get_config_manager()
+        success, config, errors = await manager.rollback_config(
+            strategy_id=strategy_id,
+            changed_by=request.changed_by,
+            symbol=symbol.upper() if symbol else None,
+            target_version=request.target_version,
+            reason=request.reason,
+        )
+
+        if not success:
+            return APIResponse(
+                success=False,
+                error={
+                    "code": "ROLLBACK_FAILED",
+                    "message": "Failed to rollback configuration",
+                    "details": {"errors": errors},
+                },
+            )
+
+        return APIResponse(
+            success=True,
+            data=ConfigResponse(
+                strategy_id=strategy_id,
+                symbol=symbol,
+                parameters=config.parameters if config else {},
+                version=config.version if config else 0,
+                source="data_manager",
+                is_override=bool(symbol),
+                created_at="",  # Manager will fill this on next get
+                updated_at="",
+            ),
+            metadata={"action": "rollback", "strategy_id": strategy_id},
+        )
+    except Exception as e:
+        logger.error(f"Error rolling back config for {strategy_id}: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
 @router.get(
     "/strategies/{strategy_id}/audit",
     response_model=APIResponse[list[AuditTrailItem]],
@@ -1292,6 +1361,70 @@ async def update_application_config(request: AppConfigUpdateRequest):
         )
 
 
+@router.post(
+    "/config/application/rollback",
+    response_model=APIResponse[AppConfigResponse],
+    summary="Rollback application configuration",
+    description="""
+    **For LLM Agents**: Revert application configuration to a previous version.
+
+    Reverts global settings like enabled strategies, symbols, and risk parameters.
+
+    **Example Request**: `POST /api/v1/config/application/rollback`
+    ```json
+    {
+      "changed_by": "admin",
+      "reason": "Accidental deletion of active symbols",
+      "target_version": 5
+    }
+    ```
+    """,
+    tags=["application-config"],
+)
+async def rollback_application_config(request: RollbackRequest):
+    """Rollback application configuration."""
+    try:
+        manager = get_app_config_manager()
+        success, config, errors = await manager.rollback_config(
+            changed_by=request.changed_by,
+            target_version=request.target_version,
+            reason=request.reason,
+        )
+
+        if not success:
+            return APIResponse(
+                success=False,
+                error={
+                    "code": "ROLLBACK_FAILED",
+                    "message": "Failed to rollback application configuration",
+                    "details": {"errors": errors},
+                },
+            )
+
+        return APIResponse(
+            success=True,
+            data=AppConfigResponse(
+                enabled_strategies=config.enabled_strategies,
+                symbols=config.symbols,
+                candle_periods=config.candle_periods,
+                min_confidence=config.min_confidence,
+                max_confidence=config.max_confidence,
+                max_positions=config.max_positions,
+                position_sizes=config.position_sizes,
+                version=config.version,
+                source="data_manager",
+                created_at="",
+                updated_at="",
+            ),
+            metadata={"action": "rollback", "scope": "application"},
+        )
+    except Exception as e:
+        logger.error(f"Error rolling back application config: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
 @router.get(
     "/config/application/audit",
     response_model=APIResponse[list[AppAuditTrailItem]],
@@ -1413,10 +1546,12 @@ async def refresh_app_cache():
 
 # Service URLs for cross-service conflict detection
 SERVICE_URLS = {
-    "tradeengine": os.getenv("TRADEENGINE_URL", "http://petrosa-tradeengine:8080"),
-    "data-manager": os.getenv("DATA_MANAGER_URL", "http://petrosa-data-manager:8080"),
+    "tradeengine": os.getenv(
+        "TRADEENGINE_URL", "http://petrosa-tradeengine-service:80"
+    ),
+    "data-manager": os.getenv("DATA_MANAGER_URL", "http://petrosa-data-manager:80"),
     "realtime-strategies": os.getenv(
-        "REALTIME_STRATEGIES_URL", "http://petrosa-realtime-strategies:8080"
+        "REALTIME_STRATEGIES_URL", "http://petrosa-realtime-strategies:80"
     ),
 }
 

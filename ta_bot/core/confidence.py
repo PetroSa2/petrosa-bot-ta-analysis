@@ -5,8 +5,7 @@ Confidence calculation module for trading signals.
 from typing import Any
 
 import pandas as pd
-
-from otel_init import get_tracer
+from petrosa_otel import get_tracer
 
 # Get tracer for manual spans
 tracer = get_tracer("ta_bot.core.confidence")

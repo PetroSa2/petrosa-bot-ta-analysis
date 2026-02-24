@@ -13,9 +13,10 @@ import asyncio
 import logging
 import time
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
-from otel_init import get_meter
+from petrosa_otel import get_meter
+
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.strategy_config import StrategyConfig, StrategyConfigAudit
 from ta_bot.services.mysql_client import MySQLClient
@@ -368,6 +369,60 @@ class StrategyConfigManager:
         )
 
         return True, config, []
+
+    async def rollback_config(
+        self,
+        strategy_id: str,
+        changed_by: str,
+        symbol: str | None = None,
+        target_version: int | None = None,
+        reason: str | None = None,
+    ) -> tuple[bool, StrategyConfig | None, list[str]]:
+        """
+        Rollback strategy configuration to a previous version.
+
+        Args:
+            strategy_id: Strategy identifier
+            changed_by: Who is performing the rollback
+            symbol: Optional symbol for symbol-specific config
+            target_version: Optional specific version to rollback to
+            reason: Optional reason for the rollback
+
+        Returns:
+            Tuple of (success, config, errors)
+        """
+        # If using direct MongoDB client with Data Manager proxy
+        if self.mongodb_client and self.mongodb_client.use_data_manager:
+            try:
+                success = await self.mongodb_client.data_manager_client.rollback_strategy_config(
+                    strategy_id=strategy_id,
+                    changed_by=changed_by,
+                    symbol=symbol,
+                    target_version=target_version,
+                    reason=reason,
+                )
+                if success:
+                    # Invalidate cache
+                    cache_key = self._make_cache_key(strategy_id, symbol)
+                    self._invalidate_cache(cache_key)
+                    # Get the new config
+                    result = await self.get_config(strategy_id, symbol)
+                    config = StrategyConfig(
+                        strategy_id=strategy_id,
+                        symbol=symbol,
+                        parameters=result.get("parameters", {}),
+                        version=result.get("version", 0),
+                        created_by=changed_by,
+                    )
+                    return True, config, []
+                else:
+                    return False, None, ["Rollback failed in Data Manager service"]
+            except Exception as e:
+                logger.error(f"Failed to rollback via Data Manager: {e}")
+                return False, None, [str(e)]
+
+        # Direct database rollback not implemented (deprecated)
+        return False, None, ["Direct database rollback not implemented (deprecated)"]
 
     async def delete_config(
         self,

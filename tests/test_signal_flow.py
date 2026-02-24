@@ -57,7 +57,7 @@ def test_signal_generation():
     logger.info(f"Generated {len(signals)} signals")
 
     for i, signal in enumerate(signals):
-        logger.info(f"Signal {i+1}:")
+        logger.info(f"Signal {i + 1}:")
         logger.info(f"  Strategy ID: {signal.strategy_id}")
         logger.info(f"  Symbol: {signal.symbol}")
         logger.info(f"  Action: {signal.action}")
@@ -88,7 +88,7 @@ def test_signal_serialization():
         # Convert to JSON
         signal_json = json.dumps(signal_dict, indent=2)
 
-        logger.info(f"Signal {i+1} JSON:")
+        logger.info(f"Signal {i + 1} JSON:")
         logger.info(signal_json)
         logger.info("  ---")
 
@@ -128,12 +128,12 @@ def test_signal_validation():
     for i, signal in enumerate(signals):
         is_valid = signal.validate()
         logger.info(
-            f"Signal {i+1} validation: {'✅ Valid' if is_valid else '❌ Invalid'}"
+            f"Signal {i + 1} validation: {'✅ Valid' if is_valid else '❌ Invalid'}"
         )
 
         if not is_valid:
-            logger.error(f"Signal {i+1} failed validation")
-            assert False, f"Signal {i+1} failed validation"
+            logger.error(f"Signal {i + 1} failed validation")
+            assert False, f"Signal {i + 1} failed validation"
         else:
             assert True
 
@@ -159,15 +159,15 @@ def test_trade_engine_compatibility():
             try:
                 # Create Trade Engine signal
                 te_signal = TradeEngineSignal(**signal_dict)
-                logger.info(f"Signal {i+1}: ✅ Compatible with Trade Engine")
+                logger.info(f"Signal {i + 1}: ✅ Compatible with Trade Engine")
                 logger.info(f"  Trade Engine Signal ID: {te_signal.strategy_id}")
                 logger.info(f"  Action: {te_signal.action}")
                 logger.info(f"  Strategy Mode: {te_signal.strategy_mode}")
                 assert True
 
             except Exception as e:
-                logger.error(f"Signal {i+1}: ❌ Incompatible with Trade Engine - {e}")
-                assert False, f"Signal {i+1}: Incompatible with Trade Engine - {e}"
+                logger.error(f"Signal {i + 1}: ❌ Incompatible with Trade Engine - {e}")
+                assert False, f"Signal {i + 1}: Incompatible with Trade Engine - {e}"
 
     except ImportError:
         logger.warning("Trade Engine not available for compatibility testing")

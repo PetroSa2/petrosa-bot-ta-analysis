@@ -532,6 +532,32 @@ class AppAuditTrailItem(BaseModel):
         }
 
 
+class RollbackRequest(BaseModel):
+    """
+    Request model for configuration rollback.
+
+    Use this to revert to a previous configuration version.
+    """
+
+    target_version: int | None = Field(
+        None,
+        description="Specific version number to rollback to. If null, reverts to the immediately preceding version.",
+    )
+    changed_by: str = Field(
+        ..., description="Identifier of who is performing the rollback"
+    )
+    reason: str | None = Field(None, description="Reason for the rollback")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "target_version": 2,
+                "changed_by": "llm_agent_v1",
+                "reason": "Previous configuration had better performance",
+            }
+        }
+
+
 # -------------------------------------------------------------------------
 # Configuration Validation Models
 # -------------------------------------------------------------------------

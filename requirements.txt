@@ -24,7 +24,7 @@ opentelemetry-exporter-otlp-proto-grpc>=1.20.0
 opentelemetry-exporter-otlp-proto-http>=1.20.0
 opentelemetry-instrumentation>=0.41b0
 opentelemetry-instrumentation-aiohttp-client>=0.41b0
-opentelemetry-instrumentation-fastapi>=0.110.0
+opentelemetry-instrumentation-fastapi>=0.45b0
 opentelemetry-instrumentation-logging>=0.41b0
 
 # OpenTelemetry Manual Instrumentations
@@ -34,6 +34,9 @@ opentelemetry-sdk>=1.20.0
 
 # OpenTelemetry Semantic Conventions
 opentelemetry-semantic-conventions>=0.41b0
+
+# Petrosa OTel package
+petrosa-otel[fastapi]>=0.110.0
 # Core dependencies
 pandas>=2.0.0
 # Data Manager Client (using aiohttp directly)

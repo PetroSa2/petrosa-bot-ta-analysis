@@ -7,8 +7,8 @@ import time
 from typing import Any, Optional
 
 import pandas as pd
+from petrosa_otel import get_meter, get_tracer
 
-from otel_init import get_meter, get_tracer
 from ta_bot.core.indicators import Indicators
 from ta_bot.models.signal import Signal, SignalStrength, SignalType
 from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy

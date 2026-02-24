@@ -6,10 +6,12 @@ Main entry point for the TA bot microservice.
 
 import asyncio
 import logging
+import os
 
 # Optional OpenTelemetry imports
 try:
     from petrosa_otel import (
+        ConfigRateLimiter,
         attach_logging_handler,
         initialize_telemetry_standard,
         setup_signal_handlers,
@@ -18,12 +20,13 @@ except ImportError:
     initialize_telemetry_standard = None
     attach_logging_handler = None
     setup_signal_handlers = None
+    ConfigRateLimiter = None
 
 from ta_bot.api import config_routes
 from ta_bot.config import Config
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.db.mongodb_client import MongoDBClient
-from ta_bot.health import start_health_server
+from ta_bot.health import set_rate_limiter, start_health_server
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.nats_listener import NATSListener
 from ta_bot.services.publisher import SignalPublisher
@@ -74,6 +77,17 @@ async def main():
         mongodb_client = MongoDBClient()
         await mongodb_client.connect()
         logger.info("MongoDB client initialized")
+
+        # Initialize Rate Limiter
+        if ConfigRateLimiter:
+            rate_limiter = ConfigRateLimiter(
+                mongodb_client=mongodb_client,
+                service_name="ta-bot",
+                per_agent_limit=int(os.getenv("CONFIG_RATE_LIMIT_PER_AGENT", "10")),
+                cooldown_seconds=int(os.getenv("CONFIG_RATE_LIMIT_COOLDOWN", "300")),
+            )
+            set_rate_limiter(rate_limiter)
+            logger.info("Configuration rate limiter initialized")
 
         # Initialize Application Configuration Manager
         app_config_manager = AppConfigManager(

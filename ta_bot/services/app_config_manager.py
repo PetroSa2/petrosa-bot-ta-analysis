@@ -12,7 +12,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.app_config import AppConfig, AppConfigAudit
@@ -320,6 +320,59 @@ class AppConfigManager:
         )
 
         return True, app_config, []
+
+    async def rollback_config(
+        self,
+        changed_by: str,
+        target_version: int | None = None,
+        reason: str | None = None,
+    ) -> tuple[bool, AppConfig | None, list[str]]:
+        """
+        Rollback application configuration to a previous version.
+
+        Args:
+            changed_by: Who is performing the rollback
+            target_version: Optional specific version to rollback to
+            reason: Optional reason for the rollback
+
+        Returns:
+            Tuple of (success, config, errors)
+        """
+        # Try Data Manager Service (preferred)
+        if self.data_manager_client:
+            try:
+                success = await self.data_manager_client.rollback_app_config(
+                    changed_by=changed_by, target_version=target_version, reason=reason
+                )
+                if success:
+                    # Invalidate cache
+                    self._invalidate_cache()
+                    # Get the new config
+                    result = await self.get_config()
+                    app_config = AppConfig(
+                        enabled_strategies=result.get("enabled_strategies", []),
+                        symbols=result.get("symbols", []),
+                        candle_periods=result.get("candle_periods", []),
+                        min_confidence=result.get("min_confidence", 0.6),
+                        max_confidence=result.get("max_confidence", 0.95),
+                        max_positions=result.get("max_positions", 10),
+                        position_sizes=result.get(
+                            "position_sizes", [100, 200, 500, 1000]
+                        ),
+                        version=result.get("version", 0),
+                        created_by=changed_by,
+                    )
+                    return True, app_config, []
+                else:
+                    return False, None, ["Rollback failed in Data Manager service"]
+            except Exception as e:
+                logger.error(f"Failed to rollback via Data Manager: {e}")
+                return False, None, [str(e)]
+
+        # Fallback to direct database access (deprecated)
+        # Note: Direct MongoDB rollback is not implemented here as it's deprecated.
+        # Users should use the Data Manager service.
+        return False, None, ["Direct database rollback not implemented (deprecated)"]
 
     async def get_audit_trail(self, limit: int = 100) -> list[AppConfigAudit]:
         """
