@@ -5,6 +5,7 @@ Tests the injection and extraction of OpenTelemetry trace context into/from NATS
 """
 
 import os
+
 import pytest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -15,7 +16,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 os.environ.pop("OTEL_NO_AUTO_INIT", None)
 os.environ.pop("OTEL_SDK_DISABLED", None)
 
-from ta_bot.utils.nats_trace_propagator import NATSTracePropagator
+from ta_bot.utils.nats_trace_propagator import NATSTracePropagator  # noqa: E402
 
 
 @pytest.fixture
@@ -26,7 +27,7 @@ def setup_tracing():
     provider = TracerProvider()
     processor = SimpleSpanProcessor(exporter)
     provider.add_span_processor(processor)
-    
+
     # Always set the tracer provider for tests
     trace.set_tracer_provider(provider)
     tracer = trace.get_tracer(__name__)
@@ -264,9 +265,10 @@ class TestNATSTracePropagatorIntegration:
 
         # Force flush the exporter to ensure spans are finished
         exporter.force_flush()
-        
+
         # Give a moment for spans to be processed
         import time
+
         time.sleep(0.1)
         exporter.force_flush()
 
@@ -311,9 +313,10 @@ class TestNATSTracePropagatorIntegration:
 
         # Force flush the exporter to ensure spans are finished
         exporter.force_flush()
-        
+
         # Give a moment for spans to be processed
         import time
+
         time.sleep(0.1)
         exporter.force_flush()
 

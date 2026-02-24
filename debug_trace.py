@@ -1,13 +1,19 @@
+# ruff: noqa
 import os
-os.environ['OTEL_PYTHON_DISABLED_INSTRUMENTATIONS'] = 'true'  # Disable auto-instrumentation for clean test
 
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.propagate import extract, inject
+os.environ[
+    "OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"
+] = "true"  # Disable auto-instrumentation for clean test
 
-from ta_bot.utils.nats_trace_propagator import NATSTracePropagator
+from opentelemetry import trace  # noqa: E402
+from opentelemetry.propagate import extract, inject  # noqa: E402
+from opentelemetry.sdk.trace import TracerProvider  # noqa: E402
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor  # noqa: E402
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,  # noqa: E402
+)
+
+from ta_bot.utils.nats_trace_propagator import NATSTracePropagator  # noqa: E402
 
 # Set up tracing
 exporter = InMemorySpanExporter()

@@ -34,7 +34,8 @@ class TestFlushTelemetry:
 
         try:
             with patch(
-                "petrosa_otel.trace.get_tracer_provider", return_value=mock_tracer_provider
+                "petrosa_otel.trace.get_tracer_provider",
+                return_value=mock_tracer_provider,
             ):
                 with patch(
                     "petrosa_otel.metrics.get_meter_provider",

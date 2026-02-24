@@ -61,7 +61,7 @@ class NATSTracePropagator:
         # Inject current trace context into carrier
         # This uses the global propagator (TraceContext by default)
         inject(carrier)
-        
+
         # DEBUG: Print carrier contents
         print(f"DEBUG: Carrier contents: {carrier}")
 
