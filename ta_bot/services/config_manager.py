@@ -15,7 +15,7 @@ import time
 from datetime import datetime
 from typing import Any
 
-from otel_init import get_meter
+from petrosa_otel import get_meter
 
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.strategy_config import StrategyConfig, StrategyConfigAudit

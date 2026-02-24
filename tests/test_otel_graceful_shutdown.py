@@ -10,7 +10,7 @@ import signal
 import sys
 from unittest.mock import MagicMock, patch
 
-import otel_init
+import petrosa_otel
 
 
 class TestFlushTelemetry:
