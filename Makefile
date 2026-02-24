@@ -29,9 +29,9 @@ help: ## Show this help message
 # Setup and Installation
 setup: ## Complete environment setup with dependencies and pre-commit
 	@echo "🚀 Setting up development environment..."
-	$(PYTHON) -m python3 -m pip install --upgrade pip
-	$(PYTHON) -m python3 -m pip install -r requirements.txt
-	$(PYTHON) -m python3 -m pip install -r requirements-dev.txt
+	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -r requirements.txt
+	$(PYTHON) -m pip install -r requirements-dev.txt
 	pre-commit install
 	@echo "✅ Setup completed!"
 
