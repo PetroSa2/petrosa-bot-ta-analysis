@@ -300,7 +300,7 @@ class DataManagerConfigClient:
             return False
 
     async def rollback_strategy_config(
-        self, strategy_id: str, changed_by: str, symbol: str | None = None, 
+        self, strategy_id: str, changed_by: str, symbol: str | None = None,
         target_version: int | None = None, reason: str | None = None
     ) -> bool:
         """Rollback strategy configuration."""

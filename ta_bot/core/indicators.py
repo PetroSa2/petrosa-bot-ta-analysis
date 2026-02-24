@@ -4,7 +4,6 @@ Technical indicators wrapper using pandas-ta.
 
 import pandas as pd
 import pandas_ta_classic as ta
-
 from otel_init import get_tracer
 
 # Ensure pandas DataFrame has ta attribute

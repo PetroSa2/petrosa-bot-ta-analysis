@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Any
 
 from otel_init import get_meter
+
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.strategy_config import StrategyConfig, StrategyConfigAudit
 from ta_bot.services.mysql_client import MySQLClient

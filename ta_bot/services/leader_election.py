@@ -8,7 +8,6 @@ import time
 from typing import Optional
 
 import nats
-
 from otel_init import get_tracer
 
 # Get tracer for manual spans

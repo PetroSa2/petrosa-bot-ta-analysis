@@ -5,7 +5,6 @@ Confidence calculation module for trading signals.
 from typing import Any
 
 import pandas as pd
-
 from otel_init import get_tracer
 
 # Get tracer for manual spans
