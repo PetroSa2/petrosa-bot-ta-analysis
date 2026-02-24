@@ -6,6 +6,7 @@ Main entry point for the TA bot microservice.
 
 import asyncio
 import logging
+import os
 
 # Optional OpenTelemetry imports
 try:
