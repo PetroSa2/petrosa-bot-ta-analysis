@@ -34,6 +34,9 @@ opentelemetry-sdk>=1.20.0
 
 # OpenTelemetry Semantic Conventions
 opentelemetry-semantic-conventions>=0.41b0
+
+# Petrosa OTel package
+petrosa-otel[fastapi]>=0.110.0
 # Core dependencies
 pandas>=2.0.0
 # Data Manager Client (using aiohttp directly)

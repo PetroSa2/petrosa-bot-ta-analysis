@@ -66,10 +66,7 @@ except Exception as e:
 
 # Instrument FastAPI for OpenTelemetry traces
 try:
-    try:
     from petrosa_otel import instrument_fastapi_app
-except ImportError:
-    instrument_fastapi_app = None
 
     instrument_fastapi_app(app)
 except Exception as e:
