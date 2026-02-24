@@ -559,7 +559,7 @@ class TestIndicators:
         assert not result.empty
         assert len(result) == len(df)
         # First value should be False (no previous candle)
-        assert result.iloc[0] is False
+        assert result.iloc[0] is False or result.iloc[0] == False
 
     def test_is_outside_candle_basic(self):
         """Test basic outside candle detection."""
@@ -574,4 +574,4 @@ class TestIndicators:
         assert not result.empty
         assert len(result) == len(df)
         # First value should be False (no previous candle)
-        assert result.iloc[0] is False
+        assert result.iloc[0] is False or result.iloc[0] == False

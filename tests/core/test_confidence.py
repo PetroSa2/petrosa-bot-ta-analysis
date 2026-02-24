@@ -19,7 +19,7 @@ class TestConfidenceCalculator:
         metadata = {"rsi": 55.0, "ema21": 50025.0, "ema50": 49980.0, "ema200": 49500.0}
 
         confidence = ConfidenceCalculator.momentum_pulse_confidence(df, metadata)
-        assert confidence == 0.8  # Base 0.6 + RSI bonus 0.1 + EMA bonus 0.1
+        assert confidence == pytest.approx(0.8)  # Base 0.6 + RSI bonus 0.1 + EMA bonus 0.1
 
     def test_momentum_pulse_confidence_low_rsi_only(self):
         """Test momentum pulse confidence with low RSI only."""
@@ -51,7 +51,7 @@ class TestConfidenceCalculator:
         metadata = {"volume_ratio": 2.5, "macd_trend": 0.5}
 
         confidence = ConfidenceCalculator.range_break_pop_confidence(df, metadata)
-        assert confidence == 0.8  # Base 0.6 + volume bonus 0.1 + MACD bonus 0.1
+        assert confidence == pytest.approx(0.8)  # Base 0.6 + volume bonus 0.1 + MACD bonus 0.1
 
     def test_divergence_trap_confidence_basic(self):
         """Test basic divergence trap confidence calculation."""
@@ -69,7 +69,7 @@ class TestConfidenceCalculator:
         confidence = ConfidenceCalculator.calculate_confidence(
             "momentum_pulse", df, metadata
         )
-        assert confidence == 0.8
+        assert confidence == pytest.approx(0.8)
 
     def test_calculate_confidence_unknown_strategy_returns_default(self):
         """Test confidence calculation for unknown strategy returns default."""
@@ -113,7 +113,7 @@ class TestConfidenceTracing:
         mock_span.set_attribute.assert_any_call("ema21", 50025.0)
         mock_span.set_attribute.assert_any_call("ema50", 49980.0)
         mock_span.set_attribute.assert_any_call("ema200", 49500.0)
-        mock_span.set_attribute.assert_any_call("confidence_score", 0.8)
+        mock_span.set_attribute.assert_any_call("confidence_score", pytest.approx(0.8))
 
     def test_calculate_confidence_creates_span(self, mock_tracer):
         """Test that calculate_confidence creates span with attributes."""
@@ -127,14 +127,19 @@ class TestConfidenceTracing:
                 "momentum_pulse", df, metadata
             )
 
-        # Verify span was created
-        mock_tracer_obj.start_as_current_span.assert_called_once_with(
+        # Verify outer span was created
+        mock_tracer_obj.start_as_current_span.assert_any_call(
             "calculate_confidence"
+        )
+
+        # Verify inner span was also created
+        mock_tracer_obj.start_as_current_span.assert_any_call(
+            "calculate_momentum_pulse_confidence"
         )
 
         # Verify span attributes were set
         mock_span.set_attribute.assert_any_call("strategy_name", "momentum_pulse")
-        mock_span.set_attribute.assert_any_call("confidence_score", 0.8)
+        mock_span.set_attribute.assert_any_call("confidence_score", pytest.approx(0.8))
 
     def test_calculate_confidence_unknown_strategy_sets_default_flag(self, mock_tracer):
         """Test that calculate_confidence sets default flag for unknown strategy."""

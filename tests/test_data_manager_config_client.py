@@ -338,7 +338,7 @@ class TestDataManagerConfigClient:
 
         assert result == ["momentum_pulse", "rsi_extreme_reversal"]
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/config/strategies"
+            f"{client.base_url}/api/v1/config/strategies"
         )
 
     @pytest.mark.asyncio
@@ -353,7 +353,7 @@ class TestDataManagerConfigClient:
         result = await client.list_strategy_configs()
         assert result == []
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/config/strategies"
+            f"{client.base_url}/api/v1/config/strategies"
         )
 
     @pytest.mark.asyncio

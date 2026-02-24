@@ -16,8 +16,9 @@ A production-ready signal generation system that analyzes historical market data
 |---------|---------|-------|--------|--------|
 | **petrosa-socket-client** | Real-time WebSocket data ingestion | Binance WebSocket API | NATS: `binance.websocket.data` | Real-time Processing |
 | **petrosa-binance-data-extractor** | Historical data extraction & gap filling | Binance REST API | MySQL (klines, funding rates, trades) | Batch Processing |
-| **petrosa-bot-ta-analysis** | Technical analysis (28 strategies) | Data Manager API | NATS: `signals.trading` | **YOU ARE HERE** |
-| **petrosa-realtime-strategies** | Real-time signal generation | NATS: `binance.websocket.data` | NATS: `signals.trading` | Live Processing |
+| **petrosa-bot-ta-analysis** | Technical analysis (28 strategies) | Data Manager API | NATS: `intent.trading.*` | **YOU ARE HERE** |
+| **petrosa-cio** | Centralized orchestrator & gatekeeper | NATS: `intent.>` | NATS: `signals.trading` | Interception Layer |
+| **petrosa-realtime-strategies** | Real-time signal generation | NATS: `binance.websocket.data` | NATS: `intent.trading.*` | Live Processing |
 | **petrosa-tradeengine** | Order execution & trade management | NATS: `signals.trading` | Binance Orders API, MongoDB audit | Order Execution |
 | **petrosa_k8s** | Centralized infrastructure | Kubernetes manifests | Cluster resources | Infrastructure |
 
@@ -45,16 +46,22 @@ A production-ready signal generation system that analyzes historical market data
 │ • Score confidence   │
 │ • Generate signals   │
 └──────┬───────────────┘
-       │ NATS Topic: signals.trading
+       │ NATS Topic: intent.trading.*
        │
+       ▼
+┌──────────────────────────────────────────────┐
+│                petrosa-cio                   │
+│             (Interception Layer)             │
+│   [intent.>]  ──▶  [signals.trading]         │
+└──────┬───────────────────────────────────────┘
+       │ Approved Signal
        ▼
 ┌──────────────────────┐
 │    NATS Server       │
 │  (Message Bus)       │
 │                      │
-│  Signal Subscribers: │
-│  • Trade Engine      │
-│  • (Future services) │
+│  Signal Topic:       │
+│  • signals.trading   │
 └──────┬───────────────┘
        │
        ▼
@@ -95,7 +102,7 @@ MYSQL_URI = "mysql+pymysql://user:password@host:3306/database"
 
 #### NATS Messaging (Signal Output)
 
-**Published Topic:** `signals.trading`
+**Published Topic:** `intent.trading.*` (Intercepted by CIO)
 
 **Message Format:**
 ```json
