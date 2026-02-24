@@ -284,13 +284,20 @@ class DataManagerConfigClient:
             return []
 
     async def rollback_app_config(
-        self, changed_by: str, target_version: int | None = None, reason: str | None = None
+        self,
+        changed_by: str,
+        target_version: int | None = None,
+        reason: str | None = None,
     ) -> bool:
         """Rollback application configuration."""
         if not self._session:
             await self.connect()
         try:
-            payload = {"changed_by": changed_by, "target_version": target_version, "reason": reason}
+            payload = {
+                "changed_by": changed_by,
+                "target_version": target_version,
+                "reason": reason,
+            }
             async with self._session.post(
                 f"{self.base_url}/api/v1/config/rollback/application", json=payload
             ) as response:
@@ -300,14 +307,22 @@ class DataManagerConfigClient:
             return False
 
     async def rollback_strategy_config(
-        self, strategy_id: str, changed_by: str, symbol: str | None = None,
-        target_version: int | None = None, reason: str | None = None
+        self,
+        strategy_id: str,
+        changed_by: str,
+        symbol: str | None = None,
+        target_version: int | None = None,
+        reason: str | None = None,
     ) -> bool:
         """Rollback strategy configuration."""
         if not self._session:
             await self.connect()
         try:
-            payload = {"changed_by": changed_by, "target_version": target_version, "reason": reason}
+            payload = {
+                "changed_by": changed_by,
+                "target_version": target_version,
+                "reason": reason,
+            }
             url = f"{self.base_url}/api/v1/config/rollback/strategies/{strategy_id}"
             if symbol:
                 url += f"?symbol={symbol}"

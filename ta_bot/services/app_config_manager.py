@@ -342,9 +342,7 @@ class AppConfigManager:
         if self.data_manager_client:
             try:
                 success = await self.data_manager_client.rollback_app_config(
-                    changed_by=changed_by,
-                    target_version=target_version,
-                    reason=reason
+                    changed_by=changed_by, target_version=target_version, reason=reason
                 )
                 if success:
                     # Invalidate cache
@@ -358,9 +356,11 @@ class AppConfigManager:
                         min_confidence=result.get("min_confidence", 0.6),
                         max_confidence=result.get("max_confidence", 0.95),
                         max_positions=result.get("max_positions", 10),
-                        position_sizes=result.get("position_sizes", [100, 200, 500, 1000]),
+                        position_sizes=result.get(
+                            "position_sizes", [100, 200, 500, 1000]
+                        ),
                         version=result.get("version", 0),
-                        created_by=changed_by
+                        created_by=changed_by,
                     )
                     return True, app_config, []
                 else:

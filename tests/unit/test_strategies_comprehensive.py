@@ -558,8 +558,8 @@ class TestEMAPullbackContinuationStrategy:
 
         with patch("ta_bot.core.indicators.Indicators") as mock_indicators:
             # Mock EMAs for uptrend
-            mock_indicators.return_value.calculate_ema.side_effect = (
-                lambda df, period: {
+            mock_indicators.return_value.calculate_ema.side_effect = lambda df, period: (
+                {
                     21: pd.Series(np.linspace(49500, 50500, len(df))),  # EMA21
                     50: pd.Series(np.linspace(49000, 50000, len(df))),  # EMA50
                 }[period]
@@ -586,8 +586,8 @@ class TestEMAPullbackContinuationStrategy:
 
         with patch("ta_bot.core.indicators.Indicators") as mock_indicators:
             # Mock EMAs for downtrend
-            mock_indicators.return_value.calculate_ema.side_effect = (
-                lambda df, period: {
+            mock_indicators.return_value.calculate_ema.side_effect = lambda df, period: (
+                {
                     21: pd.Series(
                         np.linspace(50500, 49500, len(df))
                     ),  # EMA21 declining
@@ -608,9 +608,9 @@ class TestEMAPullbackContinuationStrategy:
 
             if signal:
                 # In a downtrend pullback, only "sell" signals are expected
-                assert (
-                    signal.action == "sell"
-                ), f"Unexpected signal action: {signal.action}. Only 'sell' or None expected."
+                assert signal.action == "sell", (
+                    f"Unexpected signal action: {signal.action}. Only 'sell' or None expected."
+                )
                 assert signal.confidence > 0.5
 
 

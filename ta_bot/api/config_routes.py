@@ -1545,7 +1545,9 @@ async def refresh_app_cache():
 
 # Service URLs for cross-service conflict detection
 SERVICE_URLS = {
-    "tradeengine": os.getenv("TRADEENGINE_URL", "http://petrosa-tradeengine-service:80"),
+    "tradeengine": os.getenv(
+        "TRADEENGINE_URL", "http://petrosa-tradeengine-service:80"
+    ),
     "data-manager": os.getenv("DATA_MANAGER_URL", "http://petrosa-data-manager:80"),
     "realtime-strategies": os.getenv(
         "REALTIME_STRATEGIES_URL", "http://petrosa-realtime-strategies:80"

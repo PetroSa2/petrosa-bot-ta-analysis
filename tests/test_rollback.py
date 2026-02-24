@@ -26,7 +26,9 @@ async def test_strategy_config_rollback(mock_mongodb_client):
 
     manager = StrategyConfigManager(mongodb_client=mock_mongodb_client)
     # Mock get_config to avoid actual DB call
-    manager.get_config = AsyncMock(return_value={"parameters": {"rsi": 14}, "version": 2})
+    manager.get_config = AsyncMock(
+        return_value={"parameters": {"rsi": 14}, "version": 2}
+    )
 
     # Execute
     success, config, errors = await manager.rollback_config("rsi_bot", "admin")

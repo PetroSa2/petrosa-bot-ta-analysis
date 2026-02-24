@@ -399,7 +399,7 @@ class StrategyConfigManager:
                     changed_by=changed_by,
                     symbol=symbol,
                     target_version=target_version,
-                    reason=reason
+                    reason=reason,
                 )
                 if success:
                     # Invalidate cache
@@ -412,7 +412,7 @@ class StrategyConfigManager:
                         symbol=symbol,
                         parameters=result.get("parameters", {}),
                         version=result.get("version", 0),
-                        created_by=changed_by
+                        created_by=changed_by,
                     )
                     return True, config, []
                 else:

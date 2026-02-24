@@ -267,7 +267,7 @@ def test_performance() -> bool:
             _signal = strategy.analyze(df, metadata_no_config)  # noqa: F841
         time_no_config = time.time() - start
 
-        print(f"  Time WITHOUT config: {time_no_config*1000:.1f}ms (20 iterations)")
+        print(f"  Time WITHOUT config: {time_no_config * 1000:.1f}ms (20 iterations)")
 
         # Test WITH config
         config = {
@@ -292,7 +292,7 @@ def test_performance() -> bool:
             _signal = strategy.analyze(df, metadata_with_config)  # noqa: F841
         time_with_config = time.time() - start
 
-        print(f"  Time WITH config: {time_with_config*1000:.1f}ms (20 iterations)")
+        print(f"  Time WITH config: {time_with_config * 1000:.1f}ms (20 iterations)")
 
         # Calculate overhead
         assert time_no_config > 0  # Should have taken some time
@@ -321,10 +321,10 @@ def test_performance() -> bool:
 
 def main():
     """Run all compatibility tests."""
-    print(f"\n{Colors.BOLD}{'='*70}")
+    print(f"\n{Colors.BOLD}{'=' * 70}")
     print("  CONFIGURATION SYSTEM COMPATIBILITY TEST")
     print("  Verifying backward compatibility with existing signal generation")
-    print(f"{'='*70}{Colors.END}\n")
+    print(f"{'=' * 70}{Colors.END}\n")
 
     results = []
 
@@ -357,9 +357,9 @@ def main():
     results.append(test_performance())
 
     # Summary
-    print(f"\n{Colors.BOLD}{'='*70}")
+    print(f"\n{Colors.BOLD}{'=' * 70}")
     print("  TEST SUMMARY")
-    print(f"{'='*70}{Colors.END}\n")
+    print(f"{'=' * 70}{Colors.END}\n")
 
     passed = sum(results)
     total = len(results)

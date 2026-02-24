@@ -44,9 +44,9 @@ class TestCollectBaselineMetricsScript:
         """Test that script starts with shebang."""
         with open(script_path) as f:
             first_line = f.readline()
-        assert first_line.startswith(
-            "#!/bin/bash"
-        ), "Script should start with #!/bin/bash"
+        assert first_line.startswith("#!/bin/bash"), (
+            "Script should start with #!/bin/bash"
+        )
 
     def test_script_has_required_functions(self, script_path):
         """Test that script defines required functions."""
@@ -55,9 +55,9 @@ class TestCollectBaselineMetricsScript:
 
         # Check for key functions
         assert "url_encode()" in content, "Script should define url_encode() function"
-        assert (
-            "query_prometheus()" in content
-        ), "Script should define query_prometheus() function"
+        assert "query_prometheus()" in content, (
+            "Script should define query_prometheus() function"
+        )
         assert "query_sum()" in content, "Script should define query_sum() function"
 
     def test_script_handles_division_by_zero(self, script_path):
@@ -66,9 +66,9 @@ class TestCollectBaselineMetricsScript:
             content = f.read()
 
         # Check for division by zero protection
-        assert (
-            'TOTAL_24H != "0"' in content or 'TOTAL_24H" != "0' in content
-        ), "Script should check for zero before division"
+        assert 'TOTAL_24H != "0"' in content or 'TOTAL_24H" != "0' in content, (
+            "Script should check for zero before division"
+        )
 
     def test_script_has_url_encoding(self, script_path):
         """Test that script includes URL encoding for Prometheus queries."""
@@ -77,9 +77,9 @@ class TestCollectBaselineMetricsScript:
 
         # Check for URL encoding function
         assert "url_encode" in content, "Script should use URL encoding for queries"
-        assert (
-            "urllib.parse.quote" in content or "url_encode" in content
-        ), "Script should encode query strings"
+        assert "urllib.parse.quote" in content or "url_encode" in content, (
+            "Script should encode query strings"
+        )
 
     def test_script_has_error_handling(self, script_path):
         """Test that script includes error handling."""
@@ -87,12 +87,12 @@ class TestCollectBaselineMetricsScript:
             content = f.read()
 
         # Check for error handling patterns
-        assert (
-            "set -e" in content or "set -o errexit" in content
-        ), "Script should exit on error"
-        assert (
-            "|| echo" in content or "|| true" in content
-        ), "Script should handle command failures gracefully"
+        assert "set -e" in content or "set -o errexit" in content, (
+            "Script should exit on error"
+        )
+        assert "|| echo" in content or "|| true" in content, (
+            "Script should handle command failures gracefully"
+        )
 
     def test_script_outputs_to_file(self, script_path):
         """Test that script writes output to a file."""
@@ -100,9 +100,9 @@ class TestCollectBaselineMetricsScript:
             content = f.read()
 
         # Check for output file redirection
-        assert (
-            '>> "$OUTPUT_FILE"' in content or '> "$OUTPUT_FILE"' in content
-        ), "Script should write output to file"
+        assert '>> "$OUTPUT_FILE"' in content or '> "$OUTPUT_FILE"' in content, (
+            "Script should write output to file"
+        )
 
     def test_script_checks_prometheus_availability(self, script_path):
         """Test that script checks for Prometheus availability."""
@@ -111,9 +111,9 @@ class TestCollectBaselineMetricsScript:
 
         # Check for Prometheus pod check
         assert "PROMETHEUS_POD" in content, "Script should check for Prometheus pod"
-        assert (
-            "kubectl get pods" in content or "monitoring" in content
-        ), "Script should verify Prometheus is available"
+        assert "kubectl get pods" in content or "monitoring" in content, (
+            "Script should verify Prometheus is available"
+        )
 
 
 class TestCollectBaselineMetricsScriptDocumentation:
@@ -130,9 +130,9 @@ class TestCollectBaselineMetricsScriptDocumentation:
             content = f.read()
 
         # Check for documentation comments
-        assert (
-            "Purpose:" in content or "Usage:" in content
-        ), "Script should include usage documentation"
+        assert "Purpose:" in content or "Usage:" in content, (
+            "Script should include usage documentation"
+        )
 
     def test_script_describes_output_format(self, script_path):
         """Test that script describes output format."""
@@ -140,9 +140,9 @@ class TestCollectBaselineMetricsScriptDocumentation:
             content = f.read()
 
         # Check for output description
-        assert (
-            "OUTPUT_FILE" in content or "baseline" in content.lower()
-        ), "Script should describe output format"
+        assert "OUTPUT_FILE" in content or "baseline" in content.lower(), (
+            "Script should describe output format"
+        )
 
 
 if __name__ == "__main__":

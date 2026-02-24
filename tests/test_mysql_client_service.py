@@ -56,8 +56,9 @@ class TestMySQLClient:
 
     def test_initialization_with_data_manager(self):
         """Test client initialization with Data Manager enabled."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient"), patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
+        with (
+            patch("ta_bot.services.mysql_client.DataManagerClient"),
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
         ):
             client = MySQLClient(use_data_manager=True)
             assert client.use_data_manager is True
@@ -65,8 +66,9 @@ class TestMySQLClient:
 
     async def test_connect_with_data_manager(self):
         """Test connecting with Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
+        with (
+            patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm,
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
         ):
             mock_dm_instance = AsyncMock()
             mock_dm.return_value = mock_dm_instance
@@ -88,8 +90,9 @@ class TestMySQLClient:
 
     async def test_disconnect_with_data_manager(self):
         """Test disconnecting with Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
+        with (
+            patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm,
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
         ):
             mock_dm_instance = AsyncMock()
             mock_dm.return_value = mock_dm_instance
@@ -113,8 +116,9 @@ class TestMySQLClient:
 
     async def test_fetch_candles_with_data_manager(self):
         """Test fetching candles via Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
+        with (
+            patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm,
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
         ):
             mock_dm_instance = AsyncMock()
             mock_df = pd.DataFrame(
@@ -173,8 +177,9 @@ class TestMySQLClient:
 
     async def test_persist_signal_with_data_manager(self):
         """Test persisting signal via Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
+        with (
+            patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm,
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
         ):
             mock_dm_instance = AsyncMock()
             mock_dm_instance.persist_signal.return_value = True
@@ -211,8 +216,9 @@ class TestMySQLClient:
 
     async def test_persist_signals_batch_with_data_manager(self):
         """Test persisting signal batch via Data Manager."""
-        with patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm, patch(
-            "ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True
+        with (
+            patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm,
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
         ):
             mock_dm_instance = AsyncMock()
             mock_dm_instance.persist_signals_batch.return_value = True
