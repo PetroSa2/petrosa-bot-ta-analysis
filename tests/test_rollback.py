@@ -2,10 +2,12 @@
 Tests for configuration rollback in TA Bot.
 """
 
-from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from ta_bot.models.app_config import AppConfig, AppConfigAudit
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
 
@@ -21,6 +23,7 @@ def mock_mongodb_client():
 
 @pytest.mark.asyncio
 async def test_strategy_config_rollback(mock_mongodb_client):
+    """Test strategy config rollback (Proxy to Data Manager)."""
     # Setup
     mock_mongodb_client.data_manager_client.rollback_strategy_config.return_value = True
 
@@ -41,18 +44,34 @@ async def test_strategy_config_rollback(mock_mongodb_client):
 
 @pytest.mark.asyncio
 async def test_app_config_rollback(mock_mongodb_client):
-    # Setup
-    mock_data_manager = AsyncMock()
-    mock_data_manager.rollback_app_config.return_value = True
+    """Test app config rollback using the new implementation."""
+    # 1. Setup
+    manager = AppConfigManager(mongodb_client=mock_mongodb_client)
 
-    manager = AppConfigManager(data_manager_client=mock_data_manager)
-    # Mock get_config
-    manager.get_config = AsyncMock(return_value={"symbols": ["BTCUSDT"], "version": 5})
+    sample_history = [
+        AppConfigAudit(
+            id="audit_2",
+            action="UPDATE",
+            old_config={"version": 1, "symbols": ["BTCUSDT"]},
+            new_config={"version": 2, "symbols": ["BTCUSDT", "ETHUSDT"]},
+            changed_by="user1",
+            changed_at=datetime.utcnow(),
+        )
+    ]
 
-    # Execute
-    success, config, errors = await manager.rollback_config("admin")
+    # 2. Mock necessary methods
+    with patch.object(
+        manager, "get_audit_trail", return_value=sample_history
+    ), patch.object(manager, "set_config", new_callable=AsyncMock) as mock_set_config:
+        mock_set_config.return_value = (True, MagicMock(spec=AppConfig), [])
 
-    # Verify
-    assert success is True
-    assert config.version == 5
-    mock_data_manager.rollback_app_config.assert_called_once()
+        # 3. Execute
+        success, config, errors = await manager.rollback_config("admin")
+
+        # 4. Verify
+        assert success is True
+        mock_set_config.assert_called_once()
+        # Verify fix #1: correct parameter name
+        kwargs = mock_set_config.call_args[1]
+        assert "config" in kwargs
+        assert kwargs["config"]["version"] == 1

@@ -1388,6 +1388,7 @@ async def rollback_application_config(request: RollbackRequest):
         success, config, errors = await manager.rollback_config(
             changed_by=request.changed_by,
             target_version=request.target_version,
+            rollback_id=request.rollback_id,
             reason=request.reason,
         )
 
@@ -1423,6 +1424,21 @@ async def rollback_application_config(request: RollbackRequest):
         return APIResponse(
             success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
         )
+
+
+@router.post(
+    "/config/application/restore",
+    response_model=APIResponse[AppConfigResponse],
+    summary="Restore application configuration",
+    description="""
+    **For LLM Agents**: Restore a specific previous version of the application configuration.
+    Alias for the rollback endpoint.
+    """,
+    tags=["application-config"],
+)
+async def restore_application_config(request: RollbackRequest):
+    """Restore application configuration."""
+    return await rollback_application_config(request)
 
 
 @router.get(
