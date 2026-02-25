@@ -120,7 +120,7 @@ class TestSignalPublisher:
 
             mock_nats.publish.assert_called_once()
             call_args = mock_nats.publish.call_args
-            assert call_args[0][0] == "signals.trading"
+            assert call_args[0][0] == "intent.trading.momentum_pulse"
 
     async def test_publish_signals_nats_not_connected(self, publisher, mock_signal):
         """Test publishing signals when NATS is not connected."""

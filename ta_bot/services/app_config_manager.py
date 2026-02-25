@@ -321,10 +321,90 @@ class AppConfigManager:
 
         return True, app_config, []
 
+    async def get_audit_history(self, limit: int = 100) -> list[AppConfigAudit]:
+        """
+        Get application configuration change history.
+
+        Args:
+            limit: Maximum number of records to return
+
+        Returns:
+            List of audit records (most recent first)
+        """
+        return await self.get_audit_trail(limit)
+
+    async def get_previous_config(self) -> dict[str, Any] | None:
+        """
+        Get the immediately preceding configuration version.
+
+        Returns:
+            Dictionary of configuration values or None if no history exists
+        """
+        history = await self.get_audit_history(limit=2)
+        if len(history) < 1:
+            return None
+
+        # The first entry is the current config (if last action was UPDATE/CREATE)
+        # We want the old_config from the most recent change, OR the previous new_config
+        # If the most recent was an update, its 'old_config' is what we want.
+        latest = history[0]
+        if latest.action == "UPDATE" and latest.old_config:
+            return latest.old_config
+
+        # If most recent was a CREATE and we have more history (shouldn't happen with single doc),
+        # or if old_config was missing, check the next record
+        if len(history) >= 2:
+            return history[1].new_config
+
+        return None
+
+    async def get_config_by_version(self, version: int) -> dict[str, Any] | None:
+        """
+        Get a specific configuration version from audit history.
+
+        Args:
+            version: Version number to find
+
+        Returns:
+            Dictionary of configuration values or None if not found
+        """
+        if version < 1:
+            return None
+
+        # Query history for a record where new_config.version == target_version
+        # Since we don't have a direct version query in MongoDBClient, we search history
+        # We use a larger limit to find older versions
+        history = await self.get_audit_trail(limit=500)
+        for record in history:
+            if record.new_config and record.new_config.get("version") == version:
+                return record.new_config
+
+        return None
+
+    async def get_config_by_id(self, audit_id: str) -> dict[str, Any] | None:
+        """
+        Get a specific configuration from a specific audit record.
+
+        Args:
+            audit_id: Audit record unique identifier
+
+        Returns:
+            Dictionary of configuration values or None if not found
+        """
+        # Since we don't have a direct by-ID query in MongoDBClient for app audit,
+        # we search the history. For high-volume this would need a client change.
+        history = await self.get_audit_trail(limit=1000)
+        for record in history:
+            if record.id == audit_id:
+                return record.new_config
+
+        return None
+
     async def rollback_config(
         self,
         changed_by: str,
         target_version: int | None = None,
+        rollback_id: str | None = None,
         reason: str | None = None,
     ) -> tuple[bool, AppConfig | None, list[str]]:
         """
@@ -333,56 +413,58 @@ class AppConfigManager:
         Args:
             changed_by: Who is performing the rollback
             target_version: Optional specific version to rollback to
+            rollback_id: Optional specific audit ID to rollback to
             reason: Optional reason for the rollback
 
         Returns:
             Tuple of (success, config, errors)
         """
-        # Try Data Manager Service (preferred)
-        if self.data_manager_client:
-            try:
-                success = await self.data_manager_client.rollback_app_config(
-                    changed_by=changed_by, target_version=target_version, reason=reason
-                )
-                if success:
-                    # Invalidate cache
-                    self._invalidate_cache()
-                    # Get the new config
-                    result = await self.get_config()
-                    app_config = AppConfig(
-                        enabled_strategies=result.get("enabled_strategies", []),
-                        symbols=result.get("symbols", []),
-                        candle_periods=result.get("candle_periods", []),
-                        min_confidence=result.get("min_confidence", 0.6),
-                        max_confidence=result.get("max_confidence", 0.95),
-                        max_positions=result.get("max_positions", 10),
-                        position_sizes=result.get(
-                            "position_sizes", [100, 200, 500, 1000]
-                        ),
-                        version=result.get("version", 0),
-                        created_by=changed_by,
-                    )
-                    return True, app_config, []
-                else:
-                    return False, None, ["Rollback failed in Data Manager service"]
-            except Exception as e:
-                logger.error(f"Failed to rollback via Data Manager: {e}")
-                return False, None, [str(e)]
+        # 1. Determine configuration to restore
+        config_to_restore = None
 
-        # Fallback to direct database access (deprecated)
-        # Note: Direct MongoDB rollback is not implemented here as it's deprecated.
-        # Users should use the Data Manager service.
-        return False, None, ["Direct database rollback not implemented (deprecated)"]
+        if rollback_id:
+            config_to_restore = await self.get_config_by_id(rollback_id)
+            if not config_to_restore:
+                return False, None, [f"Configuration with ID {rollback_id} not found"]
+        elif target_version:
+            config_to_restore = await self.get_config_by_version(target_version)
+            if not config_to_restore:
+                return (
+                    False,
+                    None,
+                    [f"Configuration version {target_version} not found"],
+                )
+        else:
+            # Default to previous
+            config_to_restore = await self.get_previous_config()
+            if not config_to_restore:
+                return False, None, ["No previous configuration found to rollback to"]
+
+        # 2. Perform rollback using set_config
+        # This handles validation, audit record creation, and cache invalidation
+        # Note: We use the correct 'config=' parameter name
+        rollback_reason = (
+            reason
+            or f"Rollback to {'version ' + str(target_version) if target_version else ('ID ' + rollback_id if rollback_id else 'previous')}"
+        )
+
+        success, config, errors = await self.set_config(
+            config=config_to_restore,
+            changed_by=changed_by,
+            reason=rollback_reason,
+        )
+
+        return success, config, errors
 
     async def get_audit_trail(self, limit: int = 100) -> list[AppConfigAudit]:
         """
         Get application configuration change history.
 
         Args:
-            limit: Maximum number of records
+            limit: Maximum number of records to return
 
         Returns:
-            List of audit records
+            List of audit records (most recent first)
         """
         if not self.mongodb_client or not self.mongodb_client.is_connected:
             return []

@@ -543,6 +543,10 @@ class RollbackRequest(BaseModel):
         None,
         description="Specific version number to rollback to. If null, reverts to the immediately preceding version.",
     )
+    rollback_id: str | None = Field(
+        None,
+        description="Specific audit record ID to rollback to. If provided, takes precedence over target_version.",
+    )
     changed_by: str = Field(
         ..., description="Identifier of who is performing the rollback"
     )
