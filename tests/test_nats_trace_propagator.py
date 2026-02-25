@@ -8,9 +8,11 @@ import os
 
 import pytest
 from opentelemetry import trace
+from opentelemetry.propagate import set_global_textmap
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 # Re-enable OpenTelemetry for these tests
 os.environ.pop("OTEL_NO_AUTO_INIT", None)
@@ -27,6 +29,9 @@ def setup_tracing():
     provider = TracerProvider()
     processor = SimpleSpanProcessor(exporter)
     provider.add_span_processor(processor)
+
+    # Ensure W3C context propagation is active in this test process.
+    set_global_textmap(TraceContextTextMapPropagator())
 
     # Always set the tracer provider for tests
     trace.set_tracer_provider(provider)
