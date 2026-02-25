@@ -109,7 +109,7 @@ class TestAppConfigRollback:
             # 3. Verify
             assert success is True
             assert len(errors) == 0
-            # CRITICAL: Verify set_config was called with 'config=' parameter (fix #1)
+            # CRITICAL: Verify set_config was called with 'config=' parameter
             mock_set_config.assert_called_once()
             args, kwargs = mock_set_config.call_args
             assert "config" in kwargs
@@ -159,6 +159,15 @@ class TestAppConfigRollback:
 
             assert success is False
             assert "No previous configuration found" in errors[0]
+
+    async def test_rollback_invalid_version_error(self, config_manager):
+        """Test error when version < 1 is passed."""
+        success, config, errors = await config_manager.rollback_config(
+            changed_by="admin", target_version=0
+        )
+
+        assert success is False
+        assert "Invalid version number" in errors[0]
 
     async def test_rollback_version_not_found_error(
         self, config_manager, sample_history
