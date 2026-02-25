@@ -8,7 +8,7 @@ import os
 
 import pytest
 from opentelemetry import trace
-from opentelemetry.propagate import set_global_textmap
+from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -30,6 +30,8 @@ def setup_tracing():
     processor = SimpleSpanProcessor(exporter)
     provider.add_span_processor(processor)
 
+    previous_propagator = get_global_textmap()
+
     # Ensure W3C context propagation is active in this test process.
     set_global_textmap(TraceContextTextMapPropagator())
 
@@ -42,6 +44,7 @@ def setup_tracing():
     # Cleanup
     processor.force_flush()
     exporter.clear()
+    set_global_textmap(previous_propagator)
 
 
 class TestNATSTracePropagatorBasic:
