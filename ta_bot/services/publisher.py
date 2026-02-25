@@ -23,6 +23,7 @@ class SignalPublisher:
         api_endpoint: str,
         nats_url: str = None,
         enable_rest_publishing: bool = False,
+        nats_publisher_topic: str = "intent.trading.*",
     ):
         """Initialize the signal publisher.
 
@@ -34,6 +35,7 @@ class SignalPublisher:
         self.api_endpoint = api_endpoint
         self.nats_url = nats_url
         self.enable_rest_publishing = enable_rest_publishing
+        self.nats_publisher_topic = nats_publisher_topic
         self.session = None
         self.nats_client = None
 
@@ -144,7 +146,8 @@ class SignalPublisher:
                 )
 
                 # Publish to NATS subject that Trade Engine listens to
-                subject = "signals.trading"
+                # We use the configured topic, replacing * with strategy_id if applicable
+                subject = self.nats_publisher_topic.replace("*", signal.strategy_id)
                 message = json.dumps(signal_data).encode()
 
                 logger.info(
@@ -218,7 +221,7 @@ class SignalPublisher:
             return
 
         try:
-            subject = "signals.trading"
+            subject = self.nats_publisher_topic
 
             for signal in signals:
                 signal_data = signal.to_dict()

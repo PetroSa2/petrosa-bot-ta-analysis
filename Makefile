@@ -30,18 +30,18 @@ help: ## Show this help message
 setup: ## Complete environment setup with dependencies and pre-commit
 	@echo "🚀 Setting up development environment..."
 	$(PYTHON) -m pip install --upgrade pip
-	pip install -r requirements.txt
-	pip install -r requirements-dev.txt
+	$(PYTHON) -m pip install -r requirements.txt
+	$(PYTHON) -m pip install -r requirements-dev.txt
 	pre-commit install
 	@echo "✅ Setup completed!"
 
 install: ## Install production dependencies only
 	@echo "📦 Installing production dependencies..."
-	pip install -r requirements.txt
+	python3 -m pip install -r requirements.txt
 
 install-dev: ## Install development dependencies
 	@echo "🔧 Installing development dependencies..."
-	pip install -r requirements-dev.txt
+	python3 -m pip install -r requirements-dev.txt
 
 clean: ## Clean up cache and temporary files
 	@echo "🧹 Cleaning up cache and temporary files..."
@@ -111,7 +111,7 @@ security: ## Run comprehensive security scans (gitleaks, detect-secrets, bandit,
 	@if command -v detect-secrets >/dev/null 2>&1; then \
 		detect-secrets scan --baseline .secrets.baseline || echo "⚠️  New secrets detected (review above)"; \
 	else \
-		echo "⚠️  detect-secrets not installed. Install with: pip install detect-secrets"; \
+		echo "⚠️  detect-secrets not installed. Install with: python3 -m pip install detect-secrets"; \
 	fi
 	@echo ""
 	@echo "3️⃣ Bandit (Python Security)..."

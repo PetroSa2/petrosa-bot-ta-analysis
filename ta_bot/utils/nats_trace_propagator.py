@@ -62,6 +62,9 @@ class NATSTracePropagator:
         # This uses the global propagator (TraceContext by default)
         inject(carrier)
 
+        # DEBUG: Print carrier contents
+        print(f"DEBUG: Carrier contents: {carrier}")
+
         # Add carrier to message if it contains any context
         if carrier:
             message_dict[NATSTracePropagator.TRACE_HEADERS_FIELD] = carrier
