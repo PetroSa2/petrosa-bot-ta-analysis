@@ -334,6 +334,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Verify no hardcoded image tags
+  run: |
+    if grep -r 'yurisa2/petrosa[^:]*:v[0-9][0-9.]*' k8s/ || grep -r 'image: .*v[0-9]\+\.[0-9]\+\.[0-9]\+' k8s/; then
+      echo "❌ Hardcoded image tags found in k8s/ manifests"
+      exit 1
+    fi
+    echo "✅ No hardcoded image tags found in k8s/ manifests"
+
     - name: Install kubectl
       uses: azure/setup-kubectl@v3
       with:
