@@ -115,7 +115,11 @@ security: ## Run comprehensive security scans (gitleaks, detect-secrets, bandit,
 	fi
 	@echo ""
 	@echo "3️⃣ Bandit (Python Security)..."
-	@bandit -r . -f json -o bandit-report.json --configfile .bandit
+<<<<<<< HEAD
+	@bandit -r . -f json -o bandit-report.json 
+=======
+	@bandit -r . -f json -o bandit-report.json  || true
+>>>>>>> e793580 (fix: address Copilot suggestions, tighten security, and standardize Bandit)
 	@if [ -f bandit-report.json ]; then \
 		echo "📊 Bandit found issues. Check bandit-report.json"; \
 		python -m json.tool bandit-report.json | grep -A 5 '"issue_severity"' | head -20 || true; \
