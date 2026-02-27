@@ -69,10 +69,8 @@ run_stage() {
             print_success "Container test completed"
             ;;
         "deploy")
-            print_status "Deploying to Kubernetes..."
-            export KUBECONFIG=k8s/kubeconfig.yaml
-            kubectl apply -f k8s/
-            print_success "Deployment completed"
+            print_warning "Local Kubernetes deployment from this repo is deprecated."
+            print_status "Please use the centralized petrosa_k8s hub for deployment."
             ;;
         *)
             print_error "Unknown stage: $stage"
