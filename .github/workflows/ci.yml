@@ -113,66 +113,6 @@ jobs:
           COMMIT_SHA=${{ github.sha }}
           BUILD_DATE=${{ steps.meta.outputs.date }}
 
-  deploy:
-    name: Deploy to Kubernetes
-    needs: [build-and-push, create-release]
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Install kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'v1.28.0'
-    - name: Configure kubectl for MicroK8s
-      run: |
-        mkdir -p $HOME/.kube
-        echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
-        chmod 600 $HOME/.kube/config
-        kubectl cluster-info --insecure-skip-tls-verify
-        kubectl get nodes --insecure-skip-tls-verify
-    - name: Update Image Tags in Manifests
-      run: |
-        IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
-        find k8s/ -name "*.yaml" -o -name "*.yml" | xargs sed -i "s|VERSION_PLACEHOLDER|${IMAGE_TAG}|g"
-    - name: Apply Kubernetes Manifests
-      run: |
-        kubectl apply -f k8s/ --recursive --insecure-skip-tls-verify
-    - name: Deployment Summary
-      run: |
-        IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
-        echo "🎉 Deployment to MicroK8s completed successfully!"
-        echo "  ✅ Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${IMAGE_TAG}"
-        echo "  ✅ Kubernetes manifests applied to MicroK8s cluster"
-
-  notify:
-    name: notify
-    needs: [build-and-push, deploy, create-release]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-    - name: Notify Deployment Status
-      run: |
-        VERSION="${{ needs.create-release.outputs.version }}"
-        TAG_CREATED="${{ needs.create-release.outputs.tag-created }}"
-        IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
-        if [ "${{ needs.deploy.result }}" == "success" ]; then
-          echo "✅ Deployment successful!"
-          echo "📦 Version: ${VERSION}"
-          echo "🐳 Image Tag: ${IMAGE_TAG}"
-          if [ "$TAG_CREATED" == "true" ]; then
-            echo "🏷️  New tag created: ${VERSION}"
-          else
-            echo "🏷️  Using existing tag: ${VERSION}"
-          fi
-          echo "🚀 Deployed to MicroK8s with versioned image tag"
-        else
-          echo "❌ Deployment failed!"
-          echo "📦 Version: ${VERSION}"
-          echo "🐳 Image Tag: ${IMAGE_TAG}"
-        fi
-
   cleanup:
     name: cleanup
     needs: [build-and-push]
@@ -182,3 +122,24 @@ jobs:
     - name: Clean Up Old Images
       run: |
         echo "Cleaning up old Docker images..."
+
+  notify:
+    name: notify
+    needs: [build-and-push, create-release]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Notify Build Status
+      run: |
+        VERSION="${{ needs.create-release.outputs.version }}"
+        TAG_CREATED="${{ needs.create-release.outputs.tag-created }}"
+        IMAGE_TAG="${{ needs.build-and-push.outputs.version }}"
+        echo "✅ Build and Push successful!"
+        echo "📦 Version: ${VERSION}"
+        echo "🐳 Image Tag: ${IMAGE_TAG}"
+        if [ "$TAG_CREATED" == "true" ]; then
+          echo "🏷️  New tag created: ${VERSION}"
+        else
+          echo "🏷️  Using existing tag: ${VERSION}"
+        fi
+        echo "🚀 Ready for deployment via petrosa_k8s hub"
