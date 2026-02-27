@@ -1,0 +1,27 @@
+# Bandit configuration file in YAML format
+# NOTE:
+# - Previously this project skipped B104 through B1000, which effectively disabled most Bandit checks.
+# - We have tightened the security posture and now only skip B104 (hardcoded_bind_all_interfaces).
+# - B104 is skipped intentionally because TA Bot is designed to bind to 0.0.0.0 inside a Kubernetes cluster,
+#   and external exposure is controlled via Kubernetes Services/Ingress and network policy rather than
+#   relying on the application binding to localhost.
+# - CI is configured with strict checking, while Makefile allows non-zero exit for local development.
+
+### Excludes
+exclude_dirs:
+  - 'tests/'
+  - '.venv/'
+  - 'venv/'
+  - 'htmlcov/'
+  - '.git/'
+  - '__pycache__/'
+  - '*.egg-info/'
+  - 'scripts/'
+
+### Skips
+# B104: hardcoded_bind_all_interfaces
+skips: ['B104']
+
+### Levels
+severity: medium
+confidence: medium
