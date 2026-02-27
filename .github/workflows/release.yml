@@ -124,13 +124,20 @@ jobs:
     needs: [lint-and-test, security-scan]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
     - name: Set version
       id: version
       run: |
-        BASE_VERSION="v1.1.49"
+        BASE_VERSION=$(cat VERSION | tr -d '[:space:]')
         SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
         VERSION="${BASE_VERSION}-r${{ github.run_number }}-${SHORT_SHA}"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
