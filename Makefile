@@ -25,9 +25,9 @@ install-dev: ## Install development dependencies
 
 lint: ## Run all linters (ruff, black, flake8)
 	@echo "🔍 Running linters..."
-	ruff check .
-	black --check .
-	flake8 .
+	python3 -m ruff check .
+	python3 -m black --check .
+	python3 -m flake8 .
 
 format: ## Format code with black and ruff
 	@echo "🎨 Formatting code..."

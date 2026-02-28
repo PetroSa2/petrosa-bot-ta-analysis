@@ -9,8 +9,8 @@ from opentelemetry import trace  # noqa: E402
 from opentelemetry.propagate import extract, inject  # noqa: E402
 from opentelemetry.sdk.trace import TracerProvider  # noqa: E402
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor  # noqa: E402
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,  # noqa: E402
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (  # noqa: E402
+    InMemorySpanExporter,
 )
 
 from ta_bot.utils.nats_trace_propagator import NATSTracePropagator  # noqa: E402
