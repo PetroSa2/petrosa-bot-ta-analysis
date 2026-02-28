@@ -5,7 +5,7 @@ This module provides a client for interacting with the petrosa-data-manager API
 for fetching candle data and persisting signals.
 """
 
-import os
+import os  # noqa: I001
 from typing import Any
 
 import pandas as pd
