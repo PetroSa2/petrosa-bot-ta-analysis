@@ -1,0 +1,228 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petrosa-ta-bot
+  namespace: petrosa-apps
+  labels:
+    app: petrosa-ta-bot
+    version: VERSION_PLACEHOLDER
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: petrosa-ta-bot
+  template:
+    metadata:
+      labels:
+        app: petrosa-ta-bot
+        version: VERSION_PLACEHOLDER
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: ta-bot
+        image: yurisa2/petrosa-ta-bot:VERSION_PLACEHOLDER
+        imagePullPolicy: Always
+        command:
+          - opentelemetry-instrument
+          - python
+          - '-m'
+          - ta_bot.main
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: OTEL_NO_AUTO_INIT
+          value: "1"
+        - name: NATS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: NATS_URL
+        - name: API_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: api_endpoint
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: LOG_LEVEL
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: ENVIRONMENT
+        # OpenTelemetry Configuration
+        - name: ENABLE_OTEL
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: ENABLE_OTEL
+        - name: OTEL_SERVICE_VERSION
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_SERVICE_VERSION
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_EXPORTER_OTLP_ENDPOINT
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.name=ta-bot,service.version=VERSION_PLACEHOLDER
+        - name: OTEL_METRICS_EXPORTER
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_METRICS_EXPORTER
+        - name: OTEL_TRACES_EXPORTER
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_TRACES_EXPORTER
+        - name: OTEL_LOGS_EXPORTER
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: OTEL_LOGS_EXPORTER
+        - name: OTEL_EXPORTER_OTLP_HEADERS
+          valueFrom:
+            secretKeyRef:
+              name: petrosa-sensitive-credentials
+              key: OTEL_EXPORTER_OTLP_HEADERS
+        - name: ENABLE_LOGS
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: ENABLE_LOGS
+        - name: ENABLE_METRICS
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: ENABLE_METRICS
+        - name: ENABLE_TRACES
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: ENABLE_TRACES
+        - name: SUPPORTED_SYMBOLS
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: DEFAULT_SYMBOLS
+        - name: SUPPORTED_TIMEFRAMES
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: SUPPORTED_INTERVALS
+        - name: RSI_PERIOD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: rsi_period
+        - name: MACD_FAST
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: macd_fast
+        - name: MACD_SLOW
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: macd_slow
+        - name: MACD_SIGNAL
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: macd_signal
+        - name: ADX_PERIOD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: adx_period
+        - name: BB_PERIOD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: bb_period
+        - name: BB_STD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: bb_std
+        - name: ATR_PERIOD
+          valueFrom:
+            configMapKeyRef:
+              name: ta-bot-config
+              key: atr_period
+        - name: NATS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: NATS_ENABLED
+        - name: NATS_SUBJECT_PREFIX
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: NATS_SUBJECT_PREFIX
+        - name: NATS_SUBJECT_PREFIX_PRODUCTION
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: NATS_SUBJECT_PREFIX_PRODUCTION
+        - name: MYSQL_HOST
+          value: "mysql-server"
+        - name: MYSQL_PORT
+          value: "3306"
+        - name: MYSQL_USER
+          value: "petrosa"
+        - name: MYSQL_URI
+          valueFrom:
+            secretKeyRef:
+              name: petrosa-sensitive-credentials
+              key: MYSQL_URI
+        - name: MYSQL_DATABASE
+          value: "petrosa"
+        # Data Manager API configuration
+        - name: DATA_MANAGER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: petrosa-common-config
+              key: DATA_MANAGER_URL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 10
+          failureThreshold: 5
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 45
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
