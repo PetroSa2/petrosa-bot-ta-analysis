@@ -396,8 +396,15 @@ class SignalEngine:
                         f"  {strategy_name}: Using strategy-defined TP/SL - SL: {signal.stop_loss:.2f}, TP: {signal.take_profit:.2f}"
                     )
 
+                # Hard Validation for risk parameters
+                if not self.validate_risk_parameters(signal):
+                    logger.error(
+                        f"  {strategy_name}: REJECTED - Missing or invalid risk parameters for {signal.action}"
+                    )
+                    return None
+
                 # Validate signal
-                if not signal.validate():
+                if not signal.validate(strict_risk=True):
                     logger.warning(
                         f"  {strategy_name}: Invalid signal generated - validation failed"
                     )
@@ -422,6 +429,36 @@ class SignalEngine:
                     },
                 )
                 return None
+
+    def validate_risk_parameters(self, signal: Signal) -> bool:
+        """
+        Validate that buy/sell signals have required risk parameters.
+
+        Args:
+            signal: The generated signal to validate.
+
+        Returns:
+            True if validation passes, False otherwise.
+        """
+        if signal.action not in ["buy", "sell"]:
+            return True
+
+        if signal.stop_loss is None or signal.take_profit is None:
+            logger.error(
+                f"Validation failed for {signal.strategy_id}: action={signal.action} "
+                f"requires stop_loss and take_profit"
+            )
+            return False
+
+        # Ensure values are positive
+        if signal.stop_loss <= 0 or signal.take_profit <= 0:
+            logger.error(
+                f"Validation failed for {signal.strategy_id}: risk parameters must be positive. "
+                f"SL: {signal.stop_loss}, TP: {signal.take_profit}"
+            )
+            return False
+
+        return True
 
     def _calculate_signal_strength(self, confidence: float) -> SignalStrength:
         """Calculate signal strength based on confidence."""

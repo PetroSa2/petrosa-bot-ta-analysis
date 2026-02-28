@@ -70,6 +70,12 @@ def sanitize_json_value(value: Any) -> Any:
     return value
 
 
+class ValidationError(Exception):
+    """Raised when a signal fails validation."""
+
+    pass
+
+
 @dataclass
 class Signal:
     """Trading signal data model - aligned with Trade Engine format."""
@@ -148,8 +154,13 @@ class Signal:
 
         return signal_dict
 
-    def validate(self) -> bool:
-        """Validate signal data."""
+    def validate(self, strict_risk: bool = False) -> bool:
+        """
+        Validate signal data.
+
+        Args:
+            strict_risk: If True, requires stop_loss and take_profit for buy/sell actions.
+        """
         if not (0.0 <= self.confidence <= 1.0):
             return False
 
@@ -158,5 +169,15 @@ class Signal:
 
         if self.current_price <= 0 or self.price <= 0:
             return False
+
+        # Hard validation for risk parameters if requested
+        if strict_risk and self.action in ["buy", "sell"]:
+            if self.stop_loss is None or self.take_profit is None:
+                return False
+            # Also ensure they are positive and valid numbers
+            if not (self.stop_loss > 0 and self.take_profit > 0):
+                return False
+            if math.isnan(self.stop_loss) or math.isnan(self.take_profit):
+                return False
 
         return True
