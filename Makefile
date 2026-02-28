@@ -23,11 +23,10 @@ setup: ## Complete environment setup
 install-dev: ## Install development dependencies
 	$(PIP) install -r requirements-dev.txt
 
-lint: ## Run all linters (ruff, black, flake8)
+lint: ## Run all linters (ruff)
 	@echo "🔍 Running linters..."
 	python3 -m ruff check .
-	python3 -m black --check .
-	python3 -m flake8 .
+	python3 -m ruff format --check .
 
 format: ## Format code with black and ruff
 	@echo "🎨 Formatting code..."
