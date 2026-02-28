@@ -6,7 +6,7 @@ for fetching candle data and persisting signals.
 """
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
