@@ -291,6 +291,23 @@ jobs:
         kubectl cluster-info --insecure-skip-tls-verify
         kubectl get nodes --insecure-skip-tls-verify
 
+    - name: Verify no hardcoded image tags in manifests
+      if: steps.check-k8s.outputs.skip-deploy == 'false'
+      run: |
+        echo "🔍 Verifying that no hardcoded semantic version tags exist in k8s/ manifests..."
+        # Search for pattern image: yurisa2/petrosa.*:v*
+        # VERSION_PLACEHOLDER is allowed
+        HARDCODED_TAGS=$(grep -rE "image: yurisa2/petrosa.*:v[0-9]+" k8s/ || true)
+
+        if [ -n "$HARDCODED_TAGS" ]; then
+          echo "❌ ERROR: Found hardcoded image tags in manifests:"
+          echo "$HARDCODED_TAGS"
+          echo "💡 Manifests must use VERSION_PLACEHOLDER for CI/CD injection."
+          exit 1
+        else
+          echo "✅ No hardcoded tags found."
+        fi
+
     - name: Update image tags in manifests
       if: steps.check-k8s.outputs.skip-deploy == 'false'
       run: |
