@@ -3,14 +3,7 @@ name: Manual Deployment with Version Bump
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
-        default: staging
+
       version_bump:
         description: 'Version bump type'
         required: true
@@ -100,10 +93,10 @@ jobs:
         run: |
           VERSION="${{ steps.bump_version.outputs.new_version }}"
           # Update the image tag in manifests
-          find petrosa_k8s/k8s/bot-ta-analysis -name "*.yaml" -o -name "*.yml" | xargs sed -i "s/VERSION_PLACEHOLDER/$VERSION/g"
+          find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -i "s/VERSION_PLACEHOLDER/$VERSION/g"
           
           # Also update the version label if needed
-          find petrosa_k8s/k8s/bot-ta-analysis -name "*.yaml" -o -name "*.yml" | xargs sed -i "s/version: VERSION_PLACEHOLDER/version: $VERSION/g"
+          find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -i "s/version: VERSION_PLACEHOLDER/version: $VERSION/g"
           
           echo "Updated bot-ta-analysis image tag to $VERSION in petrosa_k8s/k8s/bot-ta-analysis/"
 
@@ -139,7 +132,6 @@ jobs:
           Deployment Record
           ========================================
           Service: ta-bot
-          Environment: ${{ inputs.environment }}
           Version: ${{ steps.bump_version.outputs.new_version }}
           Previous Version: ${{ steps.current_version.outputs.version }}
           Docker Image: ghcr.io/petrosa2/ta-bot:${{ steps.bump_version.outputs.new_version }}
@@ -160,7 +152,6 @@ jobs:
 
           ## Details
           - **Service**: \`ta-bot\`
-          - **Environment**: \`${{ inputs.environment }}\`
           - **Version**: \`${{ steps.current_version.outputs.version }}\` → \`${{ steps.bump_version.outputs.new_version }}\`
           - **Bump Type**: \`${{ inputs.version_bump }}\`
           - **Docker Image**: `${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${{ steps.bump_version.outputs.new_version }}`
@@ -195,7 +186,6 @@ jobs:
 
           ## Details
           - **Service**: \`ta-bot\`
-          - **Environment**: \`${{ inputs.environment }}\`
           - **Version**: \`${{ steps.bump_version.outputs.new_version }}\`
           - **Triggered by**: @${{ github.actor }}
 
