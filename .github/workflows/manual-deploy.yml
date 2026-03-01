@@ -3,14 +3,7 @@ name: Manual Deployment with Version Bump
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
-        default: staging
+
       version_bump:
         description: 'Version bump type'
         required: true
@@ -61,15 +54,17 @@ jobs:
           git tag -a "${{ steps.bump_version.outputs.new_version }}" -m "Manual deployment: ${{ inputs.reason }}"
           git push origin "${{ steps.bump_version.outputs.new_version }}"
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -77,43 +72,46 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/petrosa2/ta-bot:${{ steps.bump_version.outputs.new_version }}
-            ghcr.io/petrosa2/ta-bot:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${{ steps.bump_version.outputs.new_version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
+      - name: Checkout petrosa_k8s
+        uses: actions/checkout@v4
         with:
-          version: 'latest'
+          repository: PetroSa2/petrosa_k8s
+          ref: main
+          token: ${{ secrets.GITOPS_BOT_TOKEN }}
+          path: petrosa_k8s
 
-      - name: Configure kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
-          chmod 600 ~/.kube/config
+      - name: Rebase on main
+        run: ./scripts/gitops-rebase-main.sh
+        working-directory: petrosa_k8s
 
-      - name: Deploy to Kubernetes
+      - name: Update bot-ta-analysis image tag in GitOps manifests
         run: |
           VERSION="${{ steps.bump_version.outputs.new_version }}"
-          ENV="${{ inputs.environment }}"
+          # Update the image tag in manifests
+          find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -i "s/VERSION_PLACEHOLDER/$VERSION/g"
+          
+          # Also update the version label if needed
+          find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -i "s/version: VERSION_PLACEHOLDER/version: $VERSION/g"
+          
+          echo "Updated bot-ta-analysis image tag to $VERSION in petrosa_k8s/k8s/bot-ta-analysis/"
 
-          echo "Deploying ta-bot version $VERSION to $ENV"
-
-          # Update deployment with new image tag
-          # Skip TLS verification since external IP not in certificate SAN
-          kubectl set image deployment/petrosa-ta-bot \
-            ta-bot=ghcr.io/petrosa2/ta-bot:$VERSION \
-            --namespace=petrosa-apps \
-            --insecure-skip-tls-verify
-
-      - name: Wait for rollout
+      - name: Commit and push to petrosa_k8s
+        working-directory: petrosa_k8s
         run: |
-          echo "Waiting for rollout to complete..."
-          kubectl rollout status deployment/petrosa-ta-bot \
-            --namespace=petrosa-apps \
-            --timeout=5m \
-            --insecure-skip-tls-verify
+          git config user.name "gitops-bot"
+          git config user.email "gitops-bot@users.noreply.github.com"
+          git add k8s/bot-ta-analysis/
+          if git diff --staged --quiet; then
+            echo "No changes to commit (version might already be up to date)"
+          else
+            git commit -m "gitops: bot-ta-analysis image ${{ steps.bump_version.outputs.new_version }}"
+            git push origin main
+          fi
 
       - name: Verify deployment
         run: |
@@ -134,7 +132,6 @@ jobs:
           Deployment Record
           ========================================
           Service: ta-bot
-          Environment: ${{ inputs.environment }}
           Version: ${{ steps.bump_version.outputs.new_version }}
           Previous Version: ${{ steps.current_version.outputs.version }}
           Docker Image: ghcr.io/petrosa2/ta-bot:${{ steps.bump_version.outputs.new_version }}
@@ -151,14 +148,13 @@ jobs:
       - name: Create summary
         run: |
           cat >> $GITHUB_STEP_SUMMARY << EOF
-          # Deployment Successful ✅
+          # GitOps Push Successful ✅
 
           ## Details
           - **Service**: \`ta-bot\`
-          - **Environment**: \`${{ inputs.environment }}\`
           - **Version**: \`${{ steps.current_version.outputs.version }}\` → \`${{ steps.bump_version.outputs.new_version }}\`
           - **Bump Type**: \`${{ inputs.version_bump }}\`
-          - **Docker Image**: \`ghcr.io/petrosa2/ta-bot:${{ steps.bump_version.outputs.new_version }}\`
+          - **Docker Image**: `${{ secrets.DOCKERHUB_USERNAME }}/petrosa-ta-bot:${{ steps.bump_version.outputs.new_version }}`
           - **Triggered by**: @${{ github.actor }}
           - **Reason**: ${{ inputs.reason }}
 
@@ -190,7 +186,6 @@ jobs:
 
           ## Details
           - **Service**: \`ta-bot\`
-          - **Environment**: \`${{ inputs.environment }}\`
           - **Version**: \`${{ steps.bump_version.outputs.new_version }}\`
           - **Triggered by**: @${{ github.actor }}
 
