@@ -2,7 +2,6 @@
 import logging
 import os
 import sys
-from pathlib import Path
 from urllib.parse import urlparse, unquote
 import pymysql
 from pymysql.cursors import DictCursor
@@ -21,11 +20,11 @@ def run_migration():
     
     parsed = urlparse(mysql_uri)
     db_config = {
-        "host": parsed.hostname or os.getenv("MYSQL_HOST", "localhost"),
-        "port": parsed.port or int(os.getenv("MYSQL_PORT", 3306)),
-        "user": parsed.username or os.getenv("MYSQL_USER", "root"),
-        "password": unquote(parsed.password) if parsed.password else os.getenv("MYSQL_PASSWORD", ""),
-        "database": parsed.path.lstrip('/') or os.getenv("MYSQL_DATABASE", "petrosa_trading"),
+        "host": parsed.hostname,
+        "port": parsed.port or 3306,
+        "user": parsed.username,
+        "password": unquote(parsed.password) if parsed.password else "",
+        "database": parsed.path.lstrip('/'),
         "charset": "utf8mb4",
         "cursorclass": DictCursor,
     }
@@ -36,12 +35,18 @@ def run_migration():
         connection = pymysql.connect(**db_config)
         logger.info("✅ Connected to MySQL successfully")
         with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            logger.info("✅ Database check successful")
+            # Perform migration: Add timeframe column if not exists
+            cursor.execute("SHOW COLUMNS FROM signals LIKE 'timeframe'")
+            if not cursor.fetchone():
+                logger.info("Adding 'timeframe' column to signals table...")
+                cursor.execute("ALTER TABLE signals ADD COLUMN timeframe VARCHAR(10) DEFAULT '1h' AFTER symbol")
+                logger.info("✅ Column added successfully")
+            else:
+                logger.info("✓ Column 'timeframe' already exists")
         connection.close()
         return True
     except Exception as e:
-        logger.error(f"❌ Connection failed: {e}")
+        logger.error(f"❌ Migration failed: {e}")
         return False
 
 if __name__ == "__main__":
