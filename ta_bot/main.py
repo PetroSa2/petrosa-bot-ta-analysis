@@ -69,7 +69,9 @@ async def main():
         # Initialize Data Manager client for configuration (preferred)
         from ta_bot.services.data_manager_config_client import DataManagerConfigClient
 
-        data_manager_client = DataManagerConfigClient(base_url=os.getenv("DATA_MANAGER_URL"))
+        data_manager_client = DataManagerConfigClient(
+            base_url=os.getenv("DATA_MANAGER_URL")
+        )
         await data_manager_client.connect()
         logger.info("Data Manager client initialized")
 
