@@ -16,7 +16,7 @@ class TestDataManagerConfigClient:
     def test_initialization(self):
         """Test client initialization."""
         client = DataManagerConfigClient()
-        assert client.base_url == "http://petrosa-data-manager:8000"
+        assert client.base_url == "http://petrosa-data-manager:80"
         assert client.timeout == 30
         assert client.max_retries == 3
         assert client._session is None
