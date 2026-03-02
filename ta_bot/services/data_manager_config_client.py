@@ -34,7 +34,7 @@ class DataManagerConfigClient:
             timeout: Request timeout in seconds
             max_retries: Maximum number of retry attempts
         """
-        self.base_url = base_url or "http://petrosa-data-manager:8000"
+        self.base_url = base_url or "http://petrosa-data-manager:80"
         self.timeout = timeout
         self.max_retries = max_retries
         self._session: aiohttp.ClientSession | None = None
