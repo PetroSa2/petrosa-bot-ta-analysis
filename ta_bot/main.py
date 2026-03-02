@@ -30,10 +30,11 @@ from ta_bot.health import set_rate_limiter, start_health_server
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.nats_listener import NATSListener
 from ta_bot.services.publisher import SignalPublisher
+from ta_bot.utils.logger import setup_logging
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+setup_logging(
+    level=os.getenv("LOG_LEVEL", "INFO"), format_type=os.getenv("LOG_FORMAT", "json")
 )
 logger = logging.getLogger(__name__)
 
