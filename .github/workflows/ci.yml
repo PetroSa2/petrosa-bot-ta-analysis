@@ -143,7 +143,7 @@ jobs:
         with:
           repository: PetroSa2/petrosa_k8s
           ref: main
-          token: ${{ steps.generate-token.outputs.token }}
+          token: ${{ steps.generate_token.outputs.token }}
           path: petrosa_k8s
 
       - name: Rebase on main
