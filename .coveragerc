@@ -1,6 +1,6 @@
 [run]
 # Standardized coverage configuration for Petrosa Systems
-source = ta_bot, config
+source = ta_bot, scripts
 omit =
     */tests/*
     */test_*
@@ -10,7 +10,6 @@ omit =
     */htmlcov/*
     */.git/*
     */migrations/*
-    */scripts/*
     */docs/*
     */k8s/*
     */examples/*

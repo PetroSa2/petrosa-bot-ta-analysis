@@ -30,10 +30,11 @@ from ta_bot.health import set_rate_limiter, start_health_server
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.nats_listener import NATSListener
 from ta_bot.services.publisher import SignalPublisher
+from ta_bot.utils.logger import setup_logging
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+setup_logging(
+    level=os.getenv("LOG_LEVEL", "INFO"), format_type=os.getenv("LOG_FORMAT", "json")
 )
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,9 @@ async def main():
         # Initialize Data Manager client for configuration (preferred)
         from ta_bot.services.data_manager_config_client import DataManagerConfigClient
 
-        data_manager_client = DataManagerConfigClient()
+        data_manager_client = DataManagerConfigClient(
+            base_url=os.getenv("DATA_MANAGER_URL")
+        )
         await data_manager_client.connect()
         logger.info("Data Manager client initialized")
 

@@ -33,7 +33,7 @@ def mock_signal():
 def publisher():
     """Create a signal publisher."""
     return SignalPublisher(
-        api_endpoint="http://test-api:8000/signals",
+        api_endpoint="http://test-api:80/signals",
         nats_url="nats://test-nats:4222",
         enable_rest_publishing=False,
     )
@@ -46,7 +46,7 @@ class TestSignalPublisher:
     async def test_start_without_rest(self):
         """Test starting publisher without REST API."""
         publisher = SignalPublisher(
-            api_endpoint="http://test:8000",
+            api_endpoint="http://test:80",
             nats_url="nats://test:4222",
             enable_rest_publishing=False,
         )
@@ -61,7 +61,7 @@ class TestSignalPublisher:
     async def test_start_with_rest(self):
         """Test starting publisher with REST API enabled."""
         publisher = SignalPublisher(
-            api_endpoint="http://test:8000",
+            api_endpoint="http://test:80",
             nats_url="nats://test:4222",
             enable_rest_publishing=True,
         )
@@ -76,7 +76,7 @@ class TestSignalPublisher:
     async def test_start_nats_connection_failure(self):
         """Test handling NATS connection failure."""
         publisher = SignalPublisher(
-            api_endpoint="http://test:8000",
+            api_endpoint="http://test:80",
             nats_url="nats://test:4222",
             enable_rest_publishing=False,
         )
@@ -88,7 +88,7 @@ class TestSignalPublisher:
     async def test_stop(self):
         """Test stopping publisher."""
         publisher = SignalPublisher(
-            api_endpoint="http://test:8000",
+            api_endpoint="http://test:80",
             nats_url="nats://test:4222",
             enable_rest_publishing=True,
         )
@@ -132,7 +132,7 @@ class TestSignalPublisher:
     async def test_publish_via_rest_session_not_started(self, mock_signal):
         """Test publishing via REST when session not started."""
         publisher = SignalPublisher(
-            api_endpoint="http://test:8000",
+            api_endpoint="http://test:80",
             nats_url=None,
             enable_rest_publishing=True,
         )
@@ -143,7 +143,7 @@ class TestSignalPublisher:
     async def test_publish_via_rest_success(self, mock_signal):
         """Test successful REST API publishing."""
         publisher = SignalPublisher(
-            api_endpoint="http://test:8000/signals",
+            api_endpoint="http://test:80/signals",
             nats_url=None,
             enable_rest_publishing=True,
         )
@@ -163,7 +163,7 @@ class TestSignalPublisher:
     async def test_publish_via_rest_failure(self, mock_signal):
         """Test REST API publishing failure."""
         publisher = SignalPublisher(
-            api_endpoint="http://test:8000/signals",
+            api_endpoint="http://test:80/signals",
             nats_url=None,
             enable_rest_publishing=True,
         )

@@ -55,7 +55,7 @@ def mock_base_client():
 def data_manager_client(mock_base_client):
     """Create a Data Manager client with mocked base client."""
     return DataManagerClient(
-        base_url="http://test-dm:8000",
+        base_url="http://test-dm:80",
         timeout=30,
         max_retries=3,
     )
@@ -68,20 +68,20 @@ class TestDataManagerClient:
     async def test_initialization(self):
         """Test client initialization."""
         client = DataManagerClient(
-            base_url="http://test:8000",
+            base_url="http://test:80",
             timeout=60,
             max_retries=5,
         )
 
-        assert client.base_url == "http://test:8000"
+        assert client.base_url == "http://test:80"
         assert client.timeout == 60
         assert client.max_retries == 5
 
     async def test_initialization_with_defaults(self):
         """Test client initialization with default values."""
-        with patch.dict("os.environ", {"DATA_MANAGER_URL": "http://env-dm:8000"}):
+        with patch.dict("os.environ", {"DATA_MANAGER_URL": "http://env-dm:80"}):
             client = DataManagerClient()
-            assert client.base_url == "http://env-dm:8000"
+            assert client.base_url == "http://env-dm:80"
             assert client.timeout == 30
             assert client.max_retries == 3
 
