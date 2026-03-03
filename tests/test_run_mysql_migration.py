@@ -24,7 +24,12 @@ class TestRunMysqlMigration(unittest.TestCase):
         mock_connect.return_value = mock_conn
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-        mock_cursor.fetchone.return_value = True  # Column already exists
+
+        # Setup mock responses for multiple calls to fetchone
+        mock_cursor.fetchone.side_effect = [
+            {"Field": "timeframe"},  # SHOW COLUMNS returns existing column
+            {"idx_exists": 1},  # Index check returns 1
+        ]
 
         # Run migration
         result = run_migration()
@@ -54,14 +59,15 @@ class TestRunMysqlMigration(unittest.TestCase):
         mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
 
         # First call to fetchone (SHOW COLUMNS) returns None (missing column)
-        mock_cursor.fetchone.return_value = None
+        # Second call to fetchone (index check) returns 0 (missing index)
+        mock_cursor.fetchone.side_effect = [None, {"idx_exists": 0}]
 
         result = run_migration()
 
         self.assertTrue(result)
         # Verify ALTER TABLE was called
         mock_cursor.execute.assert_any_call(
-            "ALTER TABLE signals ADD COLUMN timeframe VARCHAR(10) DEFAULT '1h' AFTER symbol"
+            "ALTER TABLE signals ADD COLUMN timeframe VARCHAR(10) DEFAULT '15m' AFTER symbol"
         )
 
     @patch("run_mysql_migration.os.getenv")
