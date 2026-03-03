@@ -57,7 +57,4 @@ def run_migration():
         return False
 
 
-if __name__ == "__main__":
-    if run_migration():
-        sys.exit(0)
-    sys.exit(1)
+
