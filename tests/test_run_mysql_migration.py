@@ -88,7 +88,12 @@ class TestRunMysqlMigration(unittest.TestCase):
         mock_connect.return_value = mock_conn
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-        mock_cursor.fetchone.return_value = True
+
+        # Setup mock responses for multiple calls to fetchone
+        mock_cursor.fetchone.side_effect = [
+            {"Field": "timeframe"},  # SHOW COLUMNS returns existing column
+            {"idx_exists": 1},  # Index check returns 1
+        ]
 
         result = run_migration()
         self.assertTrue(result)
