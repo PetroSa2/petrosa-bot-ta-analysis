@@ -94,11 +94,14 @@ class TestAppConfigRollback:
     async def test_rollback_to_previous_success(self, config_manager, sample_history):
         """Test successful rollback to previous version."""
         # 1. Setup mocks
-        with patch.object(
-            config_manager, "get_audit_trail", return_value=sample_history
-        ), patch.object(
-            config_manager, "set_config", new_callable=AsyncMock
-        ) as mock_set_config:
+        with (
+            patch.object(
+                config_manager, "get_audit_trail", return_value=sample_history
+            ),
+            patch.object(
+                config_manager, "set_config", new_callable=AsyncMock
+            ) as mock_set_config,
+        ):
             mock_set_config.return_value = (True, MagicMock(spec=AppConfig), [])
 
             # 2. Execute rollback
@@ -118,11 +121,14 @@ class TestAppConfigRollback:
 
     async def test_rollback_to_version_success(self, config_manager, sample_history):
         """Test successful rollback to a specific version."""
-        with patch.object(
-            config_manager, "get_audit_trail", return_value=sample_history
-        ), patch.object(
-            config_manager, "set_config", new_callable=AsyncMock
-        ) as mock_set_config:
+        with (
+            patch.object(
+                config_manager, "get_audit_trail", return_value=sample_history
+            ),
+            patch.object(
+                config_manager, "set_config", new_callable=AsyncMock
+            ) as mock_set_config,
+        ):
             mock_set_config.return_value = (True, MagicMock(spec=AppConfig), [])
 
             success, config, errors = await config_manager.rollback_config(
@@ -135,11 +141,14 @@ class TestAppConfigRollback:
 
     async def test_rollback_to_id_success(self, config_manager, sample_history):
         """Test successful rollback to a specific audit ID."""
-        with patch.object(
-            config_manager, "get_audit_trail", return_value=sample_history
-        ), patch.object(
-            config_manager, "set_config", new_callable=AsyncMock
-        ) as mock_set_config:
+        with (
+            patch.object(
+                config_manager, "get_audit_trail", return_value=sample_history
+            ),
+            patch.object(
+                config_manager, "set_config", new_callable=AsyncMock
+            ) as mock_set_config,
+        ):
             mock_set_config.return_value = (True, MagicMock(spec=AppConfig), [])
 
             success, config, errors = await config_manager.rollback_config(

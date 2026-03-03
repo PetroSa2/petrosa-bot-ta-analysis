@@ -60,9 +60,10 @@ async def test_app_config_rollback(mock_mongodb_client):
     ]
 
     # 2. Mock necessary methods
-    with patch.object(
-        manager, "get_audit_trail", return_value=sample_history
-    ), patch.object(manager, "set_config", new_callable=AsyncMock) as mock_set_config:
+    with (
+        patch.object(manager, "get_audit_trail", return_value=sample_history),
+        patch.object(manager, "set_config", new_callable=AsyncMock) as mock_set_config,
+    ):
         mock_set_config.return_value = (True, MagicMock(spec=AppConfig), [])
 
         # 3. Execute

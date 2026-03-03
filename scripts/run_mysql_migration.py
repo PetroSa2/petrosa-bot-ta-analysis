@@ -55,6 +55,3 @@ def run_migration():
     except Exception as e:
         logger.error(f"❌ Migration failed: {e}")
         return False
-
-
-

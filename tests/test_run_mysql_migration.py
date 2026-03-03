@@ -64,7 +64,6 @@ class TestRunMysqlMigration(unittest.TestCase):
             "ALTER TABLE signals ADD COLUMN timeframe VARCHAR(10) DEFAULT '1h' AFTER symbol"
         )
 
-
     @patch("run_mysql_migration.os.getenv")
     def test_run_migration_missing_uri(self, mock_getenv):
         from run_mysql_migration import run_migration
