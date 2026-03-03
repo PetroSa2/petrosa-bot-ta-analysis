@@ -50,6 +50,37 @@ def run_migration():
                 logger.info("✅ Column added successfully")
             else:
                 logger.info("✓ Column 'timeframe' already exists")
+
+            # Backfill existing NULL or empty timeframe values to the default
+            logger.info("Updating existing NULL/empty 'timeframe' values to default '1h'...")
+            cursor.execute(
+                "UPDATE signals SET timeframe = '1h' "
+                "WHERE timeframe IS NULL OR timeframe = ''"
+            )
+            logger.info("✓ Existing 'timeframe' values updated where necessary")
+
+            # Ensure an index exists on signals(timeframe) to support efficient queries
+            logger.info("Checking for existing index 'idx_signals_timeframe' on signals(timeframe)...")
+            cursor.execute(
+                """
+                SELECT COUNT(1) AS idx_exists
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = %s
+                  AND TABLE_NAME = 'signals'
+                  AND INDEX_NAME = 'idx_signals_timeframe'
+                """,
+                (db_config["database"],),
+            )
+            row = cursor.fetchone()
+            idx_exists = bool(row and row.get("idx_exists"))
+            if not idx_exists:
+                logger.info("Creating index 'idx_signals_timeframe' on signals(timeframe)...")
+                cursor.execute("CREATE INDEX idx_signals_timeframe ON signals(timeframe)")
+                logger.info("✅ Index 'idx_signals_timeframe' created successfully")
+            else:
+                logger.info("✓ Index 'idx_signals_timeframe' already exists")
+
+        connection.commit()
         connection.close()
         return True
     except Exception as e:
