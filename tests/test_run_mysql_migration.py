@@ -65,5 +65,43 @@ class TestRunMysqlMigration(unittest.TestCase):
         )
 
 
+    @patch("run_mysql_migration.os.getenv")
+    def test_run_migration_missing_uri(self, mock_getenv):
+        from run_mysql_migration import run_migration
+
+        mock_getenv.return_value = None
+        result = run_migration()
+        self.assertFalse(result)
+
+    @patch("run_mysql_migration.os.getenv")
+    @patch("run_mysql_migration.pymysql.connect")
+    def test_run_migration_mysql_pymysql_prefix(self, mock_connect, mock_getenv):
+        from run_mysql_migration import run_migration
+
+        mock_getenv.return_value = "mysql+pymysql://user:pass@localhost:3306/db"
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_cursor = MagicMock()
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        mock_cursor.fetchone.return_value = True
+
+        result = run_migration()
+        self.assertTrue(result)
+        mock_connect.assert_called_once()
+        args, kwargs = mock_connect.call_args
+        self.assertEqual(kwargs["host"], "localhost")
+
+    @patch("run_mysql_migration.os.getenv")
+    @patch("run_mysql_migration.pymysql.connect")
+    def test_run_migration_exception(self, mock_connect, mock_getenv):
+        from run_mysql_migration import run_migration
+
+        mock_getenv.return_value = "mysql://user:pass@localhost:3306/db"
+        mock_connect.side_effect = Exception("Connection failed")
+
+        result = run_migration()
+        self.assertFalse(result)
+
+
 if __name__ == "__main__":
     unittest.main()
