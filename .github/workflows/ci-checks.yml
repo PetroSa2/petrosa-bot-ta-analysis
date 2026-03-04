@@ -9,7 +9,7 @@ on:
 jobs:
   lint:
     name: Lint & Format Check
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
 
   test:
     name: Test & Coverage
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
 
   security:
     name: Security Scan
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     permissions:
       contents: read
       security-events: write
@@ -103,7 +103,7 @@ jobs:
 
   test-quality:
     name: Test Quality Check
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -116,7 +116,7 @@ jobs:
 
   documentation-standards:
     name: Documentation Standards Check
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -130,7 +130,7 @@ jobs:
 
   pipeline:
     name: pipeline
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     needs: [lint, test, security, test-quality, documentation-standards]
     if: always()
     steps:
