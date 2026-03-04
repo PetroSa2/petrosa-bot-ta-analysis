@@ -9,6 +9,7 @@ on:
 jobs:
   lint:
     name: Lint & Format Check
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: petrosa-org-runners
     steps:
       - name: Checkout code
@@ -35,6 +36,7 @@ jobs:
 
   test:
     name: Test & Coverage
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: petrosa-org-runners
     steps:
       - name: Checkout code
@@ -62,6 +64,7 @@ jobs:
 
   security:
     name: Security Scan
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: petrosa-org-runners
     permissions:
       contents: read
@@ -103,6 +106,7 @@ jobs:
 
   test-quality:
     name: Test Quality Check
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: petrosa-org-runners
     steps:
       - name: Checkout code
@@ -116,6 +120,7 @@ jobs:
 
   documentation-standards:
     name: Documentation Standards Check
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: petrosa-org-runners
     steps:
       - name: Checkout code
@@ -132,7 +137,7 @@ jobs:
     name: pipeline
     runs-on: petrosa-org-runners
     needs: [lint, test, security, test-quality, documentation-standards]
-    if: always()
+    if: always() && (github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Validate pipeline results
         run: |
