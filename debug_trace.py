@@ -1,9 +1,9 @@
 # ruff: noqa
 import os
 
-os.environ["OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"] = (
-    "true"  # Disable auto-instrumentation for clean test
-)
+os.environ[
+    "OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"
+] = "true"  # Disable auto-instrumentation for clean test
 
 from opentelemetry import trace  # noqa: E402
 from opentelemetry.propagate import extract, inject  # noqa: E402
