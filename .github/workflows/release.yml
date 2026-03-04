@@ -20,7 +20,7 @@ env:
 jobs:
   # PR CHECKS - Only run on pull requests
   lint-and-test:
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     if: github.event_name == 'pull_request'
 
     steps:
@@ -106,7 +106,7 @@ jobs:
         slug: PetroSa2/petrosa-bot-ta-analysis
 
   security-scan:
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     if: github.event_name == 'pull_request'
 
     steps:
@@ -123,7 +123,7 @@ jobs:
 
   create-release:
     needs: [lint-and-test, security-scan]
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: write
@@ -154,7 +154,7 @@ jobs:
 
   build-and-push:
     needs: [create-release]
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
@@ -255,7 +255,7 @@ jobs:
 
   deploy:
     needs: [build-and-push, create-release]
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
 
@@ -467,7 +467,7 @@ jobs:
 
   notify:
     needs: [build-and-push, deploy, create-release]
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -497,7 +497,7 @@ jobs:
 
   cleanup:
     needs: [build-and-push]
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:

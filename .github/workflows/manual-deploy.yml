@@ -20,7 +20,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     permissions:
       contents: write
       packages: write
@@ -103,10 +103,10 @@ jobs:
           VERSION="${{ steps.bump_version.outputs.new_version }}"
           # Update the image tag in manifests
           find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -i "s/VERSION_PLACEHOLDER/$VERSION/g"
-          
+
           # Also update the version label if needed
           find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -i "s/version: VERSION_PLACEHOLDER/version: $VERSION/g"
-          
+
           echo "Updated bot-ta-analysis image tag to $VERSION in petrosa_k8s/k8s/bot-ta-analysis/"
 
       - name: Commit and push to petrosa_k8s
