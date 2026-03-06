@@ -89,10 +89,17 @@ class DataManagerConfigClient:
 
         try:
             async with self._session.get(
-                f"{self.base_url}/config/application"
+                f"{self.base_url}/api/v1/config/application"
             ) as response:
                 if response.status == 200:
                     data = await response.json()
+                    # Standard API response wraps data in a 'data' field
+                    if (
+                        isinstance(data, dict)
+                        and "data" in data
+                        and data.get("success")
+                    ):
+                        return data["data"]
                     return data
                 else:
                     logger.error(f"Failed to get app config: {response.status}")
@@ -135,7 +142,7 @@ class DataManagerConfigClient:
             }
 
             async with self._session.post(
-                f"{self.base_url}/config/application", json=payload
+                f"{self.base_url}/api/v1/config/application", json=payload
             ) as response:
                 if response.status == 200:
                     logger.info("Application config updated successfully")
@@ -165,13 +172,20 @@ class DataManagerConfigClient:
             await self.connect()
 
         try:
-            url = f"{self.base_url}/config/strategies/{strategy_id}"
+            url = f"{self.base_url}/api/v1/config/strategies/{strategy_id}"
             if symbol:
                 url += f"?symbol={symbol}"
 
             async with self._session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
+                    # Standard API response wraps data in a 'data' field
+                    if (
+                        isinstance(data, dict)
+                        and "data" in data
+                        and data.get("success")
+                    ):
+                        return data["data"]
                     return data
                 else:
                     logger.warning(f"No config found for strategy {strategy_id}")
@@ -212,7 +226,7 @@ class DataManagerConfigClient:
                 "reason": reason,
             }
 
-            url = f"{self.base_url}/config/strategies/{strategy_id}"
+            url = f"{self.base_url}/api/v1/config/strategies/{strategy_id}"
             if symbol:
                 url += f"?symbol={symbol}"
 
@@ -352,7 +366,7 @@ class DataManagerConfigClient:
             await self.connect()
 
         try:
-            url = f"{self.base_url}/config/strategies/{strategy_id}"
+            url = f"{self.base_url}/api/v1/config/strategies/{strategy_id}"
             if symbol:
                 url += f"?symbol={symbol}"
 

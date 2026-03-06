@@ -125,7 +125,7 @@ class TestDataManagerConfigClient:
             "version": 1,
         }
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/config/application"
+            f"{client.base_url}/api/v1/config/application"
         )
 
     @pytest.mark.asyncio
@@ -142,7 +142,7 @@ class TestDataManagerConfigClient:
         assert result["enabled_strategies"] == []
         assert result["source"] == "default"
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/config/application"
+            f"{client.base_url}/api/v1/config/application"
         )
 
     @pytest.mark.asyncio
@@ -165,7 +165,7 @@ class TestDataManagerConfigClient:
 
         assert result is True
         client._session.post.assert_called_once_with(
-            f"{client.base_url}/config/application",
+            f"{client.base_url}/api/v1/config/application",
             json={
                 "enabled_strategies": [],
                 "symbols": [],
@@ -193,7 +193,7 @@ class TestDataManagerConfigClient:
 
         assert result is False
         client._session.post.assert_called_once_with(
-            f"{client.base_url}/config/application",
+            f"{client.base_url}/api/v1/config/application",
             json={
                 "enabled_strategies": [],
                 "symbols": [],
@@ -232,7 +232,7 @@ class TestDataManagerConfigClient:
             "version": 1,
         }
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/config/strategies/momentum_pulse"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse"
         )
 
     @pytest.mark.asyncio
@@ -260,7 +260,7 @@ class TestDataManagerConfigClient:
             "version": 1,
         }
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/config/strategies/momentum_pulse?symbol=BTCUSDT"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT"
         )
 
     @pytest.mark.asyncio
@@ -285,7 +285,7 @@ class TestDataManagerConfigClient:
 
         assert result is True
         client._session.post.assert_called_once_with(
-            f"{client.base_url}/config/strategies/momentum_pulse?symbol=BTCUSDT",
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT",
             json={
                 "parameters": parameters,
                 "changed_by": "test_user",
@@ -309,7 +309,7 @@ class TestDataManagerConfigClient:
 
         assert result is False
         client._session.post.assert_called_once_with(
-            f"{client.base_url}/config/strategies/momentum_pulse?symbol=BTCUSDT",
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT",
             json={
                 "parameters": parameters,
                 "changed_by": "test_user",
@@ -375,7 +375,7 @@ class TestDataManagerConfigClient:
 
         assert result is True
         client._session.delete.assert_called_once_with(
-            f"{client.base_url}/config/strategies/momentum_pulse"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse"
         )
 
     @pytest.mark.asyncio
@@ -397,7 +397,7 @@ class TestDataManagerConfigClient:
 
         assert result is True
         client._session.delete.assert_called_once_with(
-            f"{client.base_url}/config/strategies/momentum_pulse?symbol=BTCUSDT"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT"
         )
 
     def test_get_default_config(self):
