@@ -93,6 +93,13 @@ class DataManagerConfigClient:
             ) as response:
                 if response.status == 200:
                     data = await response.json()
+                    # Standard API response wraps data in a 'data' field
+                    if (
+                        isinstance(data, dict)
+                        and "data" in data
+                        and data.get("success")
+                    ):
+                        return data["data"]
                     return data
                 else:
                     logger.error(f"Failed to get app config: {response.status}")
@@ -172,6 +179,13 @@ class DataManagerConfigClient:
             async with self._session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
+                    # Standard API response wraps data in a 'data' field
+                    if (
+                        isinstance(data, dict)
+                        and "data" in data
+                        and data.get("success")
+                    ):
+                        return data["data"]
                     return data
                 else:
                     logger.warning(f"No config found for strategy {strategy_id}")

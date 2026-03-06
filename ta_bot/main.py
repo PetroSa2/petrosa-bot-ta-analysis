@@ -41,28 +41,47 @@ logger = logging.getLogger(__name__)
 
 async def main():
     """Main entry point for the TA bot."""
-    try:
-        # 1. Setup OpenTelemetry FIRST (before any logging configuration)
-        if initialize_telemetry_standard and not os.getenv("OTEL_NO_AUTO_INIT"):
-            initialize_telemetry_standard(
+    # 1. Setup OpenTelemetry FIRST
+    if (
+        os.getenv("ENABLE_OTEL", "true").lower() in ("true", "1", "yes")
+        and setup_telemetry
+        and os.getenv("OTEL_NO_AUTO_INIT", "").lower() not in ("1", "true", "yes", "on")
+    ):
+        try:
+            logger.info("Initializing OpenTelemetry for TA Bot")
+            setup_telemetry(
                 service_name="ta-bot",
                 service_type="fastapi",
                 enable_fastapi=True,
-                enable_mongodb=True,
                 enable_mysql=True,
+                enable_mongodb=True,
+                enable_http=True,
             )
+        except Exception as e:
+            logger.warning(f"Failed to initialize OpenTelemetry: {e}")
 
-        # 2. Setup logging (may call basicConfig)
-        # Note: logging is already configured at module level
+    # 3. Attach OTel logging handler LAST (after logging is configured)
+    if (
+        os.getenv("ENABLE_OTEL", "true").lower() in ("true", "1", "yes")
+        and attach_logging_handler
+        and os.getenv("OTEL_NO_AUTO_INIT", "").lower() not in ("1", "true", "yes", "on")
+    ):
+        try:
+            from petrosa_otel import attach_logging_handler
 
-        # 3. Attach OTel logging handler LAST (after logging is configured)
-        if attach_logging_handler:
-            attach_logging_handler()
+            success = attach_logging_handler()
+            if success:
+                logger.info(
+                    "✅ OpenTelemetry logging handler attached - logs will be exported to Grafana"
+                )
+        except Exception as e:
+            logger.error(f"Failed to attach OTel logging handler: {e}")
 
-        # 4. Setup graceful shutdown signal handlers for telemetry flushing
-        if setup_signal_handlers:
-            setup_signal_handlers()
+    # 4. Setup graceful shutdown signal handlers for telemetry flushing
+    if setup_signal_handlers:
+        setup_signal_handlers()
 
+    try:
         # Initialize components
         config = Config()
         signal_engine = SignalEngine()
