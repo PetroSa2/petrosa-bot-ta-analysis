@@ -38,7 +38,7 @@ opentelemetry-semantic-conventions>=0.41b0
 pandas>=2.0.0
 
 # Petrosa OTel package
-petrosa-otel[fastapi]>=0.110.0
+petrosa-otel[all]>=1.0.0
 # Data Manager Client (using aiohttp directly)
 prometheus-client>=0.17.0
 pydantic>=2.0.0
