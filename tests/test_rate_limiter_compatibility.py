@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from petrosa_otel.rate_limiter import ConfigRateLimiter
+from petrosa_otel import ConfigRateLimiter
 
 from ta_bot.db.mongodb_client import MongoDBClient
 
