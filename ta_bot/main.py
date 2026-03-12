@@ -77,14 +77,23 @@ async def main():
         logger.info("Data Manager client initialized")
 
         # Initialize MongoDB client for fallback configuration persistence
+        # This one uses Data Manager if available (the default behavior)
         mongodb_client = MongoDBClient()
         await mongodb_client.connect()
-        logger.info("MongoDB client initialized")
+        logger.info("General MongoDB client initialized")
+
+        # Initialize dedicated direct MongoDB client for the Rate Limiter
+        # ConfigRateLimiter REQUIRES direct collection access
+        rate_limit_mongo_client = MongoDBClient(use_data_manager=False)
+        if not await rate_limit_mongo_client.connect():
+            logger.error("Failed to connect to direct MongoDB for rate limiter; aborting startup")
+            raise RuntimeError("Direct MongoDB connection for rate limiter failed")
+        logger.info("Rate limiter MongoDB client (direct) initialized")
 
         # Initialize Rate Limiter
         if ConfigRateLimiter:
             rate_limiter = ConfigRateLimiter(
-                mongodb_client=mongodb_client,
+                mongodb_client=rate_limit_mongo_client,
                 service_name="ta-bot",
                 per_agent_limit=int(os.getenv("CONFIG_RATE_LIMIT_PER_AGENT", "10")),
                 cooldown_seconds=int(os.getenv("CONFIG_RATE_LIMIT_COOLDOWN", "300")),
