@@ -95,7 +95,7 @@ async def test_main_startup_wiring():
                     (
                         c
                         for c in mock_mongo_cls.call_args_list
-                        if c.kwargs.get("use_data_manager") == False
+                        if c.kwargs.get("use_data_manager") is False
                     ),
                     None,
                 )
