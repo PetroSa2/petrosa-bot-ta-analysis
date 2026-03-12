@@ -147,6 +147,18 @@ class MongoDBClient:
                 self._connected = False
                 logger.info("Disconnected from MongoDB")
 
+    @property
+    def db(self) -> AsyncIOMotorDatabase | None:
+        """
+        Compatibility alias for older `petrosa-otel` versions.
+
+        Some versions of `petrosa_otel.rate_limiter.ConfigRateLimiter` expect a
+        Mongo client wrapper to expose a `.db` attribute that is indexable to
+        access collections. TA Bot stores the Motor database handle on
+        `.database`, so we expose `.db` as an alias.
+        """
+        return self.database
+
     async def _create_indexes(self) -> None:
         """Create indexes for configuration collections."""
         try:
