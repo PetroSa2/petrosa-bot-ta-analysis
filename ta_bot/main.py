@@ -77,9 +77,10 @@ async def main():
         logger.info("Data Manager client initialized")
 
         # Initialize MongoDB client for fallback configuration persistence
-        mongodb_client = MongoDBClient()
+        # Note: Must use direct MongoDB (use_data_manager=False) for ConfigRateLimiter support
+        mongodb_client = MongoDBClient(use_data_manager=False)
         await mongodb_client.connect()
-        logger.info("MongoDB client initialized")
+        logger.info("MongoDB client (direct) initialized")
 
         # Initialize Rate Limiter
         if ConfigRateLimiter:
