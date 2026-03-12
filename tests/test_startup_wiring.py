@@ -120,3 +120,36 @@ async def test_main_startup_wiring():
                 mock_acm.start.assert_called_once()
                 mock_health_fn.assert_called_once()
                 mock_pub_cls.assert_called_once()
+@pytest.mark.asyncio
+async def test_main_startup_mongodb_failure():
+    """
+    Test that main() raises RuntimeError when direct MongoDB connection fails.
+    """
+    with (
+        patch("ta_bot.main.initialize_telemetry_standard"),
+        patch("ta_bot.main.attach_logging_handler"),
+        patch("ta_bot.main.setup_signal_handlers"),
+        patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
+        patch("ta_bot.main.AppConfigManager"),
+        patch("ta_bot.main.SignalPublisher"),
+        patch("ta_bot.main.NATSListener"),
+        patch("ta_bot.main.start_health_server"),
+        patch("ta_bot.main.asyncio.gather", new_callable=AsyncMock),
+        patch("ta_bot.main.asyncio.sleep", new_callable=AsyncMock),
+        patch("ta_bot.services.data_manager_config_client.DataManagerConfigClient") as mock_dm_cls,
+    ):
+        # Configure mocks
+        mock_mongo = mock_mongo_cls.return_value
+        # Use an AsyncMock for connect to support being awaited
+        mock_mongo.connect = AsyncMock()
+        # First call (general client) succeeds, second call (rate limiter client) fails
+        mock_mongo.connect.side_effect = [True, False]
+
+        mock_dm = mock_dm_cls.return_value
+        mock_dm.connect = AsyncMock(return_value=True)
+
+        from ta_bot.main import main
+
+        with patch.dict(os.environ, {"NATS_ENABLED": "False"}):
+            with pytest.raises(RuntimeError, match="Direct MongoDB connection for rate limiter failed"):
+                await main()
