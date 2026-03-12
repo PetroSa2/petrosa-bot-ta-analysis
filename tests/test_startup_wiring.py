@@ -9,6 +9,7 @@ import pytest
 if "petrosa_otel" not in sys.modules:
     sys.modules["petrosa_otel"] = MagicMock()
 
+
 @pytest.mark.asyncio
 async def test_main_startup_wiring():
     """
@@ -19,20 +20,22 @@ async def test_main_startup_wiring():
     # Define the mocks for WHERE THEY ARE LOADED (in ta_bot.main)
     # AND WHERE THEY ARE DEFINED (to be sure)
 
-    with patch("ta_bot.main.initialize_telemetry_standard") as mock_init_otel, \
-         patch("ta_bot.main.attach_logging_handler") as mock_attach_log, \
-         patch("ta_bot.main.setup_signal_handlers") as mock_sig, \
-         patch("ta_bot.main.MongoDBClient") as mock_mongo_cls, \
-         patch("ta_bot.main.AppConfigManager") as mock_acm_cls, \
-         patch("ta_bot.main.SignalPublisher") as mock_pub_cls, \
-         patch("ta_bot.main.NATSListener") as mock_nats_cls, \
-         patch("ta_bot.main.start_health_server") as mock_health_fn, \
-         patch("ta_bot.main.asyncio.gather", new_callable=AsyncMock) as mock_gather, \
-         patch("ta_bot.main.asyncio.sleep", new_callable=AsyncMock):
-
+    with (
+        patch("ta_bot.main.initialize_telemetry_standard") as mock_init_otel,
+        patch("ta_bot.main.attach_logging_handler") as mock_attach_log,
+        patch("ta_bot.main.setup_signal_handlers") as mock_sig,
+        patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
+        patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+        patch("ta_bot.main.SignalPublisher") as mock_pub_cls,
+        patch("ta_bot.main.NATSListener") as mock_nats_cls,
+        patch("ta_bot.main.start_health_server") as mock_health_fn,
+        patch("ta_bot.main.asyncio.gather", new_callable=AsyncMock) as mock_gather,
+        patch("ta_bot.main.asyncio.sleep", new_callable=AsyncMock),
+    ):
         # Inner import mock
-        with patch("ta_bot.services.data_manager_config_client.DataManagerConfigClient") as mock_dm_cls:
-
+        with patch(
+            "ta_bot.services.data_manager_config_client.DataManagerConfigClient"
+        ) as mock_dm_cls:
             # Configure mocks
             mock_mongo = mock_mongo_cls.return_value
             mock_mongo.connect = AsyncMock(return_value=True)
@@ -42,7 +45,9 @@ async def test_main_startup_wiring():
 
             mock_acm = mock_acm_cls.return_value
             mock_acm.start = AsyncMock()
-            mock_acm.get_config = AsyncMock(return_value={"version": 1, "symbols": [], "candle_periods": []})
+            mock_acm.get_config = AsyncMock(
+                return_value={"version": 1, "symbols": [], "candle_periods": []}
+            )
             mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
 
             # Publisher health
@@ -62,12 +67,15 @@ async def test_main_startup_wiring():
             from ta_bot.main import main
 
             # Set environment variables for the test
-            with patch.dict(os.environ, {
-                "NATS_ENABLED": "True",
-                "CONFIG_RATE_LIMIT_PER_AGENT": "10",
-                "CONFIG_RATE_LIMIT_COOLDOWN": "300",
-                "OTEL_NO_AUTO_INIT": ""
-            }):
+            with patch.dict(
+                os.environ,
+                {
+                    "NATS_ENABLED": "True",
+                    "CONFIG_RATE_LIMIT_PER_AGENT": "10",
+                    "CONFIG_RATE_LIMIT_COOLDOWN": "300",
+                    "OTEL_NO_AUTO_INIT": "",
+                },
+            ):
                 # Run main
                 # mock_gather will finish immediately
                 mock_gather.return_value = []
@@ -79,11 +87,35 @@ async def test_main_startup_wiring():
                 # 1. Telemetry should be initialized
                 mock_init_otel.assert_called_once()
 
-                # 2. MongoDBClient MUST be called with use_data_manager=False
-                mock_mongo_cls.assert_called_with(use_data_manager=False)
+                # 2. Verify MongoDBClient calls
+                assert mock_mongo_cls.call_count >= 2
+
+                # Find the call for the rate limiter (use_data_manager=False)
+                rate_limit_mongo_call = next(
+                    (
+                        c
+                        for c in mock_mongo_cls.call_args_list
+                        if c.kwargs.get("use_data_manager") == False
+                    ),
+                    None,
+                )
+                assert (
+                    rate_limit_mongo_call is not None
+                ), "MongoDBClient was not called with use_data_manager=False"
+
+                # Find the general client (default use_data_manager)
+                general_mongo_call = next(
+                    (
+                        c
+                        for c in mock_mongo_cls.call_args_list
+                        if "use_data_manager" not in c.kwargs
+                    ),
+                    None,
+                )
+                assert general_mongo_call is not None, "General MongoDBClient was not initialized"
 
                 # 3. Component interactions
-                mock_mongo.connect.assert_called_once()
+                assert mock_mongo.connect.call_count >= 2
                 mock_dm.connect.assert_called_once()
                 mock_acm.start.assert_called_once()
                 mock_health_fn.assert_called_once()
