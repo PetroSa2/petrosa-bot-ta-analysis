@@ -38,7 +38,7 @@ opentelemetry-semantic-conventions>=0.41b0
 pandas>=2.0.0
 
 # Petrosa OTel package
-petrosa-otel[all] @ git+https://github.com/PetroSa2/petrosa_k8s.git@8db129c93f7e9f5cb4fc5ac6803d9eb2edd3a9d7#subdirectory=petrosa-otel
+petrosa-otel[all]==1.0.4
 prometheus-client>=0.17.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
