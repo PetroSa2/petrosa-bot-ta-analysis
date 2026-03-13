@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.6, pytest-7.4.4, pluggy-1.6.0 -- /usr/local/bin/python3
+cachedir: .pytest_cache
+metadata: {'Python': '3.11.6', 'Platform': 'macOS-26.3.1-arm64-arm-64bit', 'Packages': {'pytest': '7.4.4', 'pluggy': '1.6.0'}, 'Plugins': {'asyncio': '0.23.5', 'html': '4.1.1', 'timeout': '2.1.0', 'langsmith': '0.6.2', 'metadata': '3.1.1', 'cov': '4.1.0', 'Faker': '40.5.1', 'mock': '3.12.0', 'anyio': '3.7.1', 'typeguard': '2.13.3', 'xdist': '3.5.0'}}
+rootdir: /Users/yurisa2/petrosa/petrosa-bot-ta-analysis
+configfile: pytest.ini
+plugins: asyncio-0.23.5, html-4.1.1, timeout-2.1.0, langsmith-0.6.2, metadata-3.1.1, cov-4.1.0, Faker-40.5.1, mock-3.12.0, anyio-3.7.1, typeguard-2.13.3, xdist-3.5.0
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/test_startup_wiring.py::test_main_startup_wiring PASSED            [100%]/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/coverage/inorout.py:503: CoverageWarning: Module ta_bot/main.py was never imported. (module-not-imported)
+  self.warn(f"Module {pkg} was never imported.", slug="module-not-imported")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/coverage/control.py:887: CoverageWarning: No data was collected. (no-data-collected)
+  self._warn("No data was collected.", slug="no-data-collected")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/pytest_cov/plugin.py:312: CovReportWarning: Failed to generate report: No data to report.
+
+  warnings.warn(CovReportWarning(message))
+WARNING: Failed to generate report: No data to report.
+
+
+
+---------- coverage: platform darwin, python 3.11.6-final-0 ----------
+
+FAIL Required test coverage of 40.0% not reached. Total coverage: 0.00%
+
+======================== 1 passed, 21 warnings in 0.84s ========================
+sys:1: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback

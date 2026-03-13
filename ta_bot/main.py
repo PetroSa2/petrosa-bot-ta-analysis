@@ -42,18 +42,18 @@ logger = logging.getLogger(__name__)
 async def main():
     """Main entry point for the TA bot."""
     try:
-        # 1. Setup OpenTelemetry FIRST (before any logging configuration)
+        # 2. Setup logging (may call basicConfig)
+        # Note: logging is already configured at module level
+
+        # 1. Setup OpenTelemetry (before attaching handler)
         if initialize_telemetry_standard and not os.getenv("OTEL_NO_AUTO_INIT"):
             initialize_telemetry_standard(
-                service_name="ta-bot",
+                service_name=os.getenv("OTEL_SERVICE_NAME", "petrosa-ta-bot"),
                 service_type="fastapi",
                 enable_fastapi=True,
                 enable_mongodb=True,
                 enable_mysql=True,
             )
-
-        # 2. Setup logging (may call basicConfig)
-        # Note: logging is already configured at module level
 
         # 3. Attach OTel logging handler LAST (after logging is configured)
         if attach_logging_handler:
@@ -86,7 +86,9 @@ async def main():
         # ConfigRateLimiter REQUIRES direct collection access
         rate_limit_mongo_client = MongoDBClient(use_data_manager=False)
         if not await rate_limit_mongo_client.connect():
-            logger.error("Failed to connect to direct MongoDB for rate limiter; aborting startup")
+            logger.error(
+                "Failed to connect to direct MongoDB for rate limiter; aborting startup"
+            )
             raise RuntimeError("Direct MongoDB connection for rate limiter failed")
         logger.info("Rate limiter MongoDB client (direct) initialized")
 
