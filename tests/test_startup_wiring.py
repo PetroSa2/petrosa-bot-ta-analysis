@@ -112,7 +112,9 @@ async def test_main_startup_wiring():
                     ),
                     None,
                 )
-                assert general_mongo_call is not None, "General MongoDBClient was not initialized"
+                assert (
+                    general_mongo_call is not None
+                ), "General MongoDBClient was not initialized"
 
                 # 3. Component interactions
                 assert mock_mongo.connect.call_count >= 2
@@ -120,6 +122,8 @@ async def test_main_startup_wiring():
                 mock_acm.start.assert_called_once()
                 mock_health_fn.assert_called_once()
                 mock_pub_cls.assert_called_once()
+
+
 @pytest.mark.asyncio
 async def test_main_startup_mongodb_failure():
     """
@@ -136,7 +140,9 @@ async def test_main_startup_mongodb_failure():
         patch("ta_bot.main.start_health_server"),
         patch("ta_bot.main.asyncio.gather", new_callable=AsyncMock),
         patch("ta_bot.main.asyncio.sleep", new_callable=AsyncMock),
-        patch("ta_bot.services.data_manager_config_client.DataManagerConfigClient") as mock_dm_cls,
+        patch(
+            "ta_bot.services.data_manager_config_client.DataManagerConfigClient"
+        ) as mock_dm_cls,
     ):
         # Configure mocks
         mock_mongo = mock_mongo_cls.return_value
@@ -151,5 +157,58 @@ async def test_main_startup_mongodb_failure():
         from ta_bot.main import main
 
         with patch.dict(os.environ, {"NATS_ENABLED": "False"}):
-            with pytest.raises(RuntimeError, match="Direct MongoDB connection for rate limiter failed"):
+            with pytest.raises(
+                RuntimeError, match="Direct MongoDB connection for rate limiter failed"
+            ):
                 await main()
+
+
+@pytest.mark.asyncio
+async def test_main_startup_no_runtime_config():
+    """
+    Test that main() handles missing runtime configuration and falls back to defaults.
+    """
+    with (
+        patch("ta_bot.main.initialize_telemetry_standard"),
+        patch("ta_bot.main.attach_logging_handler"),
+        patch("ta_bot.main.setup_signal_handlers"),
+        patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
+        patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+        patch("ta_bot.main.SignalPublisher"),
+        patch("ta_bot.main.NATSListener") as mock_nats_cls,
+        patch("ta_bot.main.start_health_server") as mock_health_fn,
+        patch("ta_bot.main.asyncio.gather", new_callable=AsyncMock),
+        patch("ta_bot.main.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "ta_bot.services.data_manager_config_client.DataManagerConfigClient"
+        ) as mock_dm_cls,
+    ):
+        # Configure mocks
+        mock_mongo = mock_mongo_cls.return_value
+        mock_mongo.connect = AsyncMock(return_value=True)
+
+        mock_dm = mock_dm_cls.return_value
+        mock_dm.connect = AsyncMock(return_value=True)
+
+        mock_acm = mock_acm_cls.return_value
+        mock_acm.start = AsyncMock()
+        # Return version 0 to trigger the fallback logic
+        mock_acm.get_config = AsyncMock(return_value={"version": 0})
+        mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
+
+        # Configure NATS and Health mocks
+        mock_nats = mock_nats_cls.return_value
+        mock_nats.start = AsyncMock(return_value=asyncio.sleep(0))
+
+        mock_health_server = MagicMock()
+        mock_health_server.start = AsyncMock(return_value=asyncio.sleep(0))
+        mock_health_fn.return_value = mock_health_server
+
+        from ta_bot.main import main
+
+        with patch.dict(os.environ, {"NATS_ENABLED": "False"}):
+            await main()
+
+            # Verify fallback logic was called
+            mock_acm.get_config.assert_called_once()
+            mock_acm.set_config.assert_called_once()
