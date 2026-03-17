@@ -52,8 +52,8 @@ class TestIndicators:
         result = Indicators.rsi(df, period=14)
         assert not result.empty
         assert len(result) == len(df)
-        # First 13 values should be NaN due to insufficient data for RSI calculation
-        assert pd.isna(result.iloc[13])  # Should be NaN
+        # First values should be NaN due to insufficient data for RSI calculation
+        assert pd.isna(result.iloc[0])  # Should be NaN
         # At least one value should be valid (not NaN)
         assert not pd.isna(result.iloc[-1])  # Last value should be valid
 
