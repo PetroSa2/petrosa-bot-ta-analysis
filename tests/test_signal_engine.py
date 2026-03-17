@@ -188,7 +188,7 @@ class TestSignalModel:
         from ta_bot.models.signal import Signal
 
         # Test invalid confidence - Pydantic v2 raises ValidationError
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exc_info:
             Signal(
                 strategy_id="momentum_pulse",
                 symbol="BTCUSDT",
@@ -199,9 +199,10 @@ class TestSignalModel:
                 timeframe="15m",
                 metadata={},
             )
+        assert exc_info is not None
 
         # Test missing required fields
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exc_info:
             Signal(
                 strategy_id="momentum_pulse",
                 symbol="",  # Empty symbol
@@ -212,6 +213,7 @@ class TestSignalModel:
                 timeframe="15m",
                 metadata={},
             )
+        assert exc_info is not None
 
     def test_signal_to_dict(self):
         """Test signal serialization."""
