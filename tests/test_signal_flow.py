@@ -126,7 +126,7 @@ def test_signal_validation():
     signals = getattr(test_signal_generation, "signals", [])
 
     for i, signal in enumerate(signals):
-        is_valid = signal.validate()
+        is_valid = signal.validate_signal()
         logger.info(
             f"Signal {i + 1} validation: {'✅ Valid' if is_valid else '❌ Invalid'}"
         )

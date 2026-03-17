@@ -101,7 +101,7 @@ def test_signal_validation():
     if signal is None:
         assert False, "No signal available from test_signal_creation"
 
-    is_valid = signal.validate()
+    is_valid = signal.validate_signal()
     logger.info(f"Signal validation: {'✅ Valid' if is_valid else '❌ Invalid'}")
 
     assert is_valid, "Signal should be valid"

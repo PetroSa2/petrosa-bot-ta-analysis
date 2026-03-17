@@ -9,7 +9,7 @@ from ta_bot.models.signal import Signal, ValidationError
 
 
 def test_signal_validation_strict_risk():
-    """Test Signal.validate(strict_risk=True) method."""
+    """Test Signal.validate_signal(strict_risk=True) method."""
     # Valid BUY signal with SL/TP
     signal = Signal(
         strategy_id="test",
@@ -21,7 +21,7 @@ def test_signal_validation_strict_risk():
         stop_loss=49000.0,
         take_profit=51000.0,
     )
-    assert signal.validate(strict_risk=True) is True
+    assert signal.validate_signal(strict_risk=True) is True
 
     # Invalid BUY signal without SL/TP
     signal = Signal(
@@ -32,7 +32,7 @@ def test_signal_validation_strict_risk():
         current_price=50000.0,
         price=50000.0,
     )
-    assert signal.validate(strict_risk=True) is False
+    assert signal.validate_signal(strict_risk=True) is False
 
     # Invalid BUY signal with NaN SL
     import math
@@ -47,7 +47,7 @@ def test_signal_validation_strict_risk():
         stop_loss=float("nan"),
         take_profit=51000.0,
     )
-    assert signal.validate(strict_risk=True) is False
+    assert signal.validate_signal(strict_risk=True) is False
 
     # HOLD signal doesn't need SL/TP even in strict mode
     signal = Signal(
@@ -58,7 +58,7 @@ def test_signal_validation_strict_risk():
         current_price=50000.0,
         price=50000.0,
     )
-    assert signal.validate(strict_risk=True) is True
+    assert signal.validate_signal(strict_risk=True) is True
 
 
 def test_signal_engine_validation():

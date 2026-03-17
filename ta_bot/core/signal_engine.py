@@ -404,7 +404,7 @@ class SignalEngine:
                     return None
 
                 # Validate signal
-                if not signal.validate(strict_risk=True):
+                if not signal.validate_signal(strict_risk=True):
                     logger.warning(
                         f"  {strategy_name}: Invalid signal generated - validation failed"
                     )

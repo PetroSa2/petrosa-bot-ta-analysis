@@ -223,7 +223,7 @@ class TestSignalModel:
             stop_loss=45.0,
             take_profit=47.0,
         )
-        assert valid_signal.validate() is True
+        assert valid_signal.validate_signal() is True
 
         # Invalid signal - missing stop_loss (but this is now allowed)
         invalid_signal = Signal(
@@ -239,22 +239,19 @@ class TestSignalModel:
             take_profit=47.0,
         )
         # Validation should still pass as stop_loss is optional
-        assert invalid_signal.validate() is True
+        assert invalid_signal.validate_signal() is True
 
         # Invalid signal - negative confidence
-        invalid_signal2 = Signal(
-            strategy_id="test_strategy",
-            symbol="BTCUSDT",
-            action="buy",
-            confidence=-0.5,
-            current_price=45.5,
-            price=45.5,
-            strength=SignalStrength.STRONG,
-            timeframe="5m",
-            stop_loss=45.0,
-            take_profit=47.0,
-        )
-        assert invalid_signal2.validate() is False
+        # Pydantic will raise error on instantiation for confidence < 0
+        with pytest.raises(Exception):
+            Signal(
+                strategy_id="test_strategy",
+                symbol="BTCUSDT",
+                action="buy",
+                confidence=-0.5,
+                current_price=45.5,
+                price=45.5,
+            )
 
     def test_signal_to_dict(self):
         """Test converting signal to dictionary."""
