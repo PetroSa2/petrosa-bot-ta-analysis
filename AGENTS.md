@@ -15,7 +15,7 @@ To maximize efficiency and avoid unnecessary browser-based interactions, all age
 The Petrosa ecosystem consists of multiple services coordinated through `petrosa_k8s`.
 
 - **Primary Reference**: Always read `petrosa_k8s/_bmad-output/project-context.md` at the start of a session.
-- **Service Repos**: `petrosa-binance-data-extractor`, `petrosa-tradeengine`, `petrosa-bot-ta-analysis`, `petrosa_k8s`, `petrosa-socket-client`, `petrosa-realtime-strategies`, `petrosa-data-manager`.
+- **Service Repos**: `petrosa-binance-data-extractor`, `petrosa-tradeengine`, `petrosa-bot-ta-analysis`, `petrosa_k8s`, `petrosa-socket-client`, `petrosa-realtime-strategies`, `petrosa-data-manager`, `petrosa-cio`.
 
 ## 3. BMAD Workflow System
 
