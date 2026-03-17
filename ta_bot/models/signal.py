@@ -61,7 +61,7 @@ class Signal(BaseModel):
 
     # Core signal information
     strategy_id: str = Field(..., description="Unique identifier for the strategy")
-    symbol: str = Field(..., description="Trading symbol (e.g., BTCUSDT)")
+    symbol: str = Field(..., min_length=3, description="Trading symbol (e.g., BTCUSDT)")
     action: Literal["buy", "sell", "hold", "close"] = Field(
         ..., description="Trading action"
     )

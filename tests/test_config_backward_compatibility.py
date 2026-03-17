@@ -135,7 +135,7 @@ class TestBackwardCompatibility:
         if signal:
             # validate() method should still work
             try:
-                is_valid = signal.validate()
+                is_valid = signal.validate_signal()
                 assert isinstance(is_valid, bool)
             except Exception as e:
                 pytest.fail(f"Signal validation failed: {e}")

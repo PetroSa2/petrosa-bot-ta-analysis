@@ -86,7 +86,7 @@ class TestSignalEngine:
 
         # If signals are generated, they should be valid
         for signal in signals:
-            assert signal.validate()
+            assert signal.validate_signal()
             assert signal.symbol == "BTCUSDT"
             assert signal.timeframe == "15m"
             assert signal.confidence >= 0.0
@@ -151,7 +151,7 @@ class TestSignalEngine:
 
             # Signal should be None or a valid Signal object
             if signal is not None:
-                assert signal.validate()
+                assert signal.validate_signal()
                 assert signal.strategy_id == strategy_name
 
 
@@ -175,7 +175,7 @@ class TestSignalModel:
             metadata=metadata,
         )
 
-        assert signal.validate()
+        assert signal.validate_signal()
         assert signal.symbol == "BTCUSDT"
         assert signal.timeframe == "15m"
         assert signal.action == "buy"
@@ -184,33 +184,34 @@ class TestSignalModel:
 
     def test_signal_validation(self):
         """Test signal validation."""
+        import pytest
         from ta_bot.models.signal import Signal
 
-        # Test invalid confidence
-        signal = Signal(
-            strategy_id="momentum_pulse",
-            symbol="BTCUSDT",
-            action="buy",
-            confidence=1.5,  # Invalid confidence
-            current_price=50000.0,
-            price=50000.0,
-            timeframe="15m",
-            metadata={},
-        )
-        assert not signal.validate()
+        # Test invalid confidence - Pydantic v2 raises ValidationError
+        with pytest.raises(Exception):
+            Signal(
+                strategy_id="momentum_pulse",
+                symbol="BTCUSDT",
+                action="buy",
+                confidence=1.5,  # Invalid confidence
+                current_price=50000.0,
+                price=50000.0,
+                timeframe="15m",
+                metadata={},
+            )
 
         # Test missing required fields
-        signal = Signal(
-            strategy_id="momentum_pulse",
-            symbol="",  # Empty symbol
-            action="buy",
-            confidence=0.74,
-            current_price=50000.0,
-            price=50000.0,
-            timeframe="15m",
-            metadata={},
-        )
-        assert not signal.validate()
+        with pytest.raises(Exception):
+            Signal(
+                strategy_id="momentum_pulse",
+                symbol="",  # Empty symbol
+                action="buy",
+                confidence=0.74,
+                current_price=50000.0,
+                price=50000.0,
+                timeframe="15m",
+                metadata={},
+            )
 
     def test_signal_to_dict(self):
         """Test signal serialization."""
