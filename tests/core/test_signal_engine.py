@@ -244,13 +244,13 @@ class TestSignalModel:
         # Invalid signal - negative confidence
         # Pydantic will raise error on instantiation for confidence < 0
         with pytest.raises(Exception):
-             Signal(
+            Signal(
                 strategy_id="test_strategy",
                 symbol="BTCUSDT",
                 action="buy",
                 confidence=-0.5,
                 current_price=45.5,
-                price=45.5
+                price=45.5,
             )
 
     def test_signal_to_dict(self):

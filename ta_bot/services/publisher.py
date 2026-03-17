@@ -139,19 +139,27 @@ class SignalPublisher:
                 if signal.action in ["buy", "sell"]:
                     if signal_data.get("stop_loss") is None:
                         # Fallback: 2% stop loss
-                        price = signal_data.get("price") or signal_data.get("current_price")
+                        price = signal_data.get("price") or signal_data.get(
+                            "current_price"
+                        )
                         if price:
                             multiplier = 0.98 if signal.action == "buy" else 1.02
                             signal_data["stop_loss"] = price * multiplier
-                            logger.warning(f"⚠️ Missing stop_loss for {signal.strategy_id}, using 2% default: {signal_data['stop_loss']}")
+                            logger.warning(
+                                f"⚠️ Missing stop_loss for {signal.strategy_id}, using 2% default: {signal_data['stop_loss']}"
+                            )
 
                     if signal_data.get("take_profit") is None:
                         # Fallback: 4% take profit
-                        price = signal_data.get("price") or signal_data.get("current_price")
+                        price = signal_data.get("price") or signal_data.get(
+                            "current_price"
+                        )
                         if price:
                             multiplier = 1.04 if signal.action == "buy" else 0.96
                             signal_data["take_profit"] = price * multiplier
-                            logger.warning(f"⚠️ Missing take_profit for {signal.strategy_id}, using 4% default: {signal_data['take_profit']}")
+                            logger.warning(
+                                f"⚠️ Missing take_profit for {signal.strategy_id}, using 4% default: {signal_data['take_profit']}"
+                            )
 
                 # Inject OpenTelemetry trace context for distributed tracing
                 signal_data = NATSTracePropagator.inject_context(signal_data)
