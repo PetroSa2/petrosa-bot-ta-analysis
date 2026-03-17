@@ -185,6 +185,7 @@ class TestSignalModel:
     def test_signal_validation(self):
         """Test signal validation."""
         import pytest
+
         from ta_bot.models.signal import Signal
 
         # Test invalid confidence - Pydantic v2 raises ValidationError
