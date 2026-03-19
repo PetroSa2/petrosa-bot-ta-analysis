@@ -68,7 +68,7 @@ class TestDataManagerConfigClient:
             assert client._session is mock_session
             mock_session.get.assert_called_once_with(
                 f"{client.base_url}/health/liveness",
-                timeout=ClientTimeout(total=client.timeout)
+                timeout=ClientTimeout(total=client.timeout),
             )
             mock_session_class.assert_called_once_with(
                 timeout=ClientTimeout(total=client.timeout)
@@ -98,7 +98,7 @@ class TestDataManagerConfigClient:
 
             mock_session.get.assert_called_once_with(
                 f"{client.base_url}/health/liveness",
-                timeout=ClientTimeout(total=client.timeout)
+                timeout=ClientTimeout(total=client.timeout),
             )
 
     @pytest.mark.asyncio
@@ -443,6 +443,7 @@ class TestDataManagerConfigClient:
     def test_initialization_with_invalid_env_timeout(self):
         """Test that invalid env timeout values fall back to default."""
         import os
+
         # Test non-integer value
         with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "invalid"}):
             client = DataManagerConfigClient()

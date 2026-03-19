@@ -55,14 +55,16 @@ class DataManagerConfigClient:
             else:
                 timeout = 30
 
-        self.base_url = (base_url or os.getenv(
-            "DATA_MANAGER_URL", "http://petrosa-data-manager:80"
-        )).rstrip("/")
+        self.base_url = (
+            base_url or os.getenv("DATA_MANAGER_URL", "http://petrosa-data-manager:80")
+        ).rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
         self._session: aiohttp.ClientSession | None = None
 
-        logger.info(f"Initialized Data Manager config client: {self.base_url} (timeout={self.timeout}s)")
+        logger.info(
+            f"Initialized Data Manager config client: {self.base_url} (timeout={self.timeout}s)"
+        )
 
     async def connect(self):
         """Connect to the Data Manager service."""
@@ -151,7 +153,9 @@ class DataManagerConfigClient:
                 "min_confidence": config_data.get("min_confidence", 0.6),
                 "max_confidence": config_data.get("max_confidence", 0.95),
                 "max_positions": config_data.get("max_positions", 10),
-                "position_sizes": config_data.get("position_sizes", [100, 200, 500, 1000]),
+                "position_sizes": config_data.get(
+                    "position_sizes", [100, 200, 500, 1000]
+                ),
                 "changed_by": changed_by,
                 "reason": reason or "Config update via TA Bot",
             }
