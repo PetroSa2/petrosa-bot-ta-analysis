@@ -251,7 +251,7 @@ class TestSignalModel:
                 action="buy",
                 confidence=-0.5,
                 current_price=45.5,
-                price=45.5
+                price=45.5,
             )
 
     def test_signal_to_dict(self):

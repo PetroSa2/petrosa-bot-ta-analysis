@@ -2,6 +2,7 @@
 Tests for DataManagerConfigClient.
 """
 
+import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -31,6 +32,18 @@ class TestDataManagerConfigClient:
         assert client.max_retries == 5
         assert client._session is None
 
+    def test_initialization_with_env_timeout(self):
+        """Test initialization using DATA_MANAGER_TIMEOUT environment variable."""
+        with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "45"}):
+            client = DataManagerConfigClient()
+            assert client.timeout == 45
+
+    def test_initialization_precedence(self):
+        """Test that explicit timeout takes precedence over environment variable."""
+        with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "45"}):
+            client = DataManagerConfigClient(timeout=10)
+            assert client.timeout == 10
+
     @pytest.mark.asyncio
     async def test_connect_success(self):
         """Test successful connection."""
@@ -54,7 +67,8 @@ class TestDataManagerConfigClient:
 
             assert client._session is mock_session
             mock_session.get.assert_called_once_with(
-                f"{client.base_url}/health/liveness"
+                f"{client.base_url}/health/liveness",
+                timeout=ClientTimeout(total=client.timeout),
             )
             mock_session_class.assert_called_once_with(
                 timeout=ClientTimeout(total=client.timeout)
@@ -83,7 +97,8 @@ class TestDataManagerConfigClient:
                 await client.connect()
 
             mock_session.get.assert_called_once_with(
-                f"{client.base_url}/health/liveness"
+                f"{client.base_url}/health/liveness",
+                timeout=ClientTimeout(total=client.timeout),
             )
 
     @pytest.mark.asyncio
@@ -125,7 +140,8 @@ class TestDataManagerConfigClient:
             "version": 1,
         }
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/application"
+            f"{client.base_url}/api/v1/config/application",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -142,7 +158,8 @@ class TestDataManagerConfigClient:
         assert result["enabled_strategies"] == []
         assert result["source"] == "default"
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/application"
+            f"{client.base_url}/api/v1/config/application",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -177,6 +194,7 @@ class TestDataManagerConfigClient:
                 "changed_by": "test_user",
                 "reason": "test_reason",
             },
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -205,6 +223,7 @@ class TestDataManagerConfigClient:
                 "changed_by": "test_user",
                 "reason": "test_reason",
             },
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -232,7 +251,8 @@ class TestDataManagerConfigClient:
             "version": 1,
         }
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies/momentum_pulse"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -260,7 +280,8 @@ class TestDataManagerConfigClient:
             "version": 1,
         }
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -291,6 +312,7 @@ class TestDataManagerConfigClient:
                 "changed_by": "test_user",
                 "reason": "test_reason",
             },
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -315,6 +337,7 @@ class TestDataManagerConfigClient:
                 "changed_by": "test_user",
                 "reason": "test_reason",
             },
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -338,7 +361,8 @@ class TestDataManagerConfigClient:
 
         assert result == ["momentum_pulse", "rsi_extreme_reversal"]
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies"
+            f"{client.base_url}/api/v1/config/strategies",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -353,7 +377,8 @@ class TestDataManagerConfigClient:
         result = await client.list_strategy_configs()
         assert result == []
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies"
+            f"{client.base_url}/api/v1/config/strategies",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -375,7 +400,8 @@ class TestDataManagerConfigClient:
 
         assert result is True
         client._session.delete.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies/momentum_pulse"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -397,7 +423,8 @@ class TestDataManagerConfigClient:
 
         assert result is True
         client._session.delete.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     def test_get_default_config(self):
@@ -424,3 +451,17 @@ class TestDataManagerConfigClient:
         assert result["version"] == 0
         assert result["source"] == "none"
         assert result["is_override"] is False
+
+    def test_initialization_with_invalid_env_timeout(self):
+        """Test that invalid env timeout values fall back to default."""
+        import os
+
+        # Test non-integer value
+        with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "invalid"}):
+            client = DataManagerConfigClient()
+            assert client.timeout == 30
+
+        # Test negative value
+        with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "-10"}):
+            client = DataManagerConfigClient()
+            assert client.timeout == 30
