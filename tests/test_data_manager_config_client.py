@@ -67,7 +67,8 @@ class TestDataManagerConfigClient:
 
             assert client._session is mock_session
             mock_session.get.assert_called_once_with(
-                f"{client.base_url}/health/liveness"
+                f"{client.base_url}/health/liveness",
+                timeout=ClientTimeout(total=client.timeout)
             )
             mock_session_class.assert_called_once_with(
                 timeout=ClientTimeout(total=client.timeout)
@@ -96,7 +97,8 @@ class TestDataManagerConfigClient:
                 await client.connect()
 
             mock_session.get.assert_called_once_with(
-                f"{client.base_url}/health/liveness"
+                f"{client.base_url}/health/liveness",
+                timeout=ClientTimeout(total=client.timeout)
             )
 
     @pytest.mark.asyncio
@@ -445,7 +447,7 @@ class TestDataManagerConfigClient:
         with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "invalid"}):
             client = DataManagerConfigClient()
             assert client.timeout == 30
-            
+
         # Test negative value
         with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "-10"}):
             client = DataManagerConfigClient()
