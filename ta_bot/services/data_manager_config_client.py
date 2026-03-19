@@ -24,7 +24,7 @@ class DataManagerConfigClient:
     def __init__(
         self,
         base_url: str | None = None,
-        timeout: int = 30,
+        timeout: int | None = None,
         max_retries: int = 3,
     ):
         """
@@ -35,6 +35,10 @@ class DataManagerConfigClient:
             timeout: Request timeout in seconds
             max_retries: Maximum number of retry attempts
         """
+        env_timeout = os.getenv("DATA_MANAGER_TIMEOUT")
+        if timeout is None:
+            timeout = int(env_timeout) if env_timeout else 30
+
         self.base_url = base_url or os.getenv(
             "DATA_MANAGER_URL", "http://petrosa-data-manager:80"
         )
