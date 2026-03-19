@@ -437,3 +437,16 @@ class TestDataManagerConfigClient:
         assert result["version"] == 0
         assert result["source"] == "none"
         assert result["is_override"] is False
+
+    def test_initialization_with_invalid_env_timeout(self):
+        """Test that invalid env timeout values fall back to default."""
+        import os
+        # Test non-integer value
+        with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "invalid"}):
+            client = DataManagerConfigClient()
+            assert client.timeout == 30
+            
+        # Test negative value
+        with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "-10"}):
+            client = DataManagerConfigClient()
+            assert client.timeout == 30
