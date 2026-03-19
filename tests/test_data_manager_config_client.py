@@ -140,7 +140,8 @@ class TestDataManagerConfigClient:
             "version": 1,
         }
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/application"
+            f"{client.base_url}/api/v1/config/application",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -157,7 +158,8 @@ class TestDataManagerConfigClient:
         assert result["enabled_strategies"] == []
         assert result["source"] == "default"
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/application"
+            f"{client.base_url}/api/v1/config/application",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -192,6 +194,7 @@ class TestDataManagerConfigClient:
                 "changed_by": "test_user",
                 "reason": "test_reason",
             },
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -220,6 +223,7 @@ class TestDataManagerConfigClient:
                 "changed_by": "test_user",
                 "reason": "test_reason",
             },
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -247,7 +251,8 @@ class TestDataManagerConfigClient:
             "version": 1,
         }
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies/momentum_pulse"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -275,7 +280,8 @@ class TestDataManagerConfigClient:
             "version": 1,
         }
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -306,6 +312,7 @@ class TestDataManagerConfigClient:
                 "changed_by": "test_user",
                 "reason": "test_reason",
             },
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -330,6 +337,7 @@ class TestDataManagerConfigClient:
                 "changed_by": "test_user",
                 "reason": "test_reason",
             },
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -353,7 +361,8 @@ class TestDataManagerConfigClient:
 
         assert result == ["momentum_pulse", "rsi_extreme_reversal"]
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies"
+            f"{client.base_url}/api/v1/config/strategies",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -368,7 +377,8 @@ class TestDataManagerConfigClient:
         result = await client.list_strategy_configs()
         assert result == []
         client._session.get.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies"
+            f"{client.base_url}/api/v1/config/strategies",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -390,7 +400,8 @@ class TestDataManagerConfigClient:
 
         assert result is True
         client._session.delete.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies/momentum_pulse"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     @pytest.mark.asyncio
@@ -412,7 +423,8 @@ class TestDataManagerConfigClient:
 
         assert result is True
         client._session.delete.assert_called_once_with(
-            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT"
+            f"{client.base_url}/api/v1/config/strategies/momentum_pulse?symbol=BTCUSDT",
+            timeout=ClientTimeout(total=client.timeout)
         )
 
     def test_get_default_config(self):
