@@ -3,9 +3,10 @@ Unit tests for strategy risk metadata validation.
 """
 
 import pytest
+from pydantic import ValidationError
 
 from ta_bot.core.signal_engine import SignalEngine
-from ta_bot.models.signal import Signal, ValidationError
+from ta_bot.models.signal import Signal
 
 
 def test_signal_validation_strict_risk():
