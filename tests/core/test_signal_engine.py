@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.models.signal import Signal, SignalStrength
@@ -243,14 +244,14 @@ class TestSignalModel:
 
         # Invalid signal - negative confidence
         # Pydantic will raise error on instantiation for confidence < 0
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             Signal(
                 strategy_id="test_strategy",
                 symbol="BTCUSDT",
                 action="buy",
                 confidence=-0.5,
                 current_price=45.5,
-                price=45.5,
+                price=45.5
             )
 
     def test_signal_to_dict(self):
