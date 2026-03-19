@@ -2,6 +2,7 @@
 Tests for DataManagerConfigClient.
 """
 
+import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -30,6 +31,18 @@ class TestDataManagerConfigClient:
         assert client.timeout == 60
         assert client.max_retries == 5
         assert client._session is None
+
+    def test_initialization_with_env_timeout(self):
+        """Test initialization using DATA_MANAGER_TIMEOUT environment variable."""
+        with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "45"}):
+            client = DataManagerConfigClient()
+            assert client.timeout == 45
+
+    def test_initialization_precedence(self):
+        """Test that explicit timeout takes precedence over environment variable."""
+        with patch.dict(os.environ, {"DATA_MANAGER_TIMEOUT": "45"}):
+            client = DataManagerConfigClient(timeout=10)
+            assert client.timeout == 10
 
     @pytest.mark.asyncio
     async def test_connect_success(self):
