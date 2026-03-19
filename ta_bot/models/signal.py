@@ -3,11 +3,12 @@ Standardized Signal data model for trading signals.
 Aligned with petrosa-cio contracts.
 """
 
+import math
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class SignalType(StrEnum):
@@ -56,11 +57,25 @@ class TimeInForce(StrEnum):
     GTX = "GTX"
 
 
+def _sanitize_value(value: Any) -> Any:
+    """Recursively sanitize values for JSON serialization."""
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+    elif isinstance(value, dict):
+        return {k: _sanitize_value(v) for k, v in value.items()}
+    elif isinstance(value, (list, tuple)):
+        return [_sanitize_value(v) for v in value]
+    return value
+
+
 class Signal(BaseModel):
     """Enhanced trading signal aligned with Trade Engine format."""
 
     # Core signal information
-    strategy_id: str = Field(..., description="Unique identifier for the strategy")
+    strategy_id: str = Field(
+        ..., min_length=1, description="Unique identifier for the strategy"
+    )
     symbol: str = Field(..., min_length=3, description="Trading symbol (e.g., BTCUSDT)")
     action: Literal["buy", "sell", "hold", "close"] = Field(
         ..., description="Trading action"
@@ -119,12 +134,17 @@ class Signal(BaseModel):
         if not data.get("strategy"):
             data["strategy"] = self.strategy_id
 
-        return data
+        # Deep sanitization for NaN/Inf/JSON compatibility
+        return _sanitize_value(data)
+
+    def validate(self, strict_risk: bool = False) -> bool:
+        """Alias for validate_signal for backward compatibility."""
+        return self.validate_signal(strict_risk=strict_risk)
 
     def validate_signal(self, strict_risk: bool = False) -> bool:
         """
         Validate signal data.
-        Note: Renamed from validate() to avoid conflict with Pydantic's internal validate.
+        Note: validate() is provided as an alias for legacy callers.
         """
         if self.current_price <= 0 or self.price <= 0:
             return False
