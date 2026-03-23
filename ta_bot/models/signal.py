@@ -114,7 +114,7 @@ class Signal(BaseModel):
         """Ensure timestamp is valid datetime."""
         if isinstance(v, str):
             try:
-                return datetime.fromisoformat(v.replace("Z", "+00:00"))
+                return datetime.fromisoformat(v)
             except ValueError:
                 return datetime.utcnow()
         if isinstance(v, (int, float)):
