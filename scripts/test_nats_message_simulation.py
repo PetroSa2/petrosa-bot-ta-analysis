@@ -9,7 +9,8 @@ sends and tests if the TA Bot can generate signals with perfect market condition
 import asyncio
 import logging
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+from datetime import UTC
 from typing import Any
 
 # Add project root to path
