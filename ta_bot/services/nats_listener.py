@@ -65,11 +65,6 @@ class NATSListener:
             await self.nc.connect(self.nats_url)
             logger.info(f"Connected to NATS server: {self.nats_url}")
 
-            # Initialize leader election
-            self.leader_election = LeaderElection(self.nc)
-            # Start leader election in background
-            asyncio.create_task(self.leader_election.start_election())
-
             # Initialize MySQL client
             await self.mysql_client.connect()
 
