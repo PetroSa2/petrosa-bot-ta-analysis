@@ -90,16 +90,32 @@ class NATSListener:
         ]
 
         for subject in subjects:
-            subscription = await self.nc.subscribe(
-                subject,
-                cb=self._handle_candle_message,
-                queue="ta_bot_workers",  # Load balancing across instances
-            )
-            self.subscriptions.append(subscription)
-            logger.info(f"Subscribed to NATS subject: {subject}")
+            try:
+                logger.info(f"Attempting to subscribe to: {subject}")
+                subscription = await self.nc.subscribe(
+                    subject,
+                    cb=self._handle_candle_message,
+                )
+                self.subscriptions.append(subscription)
+                logger.info(f"✅ SUCCESSFULLY subscribed to: {subject}")
+            except Exception as e:
+                logger.error(f"❌ FAILED to subscribe to {subject}: {e}")
+
+        # SELF-TEST: Verify listener by publishing to it
+        try:
+            test_subject = f"{self.nats_subject_prefix_production}.klines.SELFTEST.1m"
+            logger.info(f"Running NATS self-test on: {test_subject}")
+            await self.nc.publish(test_subject, json.dumps({"symbol": "SELFTEST", "period": "1m"}).encode())
+        except Exception as e:
+            logger.error(f"NATS self-test publication failed: {e}")
 
     async def _handle_candle_message(self, msg):
         """Handle incoming candle message."""
+        # RAW PRINT FOR DEBUGGING - BYPASSING ALL LOGGERS
+        import sys
+        sys.stdout.write(f"\n[RAW] !!! NATS MESSAGE RECEIVED ON {msg.subject} !!!\n")
+        sys.stdout.flush()
+
         try:
             # Log every message received with subject and data length
             subject = msg.subject
