@@ -190,8 +190,8 @@ async def main():
         # Start listening for NATS messages if enabled
         if config.nats_enabled:
             logger.info("NATS is enabled, starting NATS listener...")
-            # Start NATS listener in a separate task
-            nats_task = asyncio.create_task(nats_listener.start())
+            # Start NATS listener in a separate task and wait for it
+            await nats_listener.start()
 
             # CRITICAL: Wait briefly for publisher to initialize, then verify NATS connection
             await asyncio.sleep(2)  # Give publisher time to connect
