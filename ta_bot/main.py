@@ -206,8 +206,8 @@ async def main():
                 )
             logger.info("✅ Publisher NATS connection verified successfully")
 
-            # Wait for both health server and NATS listener
-            await asyncio.gather(health_task, nats_task)
+            # Keep the application running for health checks and NATS listener
+            await health_task
         else:
             logger.info("NATS is disabled, skipping NATS listener startup")
             # Keep the application running for health checks
