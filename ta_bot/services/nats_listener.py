@@ -115,7 +115,7 @@ class NATSListener:
         import sys
         sys.stdout.write(f"\n[RAW] !!! NATS MESSAGE RECEIVED ON {msg.subject} !!!\n")
         sys.stdout.flush()
-        
+
         try:
             # Log every message received with subject and data length
             subject = msg.subject
