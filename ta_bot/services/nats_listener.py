@@ -10,9 +10,9 @@ from typing import Any
 from nats.aio.client import Client as NATS
 
 from ta_bot.core.signal_engine import SignalEngine
-from ta_bot.db.mysql_client import MySQLClient
 from ta_bot.services.app_config_manager import AppConfigManager
-from ta_bot.services.publisher import Publisher
+from ta_bot.services.mysql_client import MySQLClient
+from ta_bot.services.publisher import SignalPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class NATSListener:
         supported_symbols: list[str],
         supported_timeframes: list[str],
         signal_engine: SignalEngine,
-        publisher: Publisher,
+        publisher: SignalPublisher,
         mysql_client: MySQLClient,
         app_config_manager: AppConfigManager | None = None,
     ):
