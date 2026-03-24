@@ -10,70 +10,55 @@ from typing import Any
 from nats.aio.client import Client as NATS
 
 from ta_bot.core.signal_engine import SignalEngine
+from ta_bot.db.mysql_client import MySQLClient
 from ta_bot.services.app_config_manager import AppConfigManager
-from ta_bot.services.leader_election import LeaderElection
-from ta_bot.services.mysql_client import MySQLClient
-from ta_bot.services.publisher import SignalPublisher
+from ta_bot.services.publisher import Publisher
 
 logger = logging.getLogger(__name__)
 
 
 class NATSListener:
-    """NATS message listener for candle data."""
+    """Service that listens to NATS for candle extraction events."""
 
     def __init__(
         self,
         nats_url: str,
+        nats_subject_prefix: str,
+        nats_subject_prefix_production: str,
+        supported_symbols: list[str],
+        supported_timeframes: list[str],
         signal_engine: SignalEngine,
-        publisher: SignalPublisher,
-        nats_subject_prefix: str = "binance.extraction",
-        nats_subject_prefix_production: str = "binance.extraction.production",
-        supported_symbols: list[str] | None = None,
-        supported_timeframes: list[str] | None = None,
+        publisher: Publisher,
+        mysql_client: MySQLClient,
         app_config_manager: AppConfigManager | None = None,
     ):
-        """
-        Initialize the NATS listener.
-
-        Args:
-            nats_url: NATS server URL
-            signal_engine: SignalEngine instance for analyzing candles
-            publisher: SignalPublisher for publishing signals
-            nats_subject_prefix: NATS subject prefix
-            nats_subject_prefix_production: NATS subject prefix for production
-            supported_symbols: Default symbols (fallback if no runtime config)
-            supported_timeframes: Default timeframes (fallback if no runtime config)
-            app_config_manager: Optional AppConfigManager for runtime configuration
-        """
         self.nats_url = nats_url
-        self.signal_engine = signal_engine
-        self.publisher = publisher
         self.nats_subject_prefix = nats_subject_prefix
         self.nats_subject_prefix_production = nats_subject_prefix_production
-        self.supported_symbols = supported_symbols or ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
-        self.supported_timeframes = supported_timeframes or ["15m", "1h"]
+        self.supported_symbols = supported_symbols
+        self.supported_timeframes = supported_timeframes
+        self.signal_engine = signal_engine
+        self.publisher = publisher
+        self.mysql_client = mysql_client
         self.app_config_manager = app_config_manager
         self.nc = NATS()
-        self.subscriptions: list[Any] = []
-        self.leader_election = None
-        self.mysql_client = MySQLClient()
+        self.subscriptions = []
+        self.is_running = False
 
     async def start(self):
         """Start the NATS listener."""
         try:
-            # Connect to NATS
+            logger.info(f"Connecting to NATS server: {self.nats_url}")
             await self.nc.connect(self.nats_url)
-            logger.info(f"Connected to NATS server: {self.nats_url}")
+            logger.info("Connected to NATS server")
 
-            # Initialize MySQL client
+            # Initialize dependencies
             await self.mysql_client.connect()
-
-            # Initialize publisher
-            await self.publisher.start()
 
             # Subscribe to candle data subjects
             await self._subscribe_to_candle_data()
 
+            self.is_running = True
             logger.info("NATS listener started successfully")
 
         except Exception as e:
@@ -84,9 +69,10 @@ class NATSListener:
         """Subscribe to candle data subjects."""
         # Subscribe to both development and production subjects
         # Updated to match the actual subjects published by the data extractor
+        # Using '>' multi-token wildcard to capture all sub-tokens (e.g. symbol and period)
         subjects = [
-            f"{self.nats_subject_prefix}.klines.*.*",  # binance.klines.*.*
-            f"{self.nats_subject_prefix_production}.klines.*.*",  # binance.production.klines.*.*
+            f"{self.nats_subject_prefix}.>",  # binance.extraction.>
+            f"{self.nats_subject_prefix_production}.>",  # binance.extraction.production.>
         ]
 
         for subject in subjects:
@@ -115,7 +101,7 @@ class NATSListener:
         import sys
         sys.stdout.write(f"\n[RAW] !!! NATS MESSAGE RECEIVED ON {msg.subject} !!!\n")
         sys.stdout.flush()
-        
+
         try:
             # Log every message received with subject and data length
             subject = msg.subject
@@ -135,7 +121,17 @@ class NATSListener:
             # Parse message data
             data = json.loads(raw_data)
 
-            # Extract message information
+            # Support both single symbol and batch messages
+            event_type = data.get("event_type")
+            if event_type == "batch_extraction_completed":
+                symbols = data.get("symbols", [])
+                period = data.get("period")
+                logger.info(f"Processing batch extraction completion for {len(symbols)} symbols on {period}")
+                for symbol in symbols:
+                    await self._process_symbol_extraction(symbol, period)
+                return
+
+            # Standard single symbol message
             symbol = data.get("symbol")
             period = data.get("period") or data.get("timeframe")
 
@@ -145,6 +141,18 @@ class NATSListener:
                 )
                 return
 
+            await self._process_symbol_extraction(symbol, period)
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse NATS message: {e}")
+            logger.error(f"Raw message: {msg.data.decode()}")
+        except Exception as e:
+            logger.error(f"Error processing candle message: {e}")
+            logger.error(f"Subject: {msg.subject}, Data: {msg.data.decode()[:200]}...")
+
+    async def _process_symbol_extraction(self, symbol: str, period: str):
+        """Process extraction completion for a specific symbol and period."""
+        try:
             # Load runtime configuration if available
             runtime_config = None
             if self.app_config_manager:
@@ -246,13 +254,8 @@ class NATSListener:
                 logger.info(
                     f"No signals generated for {symbol} {period} - all strategies conditions not met"
                 )
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse NATS message: {e}")
-            logger.error(f"Raw message: {msg.data.decode()}")
         except Exception as e:
-            logger.error(f"Error processing candle message: {e}")
-            logger.error(f"Subject: {msg.subject}, Data: {msg.data.decode()[:200]}...")
+            logger.error(f"Error processing symbol {symbol} {period}: {e}")
 
     async def _cleanup(self):
         """Clean up NATS connections and subscriptions."""
@@ -260,14 +263,16 @@ class NATSListener:
             # Stop publisher
             await self.publisher.stop()
 
-            # Unsubscribe from all topics
+            # Unsubscribe from all subjects
             for subscription in self.subscriptions:
                 await subscription.unsubscribe()
+            self.subscriptions = []
 
             # Close NATS connection
-            await self.nc.close()
+            if self.nc.is_connected:
+                await self.nc.close()
 
-            # Close MySQL connection
+            # Disconnect MySQL client
             await self.mysql_client.disconnect()
 
             logger.info("NATS listener cleaned up")
