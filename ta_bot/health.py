@@ -218,9 +218,7 @@ async def start_health_server(
         logger.info("Publisher reference stored in health server app state")
 
     # Create server configuration
-    config = uvicorn.Config(
-        app, host="0.0.0.0", port=port, log_level="info"
-    )  # nosec B104
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")  # nosec B104
     server = uvicorn.Server(config)
 
     return HealthServerRunner(server)
