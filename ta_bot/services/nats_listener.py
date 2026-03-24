@@ -106,11 +106,6 @@ class NATSListener:
     async def _handle_candle_message(self, msg):
         """Handle incoming candle message."""
         try:
-            # Only process messages if this replica is the leader
-            if not self.leader_election or not self.leader_election.is_current_leader():
-                logger.debug("Skipping message processing - not the leader")
-                return
-
             # Log every message received with subject and data length
             subject = msg.subject
             data_length = len(msg.data)
