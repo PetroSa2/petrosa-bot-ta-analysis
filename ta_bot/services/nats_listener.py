@@ -18,47 +18,61 @@ logger = logging.getLogger(__name__)
 
 
 class NATSListener:
-    """Service that listens to NATS for candle extraction events."""
+    """NATS message listener for candle data."""
 
     def __init__(
         self,
         nats_url: str,
-        nats_subject_prefix: str,
-        nats_subject_prefix_production: str,
-        supported_symbols: list[str],
-        supported_timeframes: list[str],
         signal_engine: SignalEngine,
         publisher: SignalPublisher,
-        mysql_client: MySQLClient,
+        nats_subject_prefix: str = "binance.extraction",
+        nats_subject_prefix_production: str = "binance.extraction.production",
+        supported_symbols: list[str] | None = None,
+        supported_timeframes: list[str] | None = None,
         app_config_manager: AppConfigManager | None = None,
     ):
+        """
+        Initialize the NATS listener.
+
+        Args:
+            nats_url: NATS server URL
+            signal_engine: SignalEngine instance for analyzing candles
+            publisher: SignalPublisher for publishing signals
+            nats_subject_prefix: NATS subject prefix
+            nats_subject_prefix_production: NATS subject prefix for production
+            supported_symbols: Default symbols (fallback if no runtime config)
+            supported_timeframes: Default timeframes (fallback if no runtime config)
+            app_config_manager: Optional AppConfigManager for runtime configuration
+        """
         self.nats_url = nats_url
-        self.nats_subject_prefix = nats_subject_prefix
-        self.nats_subject_prefix_production = nats_subject_prefix_production
-        self.supported_symbols = supported_symbols
-        self.supported_timeframes = supported_timeframes
         self.signal_engine = signal_engine
         self.publisher = publisher
-        self.mysql_client = mysql_client
+        self.nats_subject_prefix = nats_subject_prefix
+        self.nats_subject_prefix_production = nats_subject_prefix_production
+        self.supported_symbols = supported_symbols or ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
+        self.supported_timeframes = supported_timeframes or ["15m", "1h"]
         self.app_config_manager = app_config_manager
         self.nc = NATS()
-        self.subscriptions = []
-        self.is_running = False
+        self.subscriptions: list[Any] = []
+        self.leader_election = None
+        self.mysql_client = MySQLClient()
 
     async def start(self):
         """Start the NATS listener."""
         try:
-            logger.info(f"Connecting to NATS server: {self.nats_url}")
+            # Connect to NATS
             await self.nc.connect(self.nats_url)
-            logger.info("Connected to NATS server")
+            logger.info(f"Connected to NATS server: {self.nats_url}")
 
-            # Initialize dependencies
+            # Initialize MySQL client
             await self.mysql_client.connect()
+
+            # Initialize publisher
+            await self.publisher.start()
 
             # Subscribe to candle data subjects
             await self._subscribe_to_candle_data()
 
-            self.is_running = True
             logger.info("NATS listener started successfully")
 
         except Exception as e:
@@ -91,10 +105,7 @@ class NATSListener:
         try:
             test_subject = f"{self.nats_subject_prefix_production}.klines.SELFTEST.1m"
             logger.info(f"Running NATS self-test on: {test_subject}")
-            await self.nc.publish(
-                test_subject,
-                json.dumps({"symbol": "SELFTEST", "period": "1m"}).encode(),
-            )
+            await self.nc.publish(test_subject, json.dumps({"symbol": "SELFTEST", "period": "1m"}).encode())
         except Exception as e:
             logger.error(f"NATS self-test publication failed: {e}")
 
@@ -102,7 +113,6 @@ class NATSListener:
         """Handle incoming candle message."""
         # RAW PRINT FOR DEBUGGING - BYPASSING ALL LOGGERS
         import sys
-
         sys.stdout.write(f"\n[RAW] !!! NATS MESSAGE RECEIVED ON {msg.subject} !!!\n")
         sys.stdout.flush()
 
@@ -130,9 +140,7 @@ class NATSListener:
             if event_type == "batch_extraction_completed":
                 symbols = data.get("symbols", [])
                 period = data.get("period")
-                logger.info(
-                    f"Processing batch extraction completion for {len(symbols)} symbols on {period}"
-                )
+                logger.info(f"Processing batch extraction completion for {len(symbols)} symbols on {period}")
                 for symbol in symbols:
                     await self._process_symbol_extraction(symbol, period)
                 return
@@ -269,16 +277,14 @@ class NATSListener:
             # Stop publisher
             await self.publisher.stop()
 
-            # Unsubscribe from all subjects
+            # Unsubscribe from all topics
             for subscription in self.subscriptions:
                 await subscription.unsubscribe()
-            self.subscriptions = []
 
             # Close NATS connection
-            if self.nc.is_connected:
-                await self.nc.close()
+            await self.nc.close()
 
-            # Disconnect MySQL client
+            # Close MySQL connection
             await self.mysql_client.disconnect()
 
             logger.info("NATS listener cleaned up")
