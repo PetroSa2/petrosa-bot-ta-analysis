@@ -50,7 +50,9 @@ class Config:
     nats_subject_prefix_production: str = os.getenv(
         "NATS_SUBJECT_PREFIX_PRODUCTION", "binance.extraction.production"
     )
-    nats_publisher_topic: str = os.getenv("NATS_PUBLISHER_TOPIC", "intent.trading.*")
+    nats_publisher_topic: str = os.getenv(
+        "NATS_TOPIC_SIGNALS", os.getenv("NATS_PUBLISHER_TOPIC", "signals.trading")
+    )
 
     # API Configuration
     # Prefer cluster-provided API_ENDPOINT, fallback to old var for local
