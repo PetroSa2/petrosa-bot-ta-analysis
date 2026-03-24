@@ -83,6 +83,9 @@ def setup_logging(
         environment=os.getenv("ENVIRONMENT", "production"),
     )
 
+    # Suppress noisy third-party loggers
+    logging.getLogger("pymongo").setLevel(logging.WARNING)
+
     return logger
 
 
