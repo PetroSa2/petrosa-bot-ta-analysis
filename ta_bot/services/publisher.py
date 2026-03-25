@@ -9,7 +9,7 @@ import nats  # Added to use nats.connect
 import nats.aio.client
 import structlog
 
-from ta_bot.models.signal import Signal
+from ta_bot.models.signal import Signal, _sanitize_value
 from ta_bot.utils.nats_trace_propagator import NATSTracePropagator
 
 logger = structlog.get_logger()
@@ -103,9 +103,12 @@ class SignalPublisher:
                     f"Publishing signal via REST: {signal.strategy_id} - {signal.action}"
                 )
 
+                # Pre-serialize to handle NumPy types and NaN values
+                json_payload = _sanitize_value(signal_data)
+
                 async with self.session.post(
                     self.api_endpoint,
-                    json=signal_data,
+                    json=json_payload,
                     timeout=aiohttp.ClientTimeout(total=10),
                 ) as response:
                     if response.status == 200:
@@ -172,9 +175,11 @@ class SignalPublisher:
                 )
 
                 # Publish to NATS subject that Trade Engine listens to
-                # We use the configured topic, replacing * with strategy_id if applicable
-                subject = self.nats_publisher_topic.replace("*", signal.strategy_id)
-                message = json.dumps(signal_data).encode()
+                # AC: Strictly follow the Petrosa NATS contract: f"{base_topic}.{strategy_id}"
+                # Ensure we don't end up with signals.trading.*.rsi_reversal
+                base_subject = self.nats_publisher_topic.rstrip(".*>")
+                subject = f"{base_subject}.{signal.strategy_id}"
+                message = json.dumps(_sanitize_value(signal_data)).encode()
 
                 logger.info(
                     f"Publishing signal via NATS: {signal.strategy_id} - {signal.action}"
@@ -222,9 +227,12 @@ class SignalPublisher:
             # Convert signals to Trade Engine format
             signals_data = [signal.to_dict() for signal in signals]
 
+            # Pre-serialize to handle NumPy types and NaN values
+            payload = _sanitize_value({"signals": signals_data})
+
             async with self.session.post(
                 self.api_endpoint,
-                json={"signals": signals_data},
+                json=payload,
                 timeout=aiohttp.ClientTimeout(total=30),
             ) as response:
                 if response.status == 200:
@@ -255,7 +263,7 @@ class SignalPublisher:
                 # Inject OpenTelemetry trace context for distributed tracing
                 signal_data = NATSTracePropagator.inject_context(signal_data)
 
-                message = json.dumps(signal_data).encode()
+                message = json.dumps(_sanitize_value(signal_data)).encode()
                 await self.nats_client.publish(subject, message)
 
             logger.info(
