@@ -58,14 +58,38 @@ class TimeInForce(StrEnum):
 
 
 def _sanitize_value(value: Any) -> Any:
-    """Recursively sanitize values for JSON serialization."""
+    """
+    Recursively sanitize values for JSON serialization.
+    Handles floats (NaN/Inf), nested structures, and non-native scalar types (e.g., NumPy).
+    """
+    # 1. Handle NumPy scalars and other objects with .item() (converts to native Python types)
+    # This must come BEFORE float/int checks because some numpy types inherit from them
+    # but are still not JSON serializable by standard json.dumps.
+    if hasattr(value, "item") and callable(getattr(value, "item", None)):
+        try:
+            item = value.item()
+            # If item() returns the same object, avoid infinite recursion
+            if item is not value:
+                return _sanitize_value(item)
+        except (TypeError, ValueError):
+            pass
+
+    # 2. Handle specialized numeric cases (NaN, Inf)
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
             return None
-    elif isinstance(value, dict):
-        return {k: _sanitize_value(v) for k, v in value.items()}
-    elif isinstance(value, (list, tuple)):
+        return float(value)  # Cast to native float to be safe
+
+    # 3. Handle nested structures
+    if isinstance(value, dict):
+        return {str(k): _sanitize_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
         return [_sanitize_value(v) for v in value]
+
+    # 4. Handle Pydantic models if they somehow reached here
+    if hasattr(value, "model_dump") and callable(getattr(value, "model_dump", None)):
+        return _sanitize_value(value.model_dump())
+
     return value
 
 
