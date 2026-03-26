@@ -51,7 +51,8 @@ class Config:
         "NATS_SUBJECT_PREFIX_PRODUCTION", "binance.extraction.production"
     )
     nats_publisher_topic: str = os.getenv(
-        "NATS_TOPIC_SIGNALS", os.getenv("NATS_PUBLISHER_TOPIC", "signals.trading")
+        "NATS_TOPIC_INTENTS",
+        os.getenv("NATS_PUBLISHER_TOPIC", "cio.intent.trading"),
     )
 
     # API Configuration

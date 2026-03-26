@@ -68,12 +68,12 @@ async def test_main_startup_wiring():
 
             # Health server
             mock_health_server = MagicMock()
-            mock_health_server.start = AsyncMock(return_value=asyncio.sleep(0))
+            mock_health_server.start = AsyncMock(return_value=None)
             mock_health_fn.return_value = mock_health_server
 
             # NATS Listener
             mock_nats = mock_nats_cls.return_value
-            mock_nats.start = AsyncMock(return_value=asyncio.sleep(0))
+            mock_nats.start = AsyncMock(return_value=None)
 
             from ta_bot.main import main
 
@@ -91,6 +91,11 @@ async def test_main_startup_wiring():
             mock_dm.connect.assert_called_once()
             mock_acm.start.assert_called_once()
             mock_health_fn.assert_called_once()
+            mock_pub_cls.assert_called_once()
+            assert (
+                mock_pub_cls.call_args.kwargs["nats_publisher_topic"]
+                == "cio.intent.trading"
+            )
 
 
 @pytest.mark.asyncio
@@ -164,10 +169,10 @@ async def test_main_startup_no_runtime_config():
             mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
 
             mock_nats = mock_nats_cls.return_value
-            mock_nats.start = AsyncMock(return_value=asyncio.sleep(0))
+            mock_nats.start = AsyncMock(return_value=None)
 
             mock_health_server = MagicMock()
-            mock_health_server.start = AsyncMock(return_value=asyncio.sleep(0))
+            mock_health_server.start = AsyncMock(return_value=None)
             mock_health_fn.return_value = mock_health_server
 
             from ta_bot.main import main
@@ -212,10 +217,10 @@ async def test_main_startup_persist_config_failure():
         mock_acm.set_config = AsyncMock(return_value=(False, "error", ["reason"]))
 
         mock_nats = mock_nats_cls.return_value
-        mock_nats.start = AsyncMock(return_value=asyncio.sleep(0))
+        mock_nats.start = AsyncMock(return_value=None)
 
         mock_health_server = MagicMock()
-        mock_health_server.start = AsyncMock(return_value=asyncio.sleep(0))
+        mock_health_server.start = AsyncMock(return_value=None)
         mock_health_fn.return_value = mock_health_server
 
         from ta_bot.main import main
@@ -260,10 +265,10 @@ async def test_main_startup_nats_connection_failure():
         mock_pub.nats_client = None
 
         mock_nats = mock_nats_cls.return_value
-        mock_nats.start = AsyncMock(return_value=asyncio.sleep(0))
+        mock_nats.start = AsyncMock(return_value=None)
 
         mock_health_server = MagicMock()
-        mock_health_server.start = AsyncMock(return_value=asyncio.sleep(0))
+        mock_health_server.start = AsyncMock(return_value=None)
         mock_health_fn.return_value = mock_health_server
 
         from ta_bot.main import main

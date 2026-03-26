@@ -2,10 +2,10 @@
 Strategy configuration models for runtime parameter management.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StrategyConfig(BaseModel):
@@ -26,18 +26,17 @@ class StrategyConfig(BaseModel):
     )
     version: int = Field(1, description="Configuration version number")
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="When config was created"
+        default_factory=lambda: datetime.now(UTC), description="When config was created"
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="When config was last updated"
+        default_factory=lambda: datetime.now(UTC), description="When config was last updated"
     )
     created_by: str = Field(..., description="Who/what created this config")
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "id": "507f1f77bcf86cd799439011",
                 "strategy_id": "rsi_extreme_reversal",
@@ -56,7 +55,7 @@ class StrategyConfig(BaseModel):
                     "performance": "+12% win rate",
                 },
             }
-        }
+    })
 
 
 class StrategyConfigAudit(BaseModel):
@@ -81,12 +80,11 @@ class StrategyConfigAudit(BaseModel):
     )
     changed_by: str = Field(..., description="Who/what made the change")
     changed_at: datetime = Field(
-        default_factory=datetime.utcnow, description="When the change occurred"
+        default_factory=lambda: datetime.now(UTC), description="When the change occurred"
     )
     reason: str | None = Field(None, description="Reason for the change")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "id": "507f1f77bcf86cd799439012",
                 "config_id": "507f1f77bcf86cd799439011",
@@ -99,7 +97,7 @@ class StrategyConfigAudit(BaseModel):
                 "changed_at": "2025-10-17T14:45:00Z",
                 "reason": "Market volatility adjustment",
             }
-        }
+    })
 
 
 class ParameterSchema(BaseModel):
@@ -120,8 +118,7 @@ class ParameterSchema(BaseModel):
     )
     example: Any = Field(..., description="Example valid value")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "name": "rsi_period",
                 "type": "int",
@@ -131,7 +128,7 @@ class ParameterSchema(BaseModel):
                 "max": 50,
                 "example": 14,
             }
-        }
+    })
 
 
 class StrategyInfo(BaseModel):
@@ -148,8 +145,7 @@ class StrategyInfo(BaseModel):
     )
     parameter_count: int = Field(0, description="Number of parameters")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "strategy_id": "rsi_extreme_reversal",
                 "name": "RSI Extreme Reversal",
@@ -158,7 +154,7 @@ class StrategyInfo(BaseModel):
                 "symbol_overrides": ["BTCUSDT", "ETHUSDT"],
                 "parameter_count": 7,
             }
-        }
+    })
 
 
 class ConfigSource(BaseModel):
