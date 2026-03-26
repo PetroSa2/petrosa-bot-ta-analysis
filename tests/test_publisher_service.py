@@ -72,6 +72,7 @@ class TestSignalPublisher:
 
             assert publisher.session is not None
             mock_connect.assert_called_once()
+            await publisher.stop()
 
     async def test_start_nats_connection_failure(self):
         """Test handling NATS connection failure."""
@@ -120,7 +121,7 @@ class TestSignalPublisher:
 
             mock_nats.publish.assert_called_once()
             call_args = mock_nats.publish.call_args
-            assert call_args[0][0] == "intent.trading.momentum_pulse"
+            assert call_args[0][0] == "cio.intent.trading.momentum_pulse"
 
     async def test_publish_signals_nats_not_connected(self, publisher, mock_signal):
         """Test publishing signals when NATS is not connected."""
@@ -159,6 +160,7 @@ class TestSignalPublisher:
             await publisher._publish_via_rest([mock_signal])
 
             mock_post.assert_called_once()
+            await publisher.stop()
 
     async def test_publish_via_rest_failure(self, mock_signal):
         """Test REST API publishing failure."""
@@ -180,6 +182,7 @@ class TestSignalPublisher:
             await publisher._publish_via_rest([mock_signal])
 
             mock_post.assert_called_once()
+            await publisher.stop()
 
     async def test_publish_via_nats_error(self, publisher, mock_signal):
         """Test NATS publishing with error."""

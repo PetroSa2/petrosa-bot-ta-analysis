@@ -4,7 +4,7 @@ Aligned with petrosa-cio contracts.
 """
 
 import math
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -103,7 +103,7 @@ class Signal(BaseModel):
     stop_loss_pct: float | None = Field(None, ge=0, le=1)
     take_profit: float | None = Field(None, description="Take profit price")
     take_profit_pct: float | None = Field(None, ge=0, le=1)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Add legacy/compatibility fields
     signal_id: str | None = Field(None, description="Compatibility with contracts")
@@ -116,10 +116,10 @@ class Signal(BaseModel):
             try:
                 return datetime.fromisoformat(v)
             except ValueError:
-                return datetime.utcnow()
+                return datetime.now(UTC)
         if isinstance(v, (int, float)):
-            return datetime.fromtimestamp(v)
-        return v or datetime.utcnow()
+            return datetime.fromtimestamp(v, UTC)
+        return v or datetime.now(UTC)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert signal to dictionary for backward compatibility."""
@@ -157,7 +157,4 @@ class Signal(BaseModel):
 
         return True
 
-    model_config = {
-        "json_encoders": {datetime: lambda v: v.isoformat()},
-        "protected_namespaces": (),
-    }
+    model_config = {"protected_namespaces": ()}

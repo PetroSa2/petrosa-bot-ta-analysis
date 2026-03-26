@@ -23,7 +23,7 @@ class SignalPublisher:
         api_endpoint: str,
         nats_url: str = None,
         enable_rest_publishing: bool = False,
-        nats_publisher_topic: str = "intent.trading.*",
+        nats_publisher_topic: str = "cio.intent.trading",
     ):
         """Initialize the signal publisher.
 
