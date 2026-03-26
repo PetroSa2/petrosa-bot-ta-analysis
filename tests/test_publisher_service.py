@@ -229,3 +229,28 @@ class TestSignalPublisher:
             assert data["symbol"] == "BTCUSDT"
             assert data["action"] == "buy"
             assert data["confidence"] == 0.85
+
+    async def test_publish_signals_with_numpy_types(self, publisher, mock_signal):
+        """Regression test for JSON serialization errors with non-native types (NumPy)."""
+        # Mock a type that looks like a numpy bool (has .item() method)
+        class MockNumpyBool:
+            def item(self):
+                return True
+
+        # Add non-native types to metadata
+        mock_signal.metadata["is_reversal"] = MockNumpyBool()
+
+        with patch("nats.connect", new_callable=AsyncMock) as mock_connect:
+            mock_nats = AsyncMock()
+            mock_connect.return_value = mock_nats
+            await publisher.start()
+
+            # Should NOT raise "Object of type bool is not JSON serializable"
+            await publisher.publish_signals([mock_signal])
+
+            # Verify the published message contains native bool
+            mock_nats.publish.assert_called_once()
+            message = mock_nats.publish.call_args[0][1]
+            data = json.loads(message.decode())
+            assert data["metadata"]["is_reversal"] is True
+            assert isinstance(data["metadata"]["is_reversal"], bool)
