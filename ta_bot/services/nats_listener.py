@@ -11,7 +11,6 @@ from nats.aio.client import Client as NATS
 
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.services.app_config_manager import AppConfigManager
-from ta_bot.services.leader_election import LeaderElection
 from ta_bot.services.mysql_client import MySQLClient
 from ta_bot.services.publisher import SignalPublisher
 
@@ -65,11 +64,6 @@ class NATSListener:
             await self.nc.connect(self.nats_url)
             logger.info(f"Connected to NATS server: {self.nats_url}")
 
-            # Initialize leader election
-            self.leader_election = LeaderElection(self.nc)
-            # Start leader election in background
-            asyncio.create_task(self.leader_election.start_election())
-
             # Initialize MySQL client
             await self.mysql_client.connect()
 
@@ -89,28 +83,40 @@ class NATSListener:
         """Subscribe to candle data subjects."""
         # Subscribe to both development and production subjects
         # Updated to match the actual subjects published by the data extractor
+        # Using '>' multi-token wildcard to capture all sub-tokens (e.g. symbol and period)
         subjects = [
-            f"{self.nats_subject_prefix}.klines.*.*",  # binance.klines.*.*
-            f"{self.nats_subject_prefix_production}.klines.*.*",  # binance.production.klines.*.*
+            f"{self.nats_subject_prefix}.>",  # binance.extraction.>
+            f"{self.nats_subject_prefix_production}.>",  # binance.extraction.production.>
         ]
 
         for subject in subjects:
-            subscription = await self.nc.subscribe(
-                subject,
-                cb=self._handle_candle_message,
-                queue="ta_bot_workers",  # Load balancing across instances
-            )
-            self.subscriptions.append(subscription)
-            logger.info(f"Subscribed to NATS subject: {subject}")
+            try:
+                logger.info(f"Attempting to subscribe to: {subject}")
+                subscription = await self.nc.subscribe(
+                    subject,
+                    cb=self._handle_candle_message,
+                )
+                self.subscriptions.append(subscription)
+                logger.info(f"✅ SUCCESSFULLY subscribed to: {subject}")
+            except Exception as e:
+                logger.error(f"❌ FAILED to subscribe to {subject}: {e}")
+
+        # SELF-TEST: Verify listener by publishing to it
+        try:
+            test_subject = f"{self.nats_subject_prefix_production}.klines.SELFTEST.1m"
+            logger.info(f"Running NATS self-test on: {test_subject}")
+            await self.nc.publish(test_subject, json.dumps({"symbol": "SELFTEST", "period": "1m"}).encode())
+        except Exception as e:
+            logger.error(f"NATS self-test publication failed: {e}")
 
     async def _handle_candle_message(self, msg):
         """Handle incoming candle message."""
-        try:
-            # Only process messages if this replica is the leader
-            if not self.leader_election or not self.leader_election.is_current_leader():
-                logger.debug("Skipping message processing - not the leader")
-                return
+        # RAW PRINT FOR DEBUGGING - BYPASSING ALL LOGGERS
+        import sys
+        sys.stdout.write(f"\n[RAW] !!! NATS MESSAGE RECEIVED ON {msg.subject} !!!\n")
+        sys.stdout.flush()
 
+        try:
             # Log every message received with subject and data length
             subject = msg.subject
             data_length = len(msg.data)
@@ -129,7 +135,17 @@ class NATSListener:
             # Parse message data
             data = json.loads(raw_data)
 
-            # Extract message information
+            # Support both single symbol and batch messages
+            event_type = data.get("event_type")
+            if event_type == "batch_extraction_completed":
+                symbols = data.get("symbols", [])
+                period = data.get("period")
+                logger.info(f"Processing batch extraction completion for {len(symbols)} symbols on {period}")
+                for symbol in symbols:
+                    await self._process_symbol_extraction(symbol, period)
+                return
+
+            # Standard single symbol message
             symbol = data.get("symbol")
             period = data.get("period") or data.get("timeframe")
 
@@ -139,6 +155,18 @@ class NATSListener:
                 )
                 return
 
+            await self._process_symbol_extraction(symbol, period)
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse NATS message: {e}")
+            logger.error(f"Raw message: {msg.data.decode()}")
+        except Exception as e:
+            logger.error(f"Error processing candle message: {e}")
+            logger.error(f"Subject: {msg.subject}, Data: {msg.data.decode()[:200]}...")
+
+    async def _process_symbol_extraction(self, symbol: str, period: str):
+        """Process extraction completion for a specific symbol and period."""
+        try:
             # Load runtime configuration if available
             runtime_config = None
             if self.app_config_manager:
@@ -240,13 +268,8 @@ class NATSListener:
                 logger.info(
                     f"No signals generated for {symbol} {period} - all strategies conditions not met"
                 )
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse NATS message: {e}")
-            logger.error(f"Raw message: {msg.data.decode()}")
         except Exception as e:
-            logger.error(f"Error processing candle message: {e}")
-            logger.error(f"Subject: {msg.subject}, Data: {msg.data.decode()[:200]}...")
+            logger.error(f"Error processing symbol {symbol} {period}: {e}")
 
     async def _cleanup(self):
         """Clean up NATS connections and subscriptions."""
