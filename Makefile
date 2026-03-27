@@ -1,20 +1,40 @@
 # Petrosa ta-analysis Makefile
 
+# Python enforcement
+PYTHON_VERSION_EXPECTED := 3.11
+PYTHON_VERSION_ACTUAL := $(shell python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
+
+# Colors for output
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+NC := \033[0m # No Color
+
 PYTHON := python3
 PIP := $(PYTHON) -m pip
 PYTEST := $(PYTHON) -m pytest
 IMAGE_NAME := petrosa-bot-ta-analysis
 NAMESPACE := petrosa
 
-.PHONY: help setup install-dev lint format type-check test test-coverage test-quality security build container deploy k8s-status k8s-logs k8s-clean pipeline clean
+.PHONY: help setup validate-python install-dev lint format type-check test test-coverage test-quality security build container deploy k8s-status k8s-logs k8s-clean pipeline clean
 
 help: ## Show this help message
-	@echo "🚀 Petrosa $(IMAGE_NAME) - Standard Development Commands"
-	@echo "========================================================"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo "$(BLUE)Petrosa $(IMAGE_NAME) - Standard Development Commands$(NC)"
+	@echo "$(BLUE)========================================================$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "$(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 
-setup: ## Complete environment setup
-	@echo "🚀 Setting up development environment..."
+validate-python: ## Validate Python version is 3.11
+	@echo "$(BLUE)Validating Python version...$(NC)"
+	@if [ "$(PYTHON_VERSION_ACTUAL)" != "$(PYTHON_VERSION_EXPECTED)" ]; then \
+		echo "$(RED)❌ ERROR: Python $(PYTHON_VERSION_EXPECTED) required, found $(PYTHON_VERSION_ACTUAL)$(NC)"; \
+		echo "$(YELLOW)💡 Recommended resolution: Use 'pyenv install 3.11.9 && pyenv local 3.11.9'$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✅ Python version $(PYTHON_VERSION_ACTUAL) matches expected $(PYTHON_VERSION_EXPECTED)$(NC)"
+
+setup: validate-python ## Complete environment setup
+	@echo "$(BLUE)Setting up development environment...$(NC)"
 	$(PIP) install --upgrade pip
 	$(PIP) install -r requirements.txt
 	$(PIP) install -r requirements-dev.txt
@@ -37,15 +57,15 @@ type-check: ## Run static type checking with mypy
 	@echo "🧪 Running type checks..."
 	mypy ta_bot/
 
-test: ## Run unit tests
+test: validate-python ## Run unit tests
 	@echo "🧪 Running tests..."
 	$(PYTEST) tests/unit/
 
-test-coverage: ## Run tests with coverage reporting
+test-coverage: validate-python ## Run tests with coverage reporting
 	@echo "📊 Running tests with coverage..."
 	$(PYTEST) --cov=ta_bot --cov-report=term-missing --cov-report=xml tests/
 
-test-quality: ## Run test quality check (assertions check)
+test-quality: validate-python ## Run test quality check (assertions check)
 	@echo "🔍 Checking test quality..."
 	python3 scripts/check-test-assertions.py $(shell find tests -name "test_*.py")
 
@@ -82,8 +102,8 @@ security: ## Run security scans (gitleaks, bandit, trivy)
 clean: ## Clean up temporary files
 	rm -rf .pytest_cache .ruff_cache .mypy_cache .coverage coverage.xml htmlcov/ bandit-report.json
 
-pipeline: ## Run complete CI pipeline locally
-	@echo "🔄 Running local pipeline..."
+pipeline: validate-python ## Run complete CI pipeline locally
+	@echo "$(BLUE)Running local pipeline...$(NC)"
 	$(MAKE) lint
 	$(MAKE) type-check
 	$(MAKE) test-coverage
