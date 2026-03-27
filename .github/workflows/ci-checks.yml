@@ -2,152 +2,121 @@ name: CI Checks
 
 on:
   pull_request:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     branches: [main, develop]
   push:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    branches: [main, develop]
+    branches: [main]
 
 jobs:
-  lint:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    name: Lint & Format Check
+  # PR Checks using Reusable Workflow
+  ci:
+    if: github.event_name == 'pull_request'
+    uses: PetroSa2/petrosa-workflows/.github/workflows/python-ci.yml@main
+    with:
+      service_name: petrosa-bot-ta-analysis
+      runs_on: petrosa-org-runners
+    secrets: inherit
+
+  # Deployment only on main branch pushes
+  prepare-release:
+    name: Prepare Release
     runs-on: petrosa-org-runners
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends make
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-
-      - name: Run linting
-        run: make lint
-
-      - name: Run type check
-        run: make type-check
-        continue-on-error: true
-
-  test:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    name: Test & Coverage
-    runs-on: petrosa-org-runners
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends make
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-
-      - name: Run tests with coverage
-        run: make test-coverage
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-  security:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    name: Security Scan
-    runs-on: petrosa-org-runners
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
-      contents: read
-      security-events: write
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: 🔐 Run Gitleaks (Secret Detection)
+      - name: Set version
+        id: version
         run: |
-          GITLEAKS_VERSION="8.18.4"
-          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz -C /tmp gitleaks
-          /tmp/gitleaks detect --source . --no-git || echo "⚠️ Gitleaks found issues but continuing"
-        continue-on-error: true
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: 🐍 Run Bandit (Python Security)
+          RAW_VERSION=$(cat VERSION)
+          BASE_VERSION="v${RAW_VERSION}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION="${BASE_VERSION}-r${{ github.run_number }}-${SHORT_SHA}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+      - name: Create tag
         run: |
-          pip install bandit
-          bandit -r . -f json -o bandit-report.json || true
-          echo "📊 Bandit Results:"
-          python -m json.tool bandit-report.json 2>/dev/null | head -30 || echo "No issues found"
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
 
-      - name: 🗂️ Run Trivy (Vulnerability Scanner)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '0'
-          ignore-unfixed: true
+  build-and-push:
+    needs: [prepare-release]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: PetroSa2/petrosa-workflows/.github/workflows/docker-build-push.yml@main
+    with:
+      service_name: petrosa-bot-ta-analysis
+      runs_on: petrosa-org-runners
+    secrets: inherit
 
-  test-quality:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    name: Test Quality Check
+  gitops-update:
+    name: GitOps Update
     runs-on: petrosa-org-runners
+    needs: [build-and-push, prepare-release]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Generate GitOps Bot Token
+        uses: tibdex/github-app-token@v2
+        id: generate-token
         with:
-          python-version: '3.11'
-      - name: Install make
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends make
-      - name: Run test quality check
-        run: make test-quality
+          app_id: ${{ secrets.GITOPS_APP_ID }}
+          installation_id: ${{ secrets.GITOPS_APP_INSTALLATION_ID }}
+          private_key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
 
-  documentation-standards:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    name: Documentation Standards Check
-    runs-on: petrosa-org-runners
-    steps:
-      - name: Checkout code
+      - name: Checkout petrosa_k8s
         uses: actions/checkout@v4
-      - name: Documentation check
+        with:
+          repository: PetroSa2/petrosa_k8s
+          ref: main
+          token: ${{ steps.generate-token.outputs.token }}
+          path: petrosa_k8s
+
+      - name: Rebase on main
+        run: ./scripts/gitops-rebase-main.sh
+        working-directory: petrosa_k8s
+
+      - name: Update ta-bot image tag in GitOps manifests
         run: |
-          if [ -f scripts/check-docs.sh ]; then
-            bash scripts/check-docs.sh
+          VERSION="${{ needs.prepare-release.outputs.version }}"
+          find petrosa_k8s/k8s/ta-bot -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -E -i "s|(image:[[:space:]]*)([^[:space:]]*/)?(petrosa-bot-ta-analysis):[^[:space:]]*|\1\2\3:$VERSION|g"
+          find petrosa_k8s/k8s/ta-bot -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -E -i "s/^([[:space:]]*(version|app\.kubernetes\.io\/version)):.*/\1: $VERSION/g"
+          find petrosa_k8s/k8s/ta-bot -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -i "s/VERSION_PLACE_HOLDER/$VERSION/g"
+          echo "Updated ta-bot image tag to $VERSION in petrosa_k8s/k8s/ta-bot/"
+
+      - name: Commit and push to petrosa_k8s
+        working-directory: petrosa_k8s
+        run: |
+          git config user.name "gitops-bot"
+          git config user.email "gitops-bot@users.noreply.github.com"
+          git add k8s/ta-bot/
+          if git diff --staged --quiet; then
+            echo "No changes to commit (version might already be up to date)"
           else
-            echo "Skipping docs check"
+            git commit -m "gitops: ta-bot image ${{ needs.prepare-release.outputs.version }}"
+            git push origin main
           fi
 
-  pipeline:
-    name: pipeline
+  notify:
+    needs: [build-and-push, prepare-release, gitops-update]
     runs-on: petrosa-org-runners
-    needs: [lint, test, security, test-quality, documentation-standards]
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Validate pipeline results
-        run: |
-          [[ "${{ needs.lint.result }}" == "success" ]]
-          [[ "${{ needs.test.result }}" == "success" ]]
-          [[ "${{ needs.security.result }}" != "failure" ]]
+    - name: Notify build status
+      run: |
+        VERSION="${{ needs.prepare-release.outputs.version }}"
+        if [ "${{ needs.gitops-update.result }}" == "success" ]; then
+          echo "✅ Build, Push, and GitOps Update successful!"
+          echo "📦 Version: ${VERSION}"
+          echo "🚀 Deployed via petrosa_k8s hub"
+        else
+          echo "❌ GitOps Update failed (or skipped)!"
+          echo "📦 Version: ${VERSION}"
+          echo "🐳 Image pushed, but manifest update failed."
+        fi
