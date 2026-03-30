@@ -12,7 +12,7 @@ Manages runtime configuration for trading strategies with:
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from petrosa_otel import get_meter
@@ -201,7 +201,7 @@ class StrategyConfigManager:
                         {
                             "created_by": "system_default",
                             "auto_persisted": True,
-                            "persisted_at": datetime.utcnow().isoformat(),
+                            "persisted_at": datetime.now(timezone.utc).isoformat(),
                         },
                     )
                     logger.info(f"Auto-persisted default config for {strategy_id}")
@@ -215,8 +215,8 @@ class StrategyConfigManager:
                 "version": 1,
                 "source": "default",
                 "is_override": False,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
                 "cache_hit": False,
                 "load_time_ms": (time.time() - start_time) * 1000,
             }
@@ -278,7 +278,7 @@ class StrategyConfigManager:
         metadata = {
             "created_by": changed_by,
             "reason": reason,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
         config_id = None
@@ -649,14 +649,14 @@ class StrategyConfigManager:
             "source": source,
             "is_override": is_override,
             "created_at": (
-                doc.get("created_at", datetime.utcnow()).isoformat()
+                doc.get("created_at", datetime.now(timezone.utc)).isoformat()
                 if isinstance(doc.get("created_at"), datetime)
-                else doc.get("created_at", datetime.utcnow().isoformat())
+                else doc.get("created_at", datetime.now(timezone.utc).isoformat())
             ),
             "updated_at": (
-                doc.get("updated_at", datetime.utcnow()).isoformat()
+                doc.get("updated_at", datetime.now(timezone.utc)).isoformat()
                 if isinstance(doc.get("updated_at"), datetime)
-                else doc.get("updated_at", datetime.utcnow().isoformat())
+                else doc.get("updated_at", datetime.now(timezone.utc).isoformat())
             ),
         }
 

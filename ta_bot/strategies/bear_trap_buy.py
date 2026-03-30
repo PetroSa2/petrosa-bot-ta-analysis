@@ -14,7 +14,7 @@ as the price quickly reverses upward.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import pandas as pd
@@ -108,7 +108,7 @@ class BearTrapBuyStrategy(BaseStrategy):
                     strength=SignalStrength.MEDIUM,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=datetime.utcnow().isoformat(),
+                    timestamp=datetime.now(timezone.utc).isoformat(),
                     metadata={
                         "ema80": current_ema80,
                         "trap_depth": abs(current_low - current_ema80),

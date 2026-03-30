@@ -14,7 +14,7 @@ a reversal could be imminent.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import pandas as pd
@@ -123,7 +123,7 @@ class DojiReversalStrategy(BaseStrategy):
                     strength=SignalStrength.LOW,  # Doji is more of a warning than strong signal
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=datetime.utcnow().isoformat(),
+                    timestamp=datetime.now(timezone.utc).isoformat(),
                     metadata={
                         "body_size": body_size,
                         "total_range": price_range,

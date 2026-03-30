@@ -2,7 +2,7 @@
 Comprehensive tests for application configuration manager.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -98,8 +98,8 @@ class TestAppConfigManager:
             "max_positions": 10,
             "position_sizes": [100],
             "version": 1,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
         mock_data_manager_client.get_app_config.return_value = mock_config
 
@@ -125,8 +125,8 @@ class TestAppConfigManager:
             "max_positions": 10,
             "position_sizes": [100],
             "version": 1,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
         mock_mongodb_client.get_app_config.return_value = mock_config
 
@@ -245,7 +245,7 @@ class TestAppConfigManager:
                 "action": "CREATE",
                 "new_config": {"enabled_strategies": ["momentum_pulse"]},
                 "changed_by": "user1",
-                "changed_at": datetime.utcnow(),
+                "changed_at": datetime.now(timezone.utc),
             }
         ]
         mock_mongodb_client.get_app_audit_trail.return_value = mock_records

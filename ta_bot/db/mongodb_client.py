@@ -12,7 +12,7 @@ Provides async MongoDB operations using Motor driver for:
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
@@ -290,7 +290,7 @@ class MongoDBClient:
             return None
 
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             doc = {
                 "strategy_id": strategy_id,
                 "parameters": parameters,
@@ -350,7 +350,7 @@ class MongoDBClient:
             return None
 
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             doc = {
                 "strategy_id": strategy_id,
                 "symbol": symbol,
@@ -454,7 +454,7 @@ class MongoDBClient:
             return None
 
         try:
-            audit_data["changed_at"] = datetime.utcnow()
+            audit_data["changed_at"] = datetime.now(timezone.utc)
             result = await self.database.strategy_config_audit.insert_one(audit_data)
             logger.info(
                 f"Created audit record for {audit_data.get('strategy_id')}",
@@ -587,7 +587,7 @@ class MongoDBClient:
             return None
 
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Get existing to check version
             existing = await self.get_app_config()
@@ -644,7 +644,7 @@ class MongoDBClient:
             return None
 
         try:
-            audit_data["changed_at"] = datetime.utcnow()
+            audit_data["changed_at"] = datetime.now(timezone.utc)
             result = await self.database.app_config_audit.insert_one(audit_data)
             logger.info(
                 "Created app config audit record",

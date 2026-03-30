@@ -14,7 +14,7 @@ in long positions as the price fails to sustain above key resistance.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
@@ -121,7 +121,7 @@ class BearTrapSellStrategy(BaseStrategy):
                     strength=SignalStrength.MEDIUM,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=datetime.utcnow().isoformat(),
+                    timestamp=datetime.now(timezone.utc).isoformat(),
                     metadata={
                         "ema80": current_ema80,
                         "false_breakout_height": false_breakout_height,
