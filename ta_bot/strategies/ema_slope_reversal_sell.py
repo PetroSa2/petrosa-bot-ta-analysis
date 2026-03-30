@@ -13,7 +13,7 @@ and bearish momentum begins to take control.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Optional
 
 import pandas as pd
@@ -115,7 +115,7 @@ class EMASlopeReversalSellStrategy(BaseStrategy):
                     strength=SignalStrength.MEDIUM,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                     metadata={
                         "ema9": current_ema9,
                         "current_inclination": current_inclination,

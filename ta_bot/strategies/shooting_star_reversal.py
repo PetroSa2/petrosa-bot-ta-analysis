@@ -14,7 +14,7 @@ showing that buyers pushed price higher but sellers ultimately took control.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any, Optional
 
 import pandas as pd
@@ -108,7 +108,7 @@ class ShootingStarReversalStrategy(BaseStrategy):
                     strength=SignalStrength.MEDIUM,
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                     metadata={
                         "body_size": body_size,
                         "upper_shadow": upper_shadow,

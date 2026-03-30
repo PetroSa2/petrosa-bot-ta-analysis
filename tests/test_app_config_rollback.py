@@ -2,7 +2,7 @@
 Unit tests for application configuration rollback functionality.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -32,7 +32,7 @@ def sample_history():
             old_config={"version": 2, "enabled_strategies": ["s1"]},
             new_config={"version": 3, "enabled_strategies": ["s1", "s2"]},
             changed_by="user1",
-            changed_at=datetime.now(timezone.utc),
+            changed_at=datetime.now(UTC),
         ),
         AppConfigAudit(
             id="audit_2",
@@ -40,14 +40,14 @@ def sample_history():
             old_config={"version": 1, "enabled_strategies": []},
             new_config={"version": 2, "enabled_strategies": ["s1"]},
             changed_by="user1",
-            changed_at=datetime.now(timezone.utc),
+            changed_at=datetime.now(UTC),
         ),
         AppConfigAudit(
             id="audit_1",
             action="CREATE",
             new_config={"version": 1, "enabled_strategies": []},
             changed_by="user1",
-            changed_at=datetime.now(timezone.utc),
+            changed_at=datetime.now(UTC),
         ),
     ]
 

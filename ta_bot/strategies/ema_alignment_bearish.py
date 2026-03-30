@@ -13,7 +13,7 @@ confirming strong downtrend conditions with multiple EMA confirmations.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 import pandas as pd
@@ -132,7 +132,7 @@ class EMAAlignmentBearishStrategy(BaseStrategy):
                     strength=SignalStrength.STRONG,  # Strong trend confirmation
                     stop_loss=stop_loss,
                     take_profit=take_profit,
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                     metadata={
                         "ema8": current_ema8,
                         "ema80": current_ema80,
