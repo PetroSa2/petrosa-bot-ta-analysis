@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import sys
 import types
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -59,7 +59,7 @@ def _build_mock_ohlcv(
     rng = np.random.default_rng(seed)
 
     timestamps = [
-        datetime.utcnow() - timedelta(minutes=(length - i) * 15) for i in range(length)
+        datetime.now(UTC) - timedelta(minutes=(length - i) * 15) for i in range(length)
     ]
 
     price = 50_000.0

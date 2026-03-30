@@ -8,7 +8,7 @@ import asyncio
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -315,7 +315,7 @@ class SignalTestSimulator:
                 "price": 50000.0,
                 "timeframe": "15m",
                 "metadata": {"test": True},
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             # Test REST API publishing - check if method exists

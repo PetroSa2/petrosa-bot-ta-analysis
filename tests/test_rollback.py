@@ -2,7 +2,7 @@
 Tests for configuration rollback in TA Bot.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -55,7 +55,7 @@ async def test_app_config_rollback(mock_mongodb_client):
             old_config={"version": 1, "symbols": ["BTCUSDT"]},
             new_config={"version": 2, "symbols": ["BTCUSDT", "ETHUSDT"]},
             changed_by="user1",
-            changed_at=datetime.utcnow(),
+            changed_at=datetime.now(UTC),
         )
     ]
 

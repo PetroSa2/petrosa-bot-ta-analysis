@@ -11,7 +11,7 @@ Manages runtime configuration for the TA Bot application with:
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 from ta_bot.db.mongodb_client import MongoDBClient
@@ -176,8 +176,8 @@ class AppConfigManager:
             "position_sizes": [100, 200, 500, 1000],
             "version": 0,
             "source": "default",
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "cache_hit": False,
             "load_time_ms": (time.time() - start_time) * 1000,
         }
@@ -236,7 +236,7 @@ class AppConfigManager:
         metadata = {
             "created_by": changed_by,
             "reason": reason,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         }
 
         config_id = None
@@ -567,14 +567,14 @@ class AppConfigManager:
             "version": doc.get("version", 1),
             "source": source,
             "created_at": (
-                doc.get("created_at", datetime.utcnow()).isoformat()
+                doc.get("created_at", datetime.now(UTC)).isoformat()
                 if isinstance(doc.get("created_at"), datetime)
-                else doc.get("created_at", datetime.utcnow().isoformat())
+                else doc.get("created_at", datetime.now(UTC).isoformat())
             ),
             "updated_at": (
-                doc.get("updated_at", datetime.utcnow()).isoformat()
+                doc.get("updated_at", datetime.now(UTC)).isoformat()
                 if isinstance(doc.get("updated_at"), datetime)
-                else doc.get("updated_at", datetime.utcnow().isoformat())
+                else doc.get("updated_at", datetime.now(UTC).isoformat())
             ),
         }
 
