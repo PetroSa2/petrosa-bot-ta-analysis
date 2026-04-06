@@ -13,11 +13,12 @@ from __future__ import annotations
 import sys
 import types
 from datetime import datetime, timedelta, timezone
+
 try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
-    UTC = timezone.utc
+    UTC = timezone.utc  # noqa: UP017
 
 import numpy as np
 import pandas as pd

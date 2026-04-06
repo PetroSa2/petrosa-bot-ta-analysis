@@ -3,11 +3,12 @@ Unit tests for application configuration rollback functionality.
 """
 
 from datetime import datetime, timezone
+
 try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
-    UTC = timezone.utc
+    UTC = timezone.utc  # noqa: UP017
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

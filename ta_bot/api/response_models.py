@@ -6,11 +6,12 @@ consistent structure that's easy for LLM agents to parse.
 """
 
 from datetime import datetime
+
 try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
-    UTC = timezone.utc
+    UTC = timezone.utc  # noqa: UP017
 from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field

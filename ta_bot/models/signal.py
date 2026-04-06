@@ -5,11 +5,12 @@ Aligned with petrosa-cio contracts.
 
 import math
 from datetime import datetime
+
 try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
-    UTC = timezone.utc
+    UTC = timezone.utc  # noqa: UP017
 try:
     from enum import StrEnum
 except ImportError:

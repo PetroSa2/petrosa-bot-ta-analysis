@@ -9,11 +9,12 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+
 try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
-    UTC = timezone.utc
+    UTC = timezone.utc  # noqa: UP017
 
 import numpy as np
 import pandas as pd

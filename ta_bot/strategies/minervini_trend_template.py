@@ -19,11 +19,12 @@ with institutional-quality momentum characteristics.
 """
 
 from datetime import datetime, timezone
+
 try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
-    UTC = timezone.utc
+    UTC = timezone.utc  # noqa: UP017
 from typing import Optional
 
 import pandas as pd

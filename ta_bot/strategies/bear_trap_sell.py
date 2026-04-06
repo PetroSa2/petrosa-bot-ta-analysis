@@ -15,11 +15,12 @@ in long positions as the price fails to sustain above key resistance.
 
 import logging
 from datetime import datetime, timezone
+
 try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
-    UTC = timezone.utc
+    UTC = timezone.utc  # noqa: UP017
 from typing import Any
 
 import pandas as pd

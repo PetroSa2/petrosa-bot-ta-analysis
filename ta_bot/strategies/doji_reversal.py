@@ -15,11 +15,12 @@ a reversal could be imminent.
 
 import logging
 from datetime import datetime, timezone
+
 try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
-    UTC = timezone.utc
+    UTC = timezone.utc  # noqa: UP017
 from typing import Any, Optional
 
 import pandas as pd
