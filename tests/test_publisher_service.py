@@ -232,6 +232,7 @@ class TestSignalPublisher:
 
     async def test_publish_signals_with_numpy_types(self, publisher, mock_signal):
         """Regression test for JSON serialization errors with non-native types (NumPy)."""
+
         # Mock a type that looks like a numpy bool (has .item() method)
         class MockNumpyBool:
             def item(self):

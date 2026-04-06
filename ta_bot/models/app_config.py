@@ -11,6 +11,7 @@ try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
+
     UTC = timezone.utc  # noqa: UP017
 from typing import Any, Literal, Optional
 
@@ -48,14 +49,16 @@ class AppConfig(BaseModel):
         default_factory=lambda: datetime.now(UTC), description="When config was created"
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC), description="When config was last updated"
+        default_factory=lambda: datetime.now(UTC),
+        description="When config was last updated",
     )
     created_by: str = Field(..., description="Who/what created this config")
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "507f1f77bcf86cd799439011",
                 "enabled_strategies": [
@@ -78,7 +81,8 @@ class AppConfig(BaseModel):
                     "performance": "+15% win rate improvement",
                 },
             }
-    })
+        }
+    )
 
 
 class AppConfigAudit(BaseModel):
@@ -102,14 +106,16 @@ class AppConfigAudit(BaseModel):
     )
     changed_by: str = Field(..., description="Who/what made the change")
     changed_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC), description="When the change was made"
+        default_factory=lambda: datetime.now(UTC),
+        description="When the change was made",
     )
     reason: str | None = Field(None, description="Reason for the change")
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional audit metadata"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "507f1f77bcf86cd799439012",
                 "config_id": "507f1f77bcf86cd799439011",
@@ -131,4 +137,5 @@ class AppConfigAudit(BaseModel):
                 "reason": "Adding Bollinger strategy and lowering confidence for more signals",
                 "metadata": {"source": "api", "ip_address": "192.168.1.100"},
             }
-    })
+        }
+    )

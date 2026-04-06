@@ -105,7 +105,10 @@ class NATSListener:
         try:
             test_subject = f"{self.nats_subject_prefix_production}.klines.SELFTEST.1m"
             logger.info(f"Running NATS self-test on: {test_subject}")
-            await self.nc.publish(test_subject, json.dumps({"symbol": "SELFTEST", "period": "1m"}).encode())
+            await self.nc.publish(
+                test_subject,
+                json.dumps({"symbol": "SELFTEST", "period": "1m"}).encode(),
+            )
         except Exception as e:
             logger.error(f"NATS self-test publication failed: {e}")
 
@@ -113,6 +116,7 @@ class NATSListener:
         """Handle incoming candle message."""
         # RAW PRINT FOR DEBUGGING - BYPASSING ALL LOGGERS
         import sys
+
         sys.stdout.write(f"\n[RAW] !!! NATS MESSAGE RECEIVED ON {msg.subject} !!!\n")
         sys.stdout.flush()
 
@@ -140,7 +144,9 @@ class NATSListener:
             if event_type == "batch_extraction_completed":
                 symbols = data.get("symbols", [])
                 period = data.get("period")
-                logger.info(f"Processing batch extraction completion for {len(symbols)} symbols on {period}")
+                logger.info(
+                    f"Processing batch extraction completion for {len(symbols)} symbols on {period}"
+                )
                 for symbol in symbols:
                     await self._process_symbol_extraction(symbol, period)
                 return

@@ -612,9 +612,9 @@ class TestEMAPullbackContinuationStrategy:
 
             if signal:
                 # In a downtrend pullback, only "sell" signals are expected
-                assert (
-                    signal.action == "sell"
-                ), f"Unexpected signal action: {signal.action}. Only 'sell' or None expected."
+                assert signal.action == "sell", (
+                    f"Unexpected signal action: {signal.action}. Only 'sell' or None expected."
+                )
                 assert signal.confidence > 0.5
 
 
