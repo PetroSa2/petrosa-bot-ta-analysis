@@ -11,7 +11,12 @@ Manages runtime configuration for the TA Bot application with:
 import asyncio
 import logging
 import time
-from datetime import UTC, datetime, timezone
+from datetime import datetime, timezone
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from typing import Any
 
 from ta_bot.db.mongodb_client import MongoDBClient

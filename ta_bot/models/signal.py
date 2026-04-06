@@ -4,8 +4,19 @@ Aligned with petrosa-cio contracts.
 """
 
 import math
-from datetime import UTC, datetime
-from enum import StrEnum
+from datetime import datetime
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
+try:
+    from enum import StrEnum
+except ImportError:
+    from enum import Enum
+    class StrEnum(str, Enum):
+        def __str__(self):
+            return str(self.value)
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator

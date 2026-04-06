@@ -18,7 +18,12 @@ This is a comprehensive trend-following strategy that identifies assets
 with institutional-quality momentum characteristics.
 """
 
-from datetime import UTC, datetime, timezone
+from datetime import datetime, timezone
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from typing import Optional
 
 import pandas as pd

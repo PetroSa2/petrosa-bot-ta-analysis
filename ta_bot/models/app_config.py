@@ -5,7 +5,12 @@ Manages application-level settings like enabled strategies, symbols,
 timeframes, confidence thresholds, and risk management parameters.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field

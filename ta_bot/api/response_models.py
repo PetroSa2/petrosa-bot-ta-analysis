@@ -5,7 +5,12 @@ All endpoints return responses wrapped in APIResponse envelope for
 consistent structure that's easy for LLM agents to parse.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field

@@ -2,7 +2,12 @@
 Strategy configuration models for runtime parameter management.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field

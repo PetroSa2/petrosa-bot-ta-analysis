@@ -13,7 +13,12 @@ in a bearish context, they often precede further downward movement.
 """
 
 import logging
-from datetime import UTC, datetime, timezone
+from datetime import datetime, timezone
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from typing import Any, Optional
 
 import pandas as pd

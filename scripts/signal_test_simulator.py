@@ -8,7 +8,12 @@ import asyncio
 import logging
 import os
 import sys
-from datetime import UTC, datetime, timezone
+from datetime import datetime, timezone
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 
 import numpy as np
 import pandas as pd
