@@ -108,7 +108,10 @@ jobs:
     name: GitOps Update
     needs: [build-and-push, create-release]
     runs-on: petrosa-org-runners
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Run for any main-branch deploy path. Previously only `push` was allowed, so
+    # `workflow_dispatch` built/pushed images but never updated petrosa_k8s — a common
+    # cause of "stale" pods when ops used manual runs (GitOps never received a new tag).
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Generate GitOps Bot Token
         uses: tibdex/github-app-token@v2
