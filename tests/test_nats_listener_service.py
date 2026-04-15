@@ -237,6 +237,42 @@ class TestNATSListener:
             assert call_kwargs["enabled_strategies"] == ["momentum_pulse"]
             assert call_kwargs["min_confidence"] == 0.7
 
+    async def test_handle_candle_message_persist_fails(
+        self, nats_listener, mock_signal_engine, mock_publisher
+    ):
+        """Test that persist failure is logged and publishing still proceeds (line 268)."""
+        mock_signal = MagicMock()
+        mock_signal.to_dict.return_value = {"symbol": "BTCUSDT", "action": "buy"}
+        mock_signal_engine.analyze_candles.return_value = [mock_signal]
+
+        mock_df = pd.DataFrame(
+            {
+                "timestamp": ["2025-10-24T00:00:00Z"],
+                "open": [50000.0],
+                "high": [51000.0],
+                "low": [49000.0],
+                "close": [50500.0],
+                "volume": [100.5],
+            }
+        )
+
+        with patch.object(
+            nats_listener.mysql_client, "fetch_candles", return_value=mock_df
+        ):
+            with patch.object(
+                nats_listener.mysql_client,
+                "persist_signals_batch",
+                return_value=False,
+            ):
+                mock_msg = MagicMock()
+                mock_msg.subject = "test.subject"
+                mock_msg.data = b'{"symbol": "BTCUSDT", "period": "15m"}'
+
+                await nats_listener._handle_candle_message(mock_msg)
+
+                # Even on persist failure, publishing should still be attempted
+                mock_publisher.publish_signals.assert_called_once()
+
     async def test_stop(self, nats_listener, mock_nats_client):
         """Test stopping NATS listener."""
         nats_listener.nc = mock_nats_client

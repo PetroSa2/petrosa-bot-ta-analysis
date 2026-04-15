@@ -55,6 +55,42 @@ class TestSafeSignalHandler:
 
         assert captured_name == ["9999"]
 
+    def test_main_registered_handler_body_logs_and_exits(self):
+        """Invoking the registered handler covers lines 72-77 in main.py."""
+        import asyncio
+
+        import ta_bot.main as main_module
+
+        registered: dict[int, object] = {}
+
+        def fake_signal(sig, handler):
+            registered[sig] = handler
+
+        with (
+            patch("ta_bot.main.initialize_telemetry_standard", None),
+            patch("ta_bot.main.attach_logging_handler", None),
+            patch.object(main_module, "setup_signal_handlers", MagicMock()),
+            patch("ta_bot.main._signal.signal", side_effect=fake_signal),
+            patch("ta_bot.main.Config", side_effect=RuntimeError("stop")),
+        ):
+            try:
+                asyncio.get_event_loop().run_until_complete(main_module.main())
+            except RuntimeError:
+                pass
+
+        handler = registered.get(signal.SIGTERM)
+        assert handler is not None, "SIGTERM handler was not registered"
+
+        # Cover lines 72-77: valid signum path
+        with pytest.raises(SystemExit) as exc_info:
+            handler(signal.SIGTERM, None)
+        assert exc_info.value.code == 0
+
+        # Cover lines 74-75: unknown signum → fallback to str(signum)
+        with pytest.raises(SystemExit) as exc_info2:
+            handler(9999, None)
+        assert exc_info2.value.code == 0
+
     def test_main_registers_safe_signal_handlers_after_otel_setup(self):
         """main() registers SIGTERM/SIGINT handlers AFTER setup_signal_handlers() is called.
 
