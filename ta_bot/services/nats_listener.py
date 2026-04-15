@@ -105,7 +105,10 @@ class NATSListener:
         try:
             test_subject = f"{self.nats_subject_prefix_production}.klines.SELFTEST.1m"
             logger.info(f"Running NATS self-test on: {test_subject}")
-            await self.nc.publish(test_subject, json.dumps({"symbol": "SELFTEST", "period": "1m"}).encode())
+            await self.nc.publish(
+                test_subject,
+                json.dumps({"symbol": "SELFTEST", "period": "1m"}).encode(),
+            )
         except Exception as e:
             logger.error(f"NATS self-test publication failed: {e}")
 
@@ -113,6 +116,7 @@ class NATSListener:
         """Handle incoming candle message."""
         # RAW PRINT FOR DEBUGGING - BYPASSING ALL LOGGERS
         import sys
+
         sys.stdout.write(f"\n[RAW] !!! NATS MESSAGE RECEIVED ON {msg.subject} !!!\n")
         sys.stdout.flush()
 
@@ -140,7 +144,9 @@ class NATSListener:
             if event_type == "batch_extraction_completed":
                 symbols = data.get("symbols", [])
                 period = data.get("period")
-                logger.info(f"Processing batch extraction completion for {len(symbols)} symbols on {period}")
+                logger.info(
+                    f"Processing batch extraction completion for {len(symbols)} symbols on {period}"
+                )
                 for symbol in symbols:
                     await self._process_symbol_extraction(symbol, period)
                 return
@@ -206,8 +212,8 @@ class NATSListener:
 
             logger.info(f"Processing extraction completion for {symbol} {period}")
 
-            # Fetch candle data from MySQL
-            df = await self.mysql_client.fetch_candles(symbol, period, limit=100)
+            # Fetch candle data from MySQL (250 candles needed for EMA200)
+            df = await self.mysql_client.fetch_candles(symbol, period, limit=250)
 
             if df is None or len(df) == 0:
                 logger.warning(f"No candle data available for {symbol} {period}")
@@ -226,13 +232,19 @@ class NATSListener:
                 max_confidence = runtime_config.get("max_confidence")
 
             # Analyze candles with runtime configuration
-            signals = self.signal_engine.analyze_candles(
-                df=df,
-                symbol=symbol,
-                period=period,
-                enabled_strategies=enabled_strategies,
-                min_confidence=min_confidence,
-                max_confidence=max_confidence,
+            # Run CPU-bound pandas/numpy computation in a thread pool executor to avoid
+            # blocking the asyncio event loop and causing readiness probe timeouts.
+            loop = asyncio.get_running_loop()
+            signals = await loop.run_in_executor(
+                None,
+                lambda: self.signal_engine.analyze_candles(
+                    df=df,
+                    symbol=symbol,
+                    period=period,
+                    enabled_strategies=enabled_strategies,
+                    min_confidence=min_confidence,
+                    max_confidence=max_confidence,
+                ),
             )
 
             if signals:

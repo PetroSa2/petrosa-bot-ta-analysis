@@ -7,6 +7,7 @@ Main entry point for the TA bot microservice.
 import asyncio
 import logging
 import os
+import signal as _signal
 
 # Optional OpenTelemetry imports
 try:
@@ -62,6 +63,21 @@ async def main():
         # 4. Setup graceful shutdown signal handlers for telemetry flushing
         if setup_signal_handlers:
             setup_signal_handlers()
+
+        # 5. Override signal handlers with Python 3.11-safe versions
+        # petrosa_otel v1.0.4 uses `signum in signal.Signals` which raises TypeError
+        # on Python 3.11 for int operands (fixed in 3.12). Override here to prevent
+        # SIGTERM from crashing the process with Exit code 1 on every k8s lifecycle event.
+        def _safe_signal_handler(signum: int, frame) -> None:
+            try:
+                name = _signal.Signals(signum).name
+            except (ValueError, KeyError):
+                name = str(signum)
+            logger.info(f"Received {name}, shutting down gracefully...")
+            raise SystemExit(0)
+
+        _signal.signal(_signal.SIGTERM, _safe_signal_handler)
+        _signal.signal(_signal.SIGINT, _safe_signal_handler)
 
         # Initialize components
         config = Config()

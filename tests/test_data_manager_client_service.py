@@ -132,7 +132,8 @@ class TestDataManagerClient:
         df = await data_manager_client.fetch_candles("BTCUSDT", "15m", limit=2)
 
         assert len(df) == 2
-        assert "timestamp" in df.columns
+        assert df.index.name == "timestamp"
+        assert isinstance(df.index, pd.DatetimeIndex)
         assert "open" in df.columns
         assert df.iloc[0]["close"] == 50500.0
         mock_base_client.get_candles.assert_called_once_with(

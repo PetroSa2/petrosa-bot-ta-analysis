@@ -87,7 +87,7 @@ class DataManagerClient:
             self._logger.warning(f"Error disconnecting from Data Manager: {e}")
 
     async def fetch_candles(
-        self, symbol: str, period: str, limit: int = 100
+        self, symbol: str, period: str, limit: int = 250
     ) -> pd.DataFrame:
         """
         Fetch candle data from Data Manager.
@@ -136,7 +136,8 @@ class DataManagerClient:
                 df[col] = df[col].astype(float)
 
             # Sort by timestamp (oldest first for technical analysis)
-            df = df.sort_values("timestamp").reset_index(drop=True)
+            df = df.sort_values("timestamp")
+            df = df.set_index("timestamp")
 
             self._logger.info(f"Retrieved {len(df)} candles for {symbol} ({period})")
             return df
