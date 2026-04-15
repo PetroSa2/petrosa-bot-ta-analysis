@@ -234,7 +234,7 @@ class NATSListener:
             # Analyze candles with runtime configuration
             # Run CPU-bound pandas/numpy computation in a thread pool executor to avoid
             # blocking the asyncio event loop and causing readiness probe timeouts.
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             signals = await loop.run_in_executor(
                 None,
                 lambda: self.signal_engine.analyze_candles(

@@ -55,32 +55,54 @@ class TestSafeSignalHandler:
 
         assert captured_name == ["9999"]
 
-    def test_main_registers_safe_signal_handlers(self):
-        """main() registers SIGTERM and SIGINT handlers after setup_signal_handlers()."""
-        registered = {}
+    def test_main_registers_safe_signal_handlers_after_otel_setup(self):
+        """main() registers SIGTERM/SIGINT handlers AFTER setup_signal_handlers() is called.
+
+        Validates call ordering: setup_signal_handlers() (petrosa_otel) must fire
+        before our override so the safe handler wins on Python 3.11.
+        """
+        import asyncio
+
+        import ta_bot.main as main_module
+
+        call_order: list[str] = []
+
+        mock_setup = MagicMock(
+            side_effect=lambda: call_order.append("setup_signal_handlers")
+        )
+        registered: dict[int, object] = {}
 
         def fake_signal(sig, handler):
+            call_order.append(f"signal.signal({sig})")
             registered[sig] = handler
 
         with (
             patch("ta_bot.main.initialize_telemetry_standard", None),
             patch("ta_bot.main.attach_logging_handler", None),
-            patch("ta_bot.main.setup_signal_handlers", None),
+            patch.object(main_module, "setup_signal_handlers", mock_setup),
             patch("ta_bot.main._signal.signal", side_effect=fake_signal),
-            # Prevent the rest of main() from running
             patch("ta_bot.main.Config", side_effect=RuntimeError("stop")),
         ):
-            import asyncio
-
-            import ta_bot.main as main_module
-
             try:
                 asyncio.get_event_loop().run_until_complete(main_module.main())
             except RuntimeError:
                 pass
 
+        # Verify both handlers were registered
         assert signal.SIGTERM in registered
         assert signal.SIGINT in registered
+
+        # Verify ordering: setup_signal_handlers (petrosa_otel) called before our overrides
+        assert "setup_signal_handlers" in call_order, (
+            "setup_signal_handlers was not called"
+        )
+        setup_idx = call_order.index("setup_signal_handlers")
+        override_indices = [i for i, c in enumerate(call_order) if "signal.signal" in c]
+        assert override_indices, "No _signal.signal() calls recorded"
+        assert all(setup_idx < i for i in override_indices), (
+            "Safe signal handler overrides must be registered AFTER setup_signal_handlers(); "
+            f"call order was: {call_order}"
+        )
 
 
 # ---------------------------------------------------------------------------
