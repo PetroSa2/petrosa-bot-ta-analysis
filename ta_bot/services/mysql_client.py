@@ -143,7 +143,7 @@ class MySQLClient:
                 logger.info("Disconnected from MySQL")
 
     async def fetch_candles(
-        self, symbol: str, period: str, limit: int = 100
+        self, symbol: str, period: str, limit: int = 250
     ) -> pd.DataFrame:
         """Fetch candle data from MySQL or Data Manager."""
         if self.use_data_manager:
@@ -204,7 +204,8 @@ class MySQLClient:
                 numeric_columns = ["open", "high", "low", "close", "volume"]
                 for col in numeric_columns:
                     df[col] = df[col].astype(float)
-                df = df.sort_values("timestamp").reset_index(drop=True)
+                df = df.sort_values("timestamp")
+                df = df.set_index("timestamp")
 
                 return df
 

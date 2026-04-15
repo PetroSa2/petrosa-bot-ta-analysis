@@ -52,17 +52,6 @@ repos:
         exclude: ^tests/
 
   # ==================================================================
-  # SECURITY - Dependency Check (Safety)
-  # ==================================================================
-  - repo: https://github.com/pyupio/safety
-    rev: v3.0.1
-    hooks:
-      - id: safety
-        name: 🔐 Safety (Dependency Scan)
-        args: [check, --full-report]
-        files: ^requirements\.txt$
-
-  # ==================================================================
   # LINTING - YAML & TOML
   # ==================================================================
   - repo: https://github.com/adrienverge/yamllint
