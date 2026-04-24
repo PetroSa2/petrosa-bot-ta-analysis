@@ -154,7 +154,7 @@ jobs:
 
   build-and-push:
     needs: [create-release]
-    runs-on: ubuntu-latest
+    runs-on: petrosa-org-runners
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
