@@ -38,9 +38,8 @@ repos:
           - -s
           - B608
           - --exclude
-          - 'venv,.venv,.venv-pipeline,.git,__pycache__,.eggs,*.egg,node_modules'
+          - 'tests,venv,.venv,.venv-pipeline,.git,__pycache__,.eggs,*.egg,node_modules'
         pass_filenames: false
-        exclude: ^tests/
 
   # ==================================================================
   # LINTING - YAML & TOML
