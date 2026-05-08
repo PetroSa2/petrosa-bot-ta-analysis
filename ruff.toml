@@ -37,6 +37,7 @@ extend-ignore = [
 # Exclude patterns
 exclude = [
     ".venv",
+    ".venv-pipeline",
     "venv",
     ".git",
     "__pycache__",

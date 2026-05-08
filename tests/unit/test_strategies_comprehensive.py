@@ -15,7 +15,11 @@ import pytest
 from ta_bot.models.signal import Signal
 from ta_bot.strategies.band_fade_reversal import BandFadeReversalStrategy
 from ta_bot.strategies.base_strategy import BaseStrategy
+from ta_bot.strategies.bear_trap_buy import BearTrapBuyStrategy
+from ta_bot.strategies.bear_trap_sell import BearTrapSellStrategy
+from ta_bot.strategies.ema_alignment_bearish import EMAAlignmentBearishStrategy
 from ta_bot.strategies.ema_pullback_continuation import EMAPullbackContinuationStrategy
+from ta_bot.strategies.inside_bar_sell import InsideBarSellStrategy
 from ta_bot.strategies.momentum_pulse import MomentumPulseStrategy
 
 
@@ -612,9 +616,9 @@ class TestEMAPullbackContinuationStrategy:
 
             if signal:
                 # In a downtrend pullback, only "sell" signals are expected
-                assert (
-                    signal.action == "sell"
-                ), f"Unexpected signal action: {signal.action}. Only 'sell' or None expected."
+                assert signal.action == "sell", (
+                    f"Unexpected signal action: {signal.action}. Only 'sell' or None expected."
+                )
                 assert signal.confidence > 0.5
 
 
@@ -876,3 +880,42 @@ class TestStrategyMetadata:
             if signal:
                 assert 0 <= signal.confidence <= 1
                 assert isinstance(signal.confidence, (int, float))
+
+
+@pytest.mark.unit
+class TestPandasTAIntegrationRegression:
+    """Regression tests for pandas-ta accessor integration."""
+
+    def _sample_df(self, rows: int = 130) -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                "open": np.random.uniform(49000, 51000, rows),
+                "high": np.random.uniform(49500, 51500, rows),
+                "low": np.random.uniform(48500, 50500, rows),
+                "close": np.random.uniform(49000, 51000, rows),
+                "volume": np.random.uniform(1000, 5000, rows),
+            }
+        )
+
+    def _metadata(self) -> dict:
+        return {"symbol": "BTCUSDT", "period": "15m"}
+
+    def test_bear_trap_buy_analyze_does_not_crash(self):
+        strategy = BearTrapBuyStrategy()
+        result = strategy.analyze(self._sample_df(), self._metadata())
+        assert result is None or isinstance(result, Signal)
+
+    def test_bear_trap_sell_analyze_does_not_crash(self):
+        strategy = BearTrapSellStrategy()
+        result = strategy.analyze(self._sample_df(), self._metadata())
+        assert result is None or isinstance(result, Signal)
+
+    def test_inside_bar_sell_analyze_does_not_crash(self):
+        strategy = InsideBarSellStrategy()
+        result = strategy.analyze(self._sample_df(), self._metadata())
+        assert result is None or isinstance(result, Signal)
+
+    def test_ema_alignment_bearish_analyze_does_not_crash(self):
+        strategy = EMAAlignmentBearishStrategy()
+        result = strategy.analyze(self._sample_df(), self._metadata())
+        assert result is None or isinstance(result, Signal)

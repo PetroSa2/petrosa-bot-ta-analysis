@@ -20,6 +20,7 @@ try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
+
     UTC = timezone.utc  # noqa: UP017
 from typing import Any
 
@@ -66,8 +67,8 @@ class BearTrapSellStrategy(BaseStrategy):
             symbol = metadata.get("symbol", "UNKNOWN")
 
             # Calculate EMAs
-            ema8 = self.indicators.ema(data["close"], 8)
-            ema80 = self.indicators.ema(data["close"], 80)
+            ema8 = self.indicators.ema(data, 8)
+            ema80 = self.indicators.ema(data, 80)
 
             if ema8.empty or ema80.empty:
                 return None
