@@ -99,8 +99,8 @@ jobs:
         context: .
         push: true
         tags: |
-          yurisa2/petrosa-ta-bot:${{ steps.version.outputs.version }}
-          yurisa2/petrosa-ta-bot:latest
+          yurisa2/petrosa-bot-ta-analysis:${{ steps.version.outputs.version }}
+          yurisa2/petrosa-bot-ta-analysis:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
         build-args: |
@@ -142,7 +142,7 @@ jobs:
         run: |
           VERSION="${{ needs.build-and-push.outputs.version }}"
           # Update the image tag in manifests robustly
-          find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -E -i "s|(image:[[:space:]]*)([^[:space:]]*/)?(petrosa-ta-bot):[^[:space:]]*|\1\2\3:$VERSION|g"
+          find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -E -i "s|(image:[[:space:]]*)([^[:space:]]*/)?(petrosa-bot-ta-analysis):[^[:space:]]*|\1\2\3:$VERSION|g"
 
           # Update version labels specifically
           find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o -name "*.yml" \) -print0 | xargs -0 -r sed -E -i "s/^([[:space:]]*(version|app\.kubernetes\.io\/version)):.*/\1: $VERSION/g"

@@ -31,14 +31,18 @@ repos:
     hooks:
       - id: bandit
         name: 🔐 Bandit (Python Security)
+        # Scan ONLY first-party source dirs. The previous --exclude pattern
+        # did not match nested venv paths reliably, so bandit was scanning
+        # IPython/etc. inside ./venv and tripping on hundreds of third-party
+        # findings. Whitelist-style targeting via -r ta_bot scripts is
+        # easier to reason about than blacklist-style excludes.
         args:
           - -ll
           - -r
-          - .
+          - ta_bot
+          - scripts
           - -s
           - B608
-          - --exclude
-          - 'tests,venv,.venv,.venv-pipeline,.git,__pycache__,.eggs,*.egg,node_modules'
         pass_filenames: false
 
   # ==================================================================

@@ -49,7 +49,7 @@ async def main():
         # 1. Setup OpenTelemetry (before attaching handler)
         if initialize_telemetry_standard and not os.getenv("OTEL_NO_AUTO_INIT"):
             initialize_telemetry_standard(
-                service_name=os.getenv("OTEL_SERVICE_NAME", "petrosa-ta-bot"),
+                service_name=os.getenv("OTEL_SERVICE_NAME", "petrosa-bot-ta-analysis"),
                 service_type="fastapi",
                 enable_fastapi=True,
                 enable_mongodb=True,
