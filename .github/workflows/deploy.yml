@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [ 'main' ]
+    branches: ['main']
   workflow_dispatch:
     inputs:
       version_bump:
@@ -63,7 +63,10 @@ jobs:
   build-and-push:
     name: Build & Push
     needs: create-release
-    runs-on: petrosa-org-runners
+    # Build requires Docker socket / buildx, which stock self-hosted ARC
+    # (runAsNonRoot, no docker.sock) cannot provide. Other jobs stay on
+    # petrosa-org-runners. See petrosa_k8s#497.
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -133,7 +136,6 @@ jobs:
       - name: Rebase on main
         run: ./scripts/gitops-rebase-main.sh
         working-directory: petrosa_k8s
-
 
 
       - name: Update ta-bot image tag in GitOps manifests
