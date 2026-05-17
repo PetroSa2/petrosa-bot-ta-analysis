@@ -1,4 +1,5 @@
 ---
+# yamllint disable rule:line-length
 name: Manual Deployment with Version Bump
 
 on:
@@ -105,14 +106,16 @@ jobs:
       - name: Update ta-bot image tag in GitOps manifests
         run: |
           VERSION="${{ steps.bump_version.outputs.new_version }}"
-          find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o \
-            -name "*.yml" \) -print0 | xargs -0 -r sed -i \
-            "s/VERSION_PLACEHOLDER/$VERSION/g"
-          find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o \
-            -name "*.yml" \) -print0 | xargs -0 -r sed -i \
+          find petrosa_k8s/k8s/bot-ta-analysis -type f \( \
+            -name "*.yaml" -o -name "*.yml" \) -print0 | \
+            xargs -0 -r sed -i "s/VERSION_PLACEHOLDER/$VERSION/g"
+          find petrosa_k8s/k8s/bot-ta-analysis -type f \( \
+            -name "*.yaml" -o -name "*.yml" \) -print0 | \
+            xargs -0 -r sed -i \
             "s/version: VERSION_PLACEHOLDER/version: $VERSION/g"
-          find petrosa_k8s/k8s/bot-ta-analysis -type f \( -name "*.yaml" -o \
-            -name "*.yml" \) -print0 | xargs -0 -r sed -E -i \
+          find petrosa_k8s/k8s/bot-ta-analysis -type f \( \
+            -name "*.yaml" -o -name "*.yml" \) -print0 | \
+            xargs -0 -r sed -E -i \
             "s|(image:[[:space:]]*)([^[:space:]]*/)?(petrosa-ta-bot):[^[:space:]]*|\1\2\3:$VERSION|g"
 
       - name: Commit and push to petrosa_k8s
