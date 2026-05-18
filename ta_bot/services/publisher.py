@@ -167,6 +167,24 @@ class SignalPublisher:
                 # Inject OpenTelemetry trace context for distributed tracing
                 signal_data = NATSTracePropagator.inject_context(signal_data)
 
+                # Set decision.* OTel span attributes for this intent
+                try:
+                    from opentelemetry import trace as _trace
+                    from petrosa_otel import set_decision_context
+
+                    set_decision_context(
+                        _trace.get_current_span(),
+                        intent_id=signal.intent_id,
+                        strategy_id=signal.strategy_id,
+                        symbol=signal.symbol,
+                        action=signal.action,
+                        confidence=signal.confidence,
+                    )
+                except ImportError:
+                    pass
+                except Exception as _exc:
+                    logger.debug("set_decision_context failed: %s", _exc)
+
                 # DEBUG: Log the signal data including stop_loss/take_profit
                 logger.info(
                     f"🔍 DEBUG SIGNAL DATA: {signal.strategy_id} | "
