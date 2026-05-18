@@ -4,20 +4,25 @@ Aligned with petrosa-cio contracts.
 """
 
 import math
+import uuid
 from datetime import datetime
 
 try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
+
     UTC = timezone.utc  # noqa: UP017
 try:
     from enum import StrEnum
 except ImportError:
     from enum import Enum
+
     class StrEnum(str, Enum):
         def __str__(self):
             return str(self.value)
+
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -140,6 +145,12 @@ class Signal(BaseModel):
     take_profit: float | None = Field(None, description="Take profit price")
     take_profit_pct: float | None = Field(None, ge=0, le=1)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    # Traceability: intent_id generated per signal, carried through to CIO
+    intent_id: str = Field(
+        default_factory=lambda: uuid.uuid4().hex,
+        description="uuid4 hex string uniquely identifying this intent; generated at publish time",
+    )
 
     # Add legacy/compatibility fields
     signal_id: str | None = Field(None, description="Compatibility with contracts")
