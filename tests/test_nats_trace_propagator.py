@@ -87,7 +87,13 @@ class TestNATSTracePropagatorBasic:
             assert parts[0] == "00"  # version
             assert len(parts[1]) == 32  # trace_id (128 bits = 32 hex chars)
             assert len(parts[2]) == 16  # span_id (64 bits = 16 hex chars)
-            assert parts[3] in ["00", "01"]  # trace-flags
+            # trace-flags is an 8-bit field (two hex chars). W3C Trace Context
+            # Level 2 reserves bit 1 for the "random trace ID" flag, so OTel
+            # SDKs that mark random IDs emit `03` (sampled + random) in
+            # addition to the original `00`/`01` values. Accept any well-
+            # formed 2-hex byte rather than hard-coding the legacy set.
+            assert len(parts[3]) == 2
+            int(parts[3], 16)  # raises ValueError on non-hex
 
     def test_inject_context_modifies_in_place(self, setup_tracing):
         """Test that inject_context modifies the message dict in place."""
