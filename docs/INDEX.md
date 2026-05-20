@@ -24,6 +24,7 @@
 - [**STRATEGIES.md**](archive/2024-2025/STRATEGIES.md) - (Reference) Deep dive into technical analysis strategies.
 - [**METRICS_BASELINE.md**](METRICS_BASELINE.md) - Baseline business metrics for monitoring.
 - [**SIGNAL_ENGINE.md**](archive/2024-2025/SIGNAL_ENGINE.md) - Signal generation logic.
+- [**BACKTEST.md**](BACKTEST.md) - MVP backtest engine (P3.1) CLI + artifact schema.
 
 ## 📜 Historical
 - [**Archive Folder**](archive/) - Outdated or issue-specific documentation.
