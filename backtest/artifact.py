@@ -54,9 +54,3 @@ class CharacterizationArtifact:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(self.to_json(indent=indent), encoding="utf-8")
         return out
-
-
-def _isoformat(value: datetime | str) -> str:
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return value
