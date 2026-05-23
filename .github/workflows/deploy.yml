@@ -46,7 +46,8 @@ jobs:
       run: |
         # Get latest tag, default to v1.0.0 if no tags exist
         CURRENT=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
-        BASE_VERSION="${CURRENT}"
+        BASE_VERSION=$(echo "$CURRENT" | grep -oE '^v[0-9]+\.[0-9]+\.[0-9]+')
+        : "${BASE_VERSION:=v1.0.0}"
         SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
         VERSION="${BASE_VERSION}-r${{ github.run_number }}-${SHORT_SHA}"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
