@@ -259,7 +259,7 @@ class SignalEngine:
             # Record processing latency metric
             self.signal_latency.record(
                 duration_ms,
-                {"symbol": symbol, "timeframe": period, "signal_count": len(signals)},
+                {"symbol": symbol, "timeframe": period},
             )
 
             # Add final span attributes
