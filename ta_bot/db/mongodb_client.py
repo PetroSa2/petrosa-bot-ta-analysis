@@ -18,6 +18,7 @@ try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
+
     UTC = timezone.utc  # noqa: UP017
 from typing import Any, Optional
 
@@ -687,3 +688,97 @@ class MongoDBClient:
         except Exception as e:
             logger.error(f"Error fetching app config audit trail: {e}")
             return []
+
+    # -------------------------------------------------------------------------
+    # Strategy Lifecycle Methods (FR9 — AC2)
+    # -------------------------------------------------------------------------
+
+    async def create_lifecycle_event(self, event_data: dict[str, Any]) -> str | None:
+        """
+        Persist a strategy lifecycle transition event.
+
+        Args:
+            event_data: Event fields (strategy_id, from_state, to_state, transitioned_by, etc.)
+
+        Returns:
+            Inserted document ID string, or None on failure
+        """
+        if not self._connected:
+            return None
+
+        try:
+            event_data.setdefault("transitioned_at", datetime.now(UTC))
+            result = await self.database.strategy_lifecycle_events.insert_one(
+                event_data
+            )
+            logger.info(
+                f"Created lifecycle event for {event_data.get('strategy_id')}: "
+                f"{event_data.get('from_state')} → {event_data.get('to_state')}"
+            )
+            return str(result.inserted_id)
+        except Exception as e:
+            logger.error(f"Error creating lifecycle event: {e}")
+            return None
+
+    async def get_lifecycle_history(
+        self, strategy_id: str, limit: int = 500
+    ) -> list[dict[str, Any]]:
+        """
+        Return all lifecycle events for a strategy, oldest first.
+
+        Args:
+            strategy_id: Strategy identifier
+            limit: Maximum number of events to return
+
+        Returns:
+            Chronological list of lifecycle event documents
+        """
+        if not self._connected:
+            return []
+
+        try:
+            cursor = (
+                self.database.strategy_lifecycle_events.find(
+                    {"strategy_id": strategy_id}
+                )
+                .sort("transitioned_at", 1)
+                .limit(limit)
+            )
+            return await cursor.to_list(length=limit)
+        except Exception as e:
+            logger.error(f"Error fetching lifecycle history for {strategy_id}: {e}")
+            return []
+
+    async def get_current_lifecycle_state(self, strategy_id: str) -> str | None:
+        """
+        Return the most recent lifecycle state for a strategy.
+
+        Args:
+            strategy_id: Strategy identifier
+
+        Returns:
+            Most recent to_state string, or None if no events exist
+        """
+        if not self._connected:
+            return None
+
+        try:
+            doc = await self.database.strategy_lifecycle_events.find_one(
+                {"strategy_id": strategy_id},
+                sort=[("transitioned_at", -1)],
+            )
+            return doc["to_state"] if doc else None
+        except Exception as e:
+            logger.error(
+                f"Error fetching current lifecycle state for {strategy_id}: {e}"
+            )
+            return None
+
+    async def _ensure_lifecycle_index(self) -> None:
+        """Create index on strategy_lifecycle_events collection (called lazily)."""
+        try:
+            await self.database.strategy_lifecycle_events.create_index(
+                [("strategy_id", 1), ("transitioned_at", 1)]
+            )
+        except Exception as e:
+            logger.warning(f"Failed to create lifecycle index: {e}")

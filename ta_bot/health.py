@@ -64,6 +64,29 @@ try:
 except Exception as e:
     logger.warning(f"Could not register configuration API routes: {e}")
 
+# Register lifecycle manager with API routes (FR9)
+try:
+    import os
+
+    from ta_bot.api.config_routes import set_lifecycle_manager
+    from ta_bot.db.mongodb_client import MongoDBClient as _MongoDBClient
+    from ta_bot.services.lifecycle_manager import StrategyLifecycleManager
+
+    _lifecycle_mongo = _MongoDBClient(use_data_manager=False)
+
+    async def _init_lifecycle_manager() -> None:
+        await _lifecycle_mongo.connect()
+        lm = StrategyLifecycleManager(
+            mongodb_client=_lifecycle_mongo,
+            data_manager_url=os.getenv("DATA_MANAGER_URL"),
+        )
+        set_lifecycle_manager(lm)
+        logger.info("Lifecycle manager registered with API routes")
+
+    app.add_event_handler("startup", _init_lifecycle_manager)
+except Exception as e:
+    logger.warning(f"Could not register lifecycle manager: {e}")
+
 # Instrument FastAPI for OpenTelemetry traces
 try:
     from petrosa_otel import instrument_fastapi_app
