@@ -64,6 +64,15 @@ try:
 except Exception as e:
     logger.warning(f"Could not register configuration API routes: {e}")
 
+# Register backtest trigger API route (FR2 / #239)
+try:
+    from ta_bot.api.backtest_routes import router as backtest_router
+
+    app.include_router(backtest_router, prefix="/api/v1")
+    logger.info("Backtest API route registered at /api/v1/backtest")
+except Exception as e:
+    logger.warning(f"Could not register backtest API route: {e}")
+
 # Register lifecycle manager with API routes (FR9)
 try:
     import os

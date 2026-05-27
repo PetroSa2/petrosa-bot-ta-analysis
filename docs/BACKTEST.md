@@ -38,6 +38,57 @@ Flags:
 | `--output` | no | stdout | Where to write the artifact JSON |
 | `--log-level` | no | `INFO` | `DEBUG\|INFO\|WARNING\|ERROR` |
 
+## HTTP API trigger (P3.1-FU, #239)
+
+Beyond the CLI, backtests can be launched over HTTP — for schedulers, operators,
+or other services — via the FastAPI app on port 8000:
+
+```bash
+curl -sX POST http://localhost:8000/api/v1/backtest \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "strategy_id": "ema_alignment_bullish",
+        "from": "2026-01-01T00:00:00",
+        "to": "2026-12-31T00:00:00",
+        "symbol": "BTCUSDT",
+        "period": "15m",
+        "warmup": 200,
+        "persist": true
+      }'
+```
+
+The endpoint reuses the **same `BacktestEngine` and `ArtifactPersister`** as
+`python -m backtest`, so the emitted `CharacterizationArtifact` is byte-for-byte
+the same shape (FR3 / P3.2 contract). On success it returns the standard
+`APIResponse` envelope with a run summary (`candle_count`, `signal_count`,
+`source`, `persisted`); the full artifact is written to the data-manager
+`characterization_artifacts` collection when `persist` is `true` (default).
+
+| field | required | default | meaning |
+| --- | --- | --- | --- |
+| `strategy_id` | yes | — | Registered strategy_id |
+| `from` / `to` | yes | — | ISO-8601 window bounds (UTC if no tz) |
+| `symbol` | no | `BTCUSDT` | Trading symbol |
+| `period` | no | `15m` | Candle period |
+| `warmup` | no | `200` | Candles required before strategies evaluate |
+| `max_candles` | no | `1000` | Cap on data-manager fetches |
+| `persist` | no | `true` | Persist the artifact to petrosa-data-manager |
+| `parameter_overrides` | no | — | Reserved; not yet applied by the engine (HTTP 422 if supplied) |
+
+A k8s `CronJob` schedule was the alternative trigger surface considered for
+#239; the HTTP API was chosen because it is self-contained in this service,
+needs no manifest wiring, and can itself be driven by a future `CronJob` that
+simply `curl`s this endpoint.
+
+### `petrosa-realtime-strategies` decision (AC3)
+
+`petrosa-realtime-strategies` does **not** get its own backtest path. Its
+strategies are backtested **through `petrosa-bot-ta-analysis`** — the backtest
+engine composes `ta_bot.core.signal_engine.SignalEngine`, which is the single
+strategy registry for both live and offline replay (per architecture §9.4). Any
+strategy registered there is immediately backtestable via this endpoint with no
+extra wiring, so a second engine in realtime-strategies would only risk drift.
+
 ## Artifact schema (v1.0.0)
 
 ```json
