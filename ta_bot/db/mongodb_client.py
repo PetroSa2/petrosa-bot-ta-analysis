@@ -192,6 +192,9 @@ class MongoDBClient:
                 [("changed_at", -1)]  # Descending for recent-first queries
             )
 
+            # Strategy lifecycle events: compound index for history queries
+            await self._ensure_lifecycle_index()
+
             logger.info("MongoDB indexes created successfully")
 
         except Exception as e:
