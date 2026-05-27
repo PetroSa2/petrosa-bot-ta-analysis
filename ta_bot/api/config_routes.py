@@ -23,6 +23,9 @@ from ta_bot.api.response_models import (
     ConfigUpdateRequest,
     ConfigValidationRequest,
     CrossServiceConflict,
+    LifecycleEventItem,
+    LifecycleHistoryResponse,
+    LifecycleTransitionRequest,
     ParameterSchemaItem,
     RollbackRequest,
     StrategyListItem,
@@ -31,6 +34,10 @@ from ta_bot.api.response_models import (
 )
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
+from ta_bot.services.lifecycle_manager import (
+    LifecycleTransitionError,
+    StrategyLifecycleManager,
+)
 from ta_bot.strategies.defaults import get_parameter_schema, get_strategy_defaults
 
 logger = logging.getLogger(__name__)
@@ -41,6 +48,7 @@ router = APIRouter()
 # Global config manager instances (should be initialized on app startup)
 _config_manager: StrategyConfigManager | None = None
 _app_config_manager: AppConfigManager | None = None
+_lifecycle_manager: StrategyLifecycleManager | None = None
 
 
 def set_config_manager(manager: StrategyConfigManager) -> None:
@@ -73,6 +81,22 @@ def get_app_config_manager() -> AppConfigManager:
             detail="Application configuration manager not initialized",
         )
     return _app_config_manager
+
+
+def set_lifecycle_manager(manager: StrategyLifecycleManager) -> None:
+    """Set the global strategy lifecycle manager instance."""
+    global _lifecycle_manager
+    _lifecycle_manager = manager
+
+
+def get_lifecycle_manager() -> StrategyLifecycleManager:
+    """Get the global strategy lifecycle manager instance."""
+    if _lifecycle_manager is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Strategy lifecycle manager not initialized",
+        )
+    return _lifecycle_manager
 
 
 @router.get(
@@ -1555,6 +1579,141 @@ async def refresh_app_cache():
         )
     except Exception as e:
         logger.error(f"Error refreshing application config cache: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
+# -------------------------------------------------------------------------
+# Strategy Lifecycle Routes (FR9 — AC3)
+# -------------------------------------------------------------------------
+
+
+@router.get(
+    "/strategies/{strategy_id}/lifecycle",
+    response_model=APIResponse[LifecycleHistoryResponse],
+    summary="Get strategy lifecycle history",
+    description="""
+    **For Operators / LLM Agents**: Returns the full admit→trial→graduate→demote→retire
+    timeline for a strategy (FR9).
+
+    When a `decision_id` is present on an event, the endpoint attempts a best-effort
+    cross-service join against the data-manager `LifecycleRepository` (AC4).
+
+    **Example Request**: `GET /api/v1/strategies/rsi_extreme_reversal/lifecycle`
+
+    **Example Response**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "strategy_id": "rsi_extreme_reversal",
+        "current_state": "live_trial",
+        "events": [...],
+        "cio_join_status": "ok"
+      }
+    }
+    ```
+    """,
+    tags=["lifecycle"],
+)
+async def get_strategy_lifecycle(
+    strategy_id: str = Path(..., description="Strategy identifier"),
+    join_cio: bool = Query(True, description="Attempt cross-service CIO context join"),
+):
+    """Get the full lifecycle history for a strategy."""
+    try:
+        manager = get_lifecycle_manager()
+        result = await manager.get_history(strategy_id, join_cio=join_cio)
+
+        event_items = [LifecycleEventItem(**e) for e in result["events"]]
+        response_data = LifecycleHistoryResponse(
+            strategy_id=strategy_id,
+            current_state=result["current_state"],
+            events=event_items,
+            cio_join_status=result["cio_join_status"],
+        )
+
+        return APIResponse(
+            success=True,
+            data=response_data,
+            metadata={"event_count": len(event_items)},
+        )
+    except Exception as e:
+        logger.error(f"Error fetching lifecycle for {strategy_id}: {e}")
+        return APIResponse(
+            success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
+        )
+
+
+@router.post(
+    "/strategies/{strategy_id}/lifecycle/transition",
+    response_model=APIResponse[LifecycleEventItem],
+    summary="Trigger a strategy lifecycle state transition",
+    description="""
+    **For CIO Agent / Operators**: Record a lifecycle state transition for a strategy.
+
+    Valid states: `registered → backtested → admitted → live_trial → graduated → demoted → retired`
+
+    A `decision_id` links this transition to the CIO-side `LifecycleRepository` record
+    enabling cross-service join on the GET endpoint.
+
+    **Example Request**:
+    ```json
+    POST /api/v1/strategies/rsi_extreme_reversal/lifecycle/transition
+    {
+      "to_state": "live_trial",
+      "transitioned_by": "cio_agent",
+      "decision_id": "dec_abc123",
+      "reasoning_context": "Passed 30-day paper-trading gate with Sharpe > 1.2"
+    }
+    ```
+    """,
+    tags=["lifecycle"],
+    status_code=status.HTTP_201_CREATED,
+)
+async def transition_strategy_lifecycle(
+    strategy_id: str = Path(..., description="Strategy identifier"),
+    request: LifecycleTransitionRequest = ...,
+):
+    """Trigger a lifecycle state transition for a strategy."""
+    try:
+        manager = get_lifecycle_manager()
+        event = await manager.transition(
+            strategy_id=strategy_id,
+            to_state=request.to_state,
+            transitioned_by=request.transitioned_by,
+            decision_id=request.decision_id,
+            reasoning_context=request.reasoning_context,
+        )
+
+        event_item = LifecycleEventItem(
+            id=event.id or "",
+            strategy_id=event.strategy_id,
+            from_state=event.from_state.value if event.from_state else None,
+            to_state=event.to_state.value,
+            transitioned_at=event.transitioned_at.isoformat(),
+            transitioned_by=event.transitioned_by,
+            decision_id=event.decision_id,
+            reasoning_context=event.reasoning_context,
+            cio_context=None,
+        )
+
+        return APIResponse(
+            success=True,
+            data=event_item,
+            metadata={
+                "strategy_id": strategy_id,
+                "transition": f"{event_item.from_state} → {event_item.to_state}",
+            },
+        )
+    except LifecycleTransitionError as e:
+        return APIResponse(
+            success=False,
+            error={"code": "INVALID_TRANSITION", "message": str(e)},
+        )
+    except Exception as e:
+        logger.error(f"Error transitioning lifecycle for {strategy_id}: {e}")
         return APIResponse(
             success=False, error={"code": "INTERNAL_ERROR", "message": str(e)}
         )

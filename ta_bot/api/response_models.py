@@ -11,6 +11,7 @@ try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
+
     UTC = timezone.utc  # noqa: UP017
 from typing import Any, Generic, Literal, TypeVar
 
@@ -55,7 +56,8 @@ class APIResponse(BaseModel, Generic[T]):
         description="Response timestamp in ISO-8601 format (UTC)",
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {
                     "success": True,
@@ -74,7 +76,8 @@ class APIResponse(BaseModel, Generic[T]):
                     "timestamp": "2025-10-17T14:30:00Z",
                 },
             ]
-    })
+        }
+    )
 
 
 class ErrorDetail(BaseModel):
@@ -103,7 +106,8 @@ class ErrorDetail(BaseModel):
         None, description="Optional suggestion on how to fix the error"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "code": "VALIDATION_ERROR",
                 "message": "Parameter value out of range",
@@ -111,7 +115,8 @@ class ErrorDetail(BaseModel):
                 "field": "parameters.rsi_period",
                 "suggestion": "Use a value between 2 and 50",
             }
-    })
+        }
+    )
 
 
 class ConfigUpdateRequest(BaseModel):
@@ -154,7 +159,8 @@ class ConfigUpdateRequest(BaseModel):
         ),
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "parameters": {
                     "rsi_period": 14,
@@ -165,7 +171,8 @@ class ConfigUpdateRequest(BaseModel):
                 "reason": "Market volatility adjustment - reducing sensitivity",
                 "validate_only": False,
             }
-    })
+        }
+    )
 
 
 class ConfigResponse(BaseModel):
@@ -215,7 +222,8 @@ class ConfigResponse(BaseModel):
         description="ISO-8601 timestamp of the most recent update to this configuration",
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "strategy_id": "rsi_extreme_reversal",
                 "symbol": "BTCUSDT",
@@ -231,7 +239,8 @@ class ConfigResponse(BaseModel):
                 "created_at": "2025-10-17T10:30:00Z",
                 "updated_at": "2025-10-17T14:45:00Z",
             }
-    })
+        }
+    )
 
 
 class StrategyListItem(BaseModel):
@@ -253,7 +262,8 @@ class StrategyListItem(BaseModel):
         ..., description="Number of configurable parameters this strategy has"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "strategy_id": "rsi_extreme_reversal",
                 "name": "RSI Extreme Reversal",
@@ -262,7 +272,8 @@ class StrategyListItem(BaseModel):
                 "symbol_overrides": ["BTCUSDT", "ETHUSDT"],
                 "parameter_count": 10,
             }
-    })
+        }
+    )
 
 
 class ParameterSchemaItem(BaseModel):
@@ -283,7 +294,8 @@ class ParameterSchemaItem(BaseModel):
     )
     example: Any = Field(..., description="Example valid value")
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "rsi_period",
                 "type": "int",
@@ -293,7 +305,8 @@ class ParameterSchemaItem(BaseModel):
                 "max": 50,
                 "example": 14,
             }
-    })
+        }
+    )
 
 
 class AuditTrailItem(BaseModel):
@@ -313,7 +326,8 @@ class AuditTrailItem(BaseModel):
     changed_at: str = Field(..., description="ISO-8601 timestamp of change")
     reason: str | None = Field(None, description="Reason for the change")
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "507f1f77bcf86cd799439012",
                 "strategy_id": "rsi_extreme_reversal",
@@ -325,7 +339,8 @@ class AuditTrailItem(BaseModel):
                 "changed_at": "2025-10-17T14:45:00Z",
                 "reason": "Market volatility adjustment",
             }
-    })
+        }
+    )
 
 
 # -------------------------------------------------------------------------
@@ -416,7 +431,8 @@ class AppConfigUpdateRequest(BaseModel):
         ),
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "enabled_strategies": [
                     "momentum_pulse",
@@ -433,7 +449,8 @@ class AppConfigUpdateRequest(BaseModel):
                 "reason": "Optimizing for volatile market conditions",
                 "validate_only": False,
             }
-    })
+        }
+    )
 
 
 class AppConfigResponse(BaseModel):
@@ -473,7 +490,8 @@ class AppConfigResponse(BaseModel):
         ..., description="ISO-8601 timestamp of the most recent update"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "enabled_strategies": [
                     "momentum_pulse",
@@ -491,7 +509,8 @@ class AppConfigResponse(BaseModel):
                 "created_at": "2025-10-17T10:30:00Z",
                 "updated_at": "2025-10-21T14:45:00Z",
             }
-    })
+        }
+    )
 
 
 class AppAuditTrailItem(BaseModel):
@@ -509,7 +528,8 @@ class AppAuditTrailItem(BaseModel):
     changed_at: str = Field(..., description="ISO-8601 timestamp of change")
     reason: str | None = Field(None, description="Reason for the change")
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "507f1f77bcf86cd799439013",
                 "action": "UPDATE",
@@ -525,7 +545,8 @@ class AppAuditTrailItem(BaseModel):
                 "changed_at": "2025-10-21T14:45:00Z",
                 "reason": "Adding RSI strategy and lowering confidence for more signals",
             }
-    })
+        }
+    )
 
 
 class RollbackRequest(BaseModel):
@@ -549,13 +570,15 @@ class RollbackRequest(BaseModel):
     )
     reason: str | None = Field(None, description="Reason for the rollback")
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "target_version": 2,
                 "changed_by": "llm_agent_v1",
                 "reason": "Previous configuration had better performance",
             }
-    })
+        }
+    )
 
 
 # -------------------------------------------------------------------------
@@ -576,14 +599,16 @@ class ValidationError(BaseModel):
         None, description="Suggested correct value if applicable"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "field": "rsi_period",
                 "message": "rsi_period must be >= 2, got 1",
                 "code": "OUT_OF_RANGE",
                 "suggested_value": 14,
             }
-    })
+        }
+    )
 
 
 class CrossServiceConflict(BaseModel):
@@ -596,14 +621,16 @@ class CrossServiceConflict(BaseModel):
     description: str = Field(..., description="Description of the conflict")
     resolution: str = Field(..., description="Suggested resolution")
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "service": "tradeengine",
                 "conflict_type": "PARAMETER_CONFLICT",
                 "description": "Conflicting leverage settings between services",
                 "resolution": "Use consistent leverage values across all services",
             }
-    })
+        }
+    )
 
 
 class ValidationResponse(BaseModel):
@@ -629,7 +656,8 @@ class ValidationResponse(BaseModel):
         default_factory=list, description="Cross-service conflicts detected"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "validation_passed": True,
                 "errors": [],
@@ -642,7 +670,8 @@ class ValidationResponse(BaseModel):
                 },
                 "conflicts": [],
             }
-    })
+        }
+    )
 
 
 class ConfigValidationRequest(BaseModel):
@@ -659,7 +688,8 @@ class ConfigValidationRequest(BaseModel):
         None, description="Trading symbol (optional, for symbol-specific validation)"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "parameters": {
                     "rsi_period": 14,
@@ -668,4 +698,109 @@ class ConfigValidationRequest(BaseModel):
                 "strategy_id": "rsi_extreme_reversal",
                 "symbol": "BTCUSDT",
             }
-    })
+        }
+    )
+
+
+# -------------------------------------------------------------------------
+# Strategy Lifecycle Models (FR9 — AC3)
+# -------------------------------------------------------------------------
+
+
+class LifecycleTransitionRequest(BaseModel):
+    """Request body for triggering a strategy lifecycle state transition."""
+
+    to_state: str = Field(
+        ...,
+        description=(
+            "Target lifecycle state. Valid values: registered, backtested, admitted, "
+            "live_trial, graduated, demoted, retired."
+        ),
+    )
+    transitioned_by: str = Field(
+        ...,
+        description="Actor triggering the transition (e.g., 'cio_agent', 'operator')",
+        min_length=1,
+        max_length=100,
+    )
+    decision_id: str | None = Field(
+        None,
+        description="CIO-side decision_id for cross-service timeline join via data-manager LifecycleRepository",
+    )
+    reasoning_context: str | None = Field(
+        None, description="Why this transition is happening"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "to_state": "live_trial",
+                "transitioned_by": "cio_agent",
+                "decision_id": "dec_abc123",
+                "reasoning_context": "Passed 30-day paper-trading gate with Sharpe > 1.2",
+            }
+        }
+    )
+
+
+class LifecycleEventItem(BaseModel):
+    """Single lifecycle event in the strategy timeline."""
+
+    id: str = Field(..., description="Event record ID")
+    strategy_id: str = Field(..., description="Strategy identifier")
+    from_state: str | None = Field(
+        None, description="Previous state (null for initial registration)"
+    )
+    to_state: str = Field(..., description="New state after transition")
+    transitioned_at: str = Field(..., description="ISO-8601 timestamp of transition")
+    transitioned_by: str = Field(..., description="Actor that triggered the transition")
+    decision_id: str | None = Field(None, description="CIO-side decision_id join key")
+    reasoning_context: str | None = Field(None, description="Reason for transition")
+    cio_context: dict[str, Any] | None = Field(
+        None,
+        description="Merged CIO context from data-manager LifecycleRepository (present when decision_id matched)",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": "507f1f77bcf86cd799439020",
+                "strategy_id": "rsi_extreme_reversal",
+                "from_state": "admitted",
+                "to_state": "live_trial",
+                "transitioned_at": "2026-05-27T10:00:00Z",
+                "transitioned_by": "cio_agent",
+                "decision_id": "dec_abc123",
+                "reasoning_context": "Passed 30-day paper-trading gate with Sharpe > 1.2",
+                "cio_context": None,
+            }
+        }
+    )
+
+
+class LifecycleHistoryResponse(BaseModel):
+    """Full lifecycle timeline for a strategy (AC3 of FR9)."""
+
+    strategy_id: str = Field(..., description="Strategy identifier")
+    current_state: str | None = Field(
+        None, description="Current lifecycle state (most recent to_state)"
+    )
+    events: list[LifecycleEventItem] = Field(
+        default_factory=list,
+        description="Chronological list of all lifecycle transitions (oldest first)",
+    )
+    cio_join_status: str = Field(
+        "not_attempted",
+        description="Status of cross-service data-manager join: ok | partial | unavailable | not_attempted",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "strategy_id": "rsi_extreme_reversal",
+                "current_state": "live_trial",
+                "events": [],
+                "cio_join_status": "ok",
+            }
+        }
+    )
