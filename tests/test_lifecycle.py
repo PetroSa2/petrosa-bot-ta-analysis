@@ -17,16 +17,16 @@ import pytest
 os.environ.setdefault("OTEL_NO_AUTO_INIT", "1")
 os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime  # noqa: E402
+from unittest.mock import AsyncMock, MagicMock, patch  # noqa: E402
 
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient  # noqa: E402
 
-from ta_bot.models.strategy_config import (
+from ta_bot.models.strategy_config import (  # noqa: E402
     VALID_LIFECYCLE_TRANSITIONS,
     StrategyLifecycleState,
 )
-from ta_bot.services.lifecycle_manager import (
+from ta_bot.services.lifecycle_manager import (  # noqa: E402
     LifecycleTransitionError,
     StrategyLifecycleManager,
 )
