@@ -87,6 +87,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Cap on data-manager fetches (live mode only, default 1000)",
     )
     parser.add_argument(
+        "--persist",
+        action="store_true",
+        default=False,
+        help=(
+            "Persist the artifact to petrosa-data-manager after the run "
+            "(requires DATA_MANAGER_URL env var or default service address)"
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
@@ -127,6 +136,16 @@ def run(args: argparse.Namespace) -> int:
         print(f"wrote {artifact.signal_count} events to {args.output}", file=sys.stderr)
     else:
         sys.stdout.write(payload + "\n")
+
+    if args.persist:
+        from backtest.persistence import ArtifactPersister
+
+        ok = ArtifactPersister().persist(artifact)
+        if not ok:
+            print(
+                "warning: artifact persistence to data-manager failed", file=sys.stderr
+            )
+
     return 0
 
 

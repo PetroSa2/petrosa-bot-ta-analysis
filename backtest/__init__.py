@@ -4,7 +4,14 @@ Replays historical candles for a registered TA strategy and emits a
 characterization artifact consumable by the P3.2 evaluator.
 """
 
-from backtest.artifact import BacktestEvent, CharacterizationArtifact
+from backtest.artifact import (
+    BacktestEvent,
+    CharacterizationArtifact,
+    DrawdownEnvelope,
+    EdgeEstimate,
+    SensitivityAnalysis,
+    SensitivityPoint,
+)
 from backtest.data_source import (
     DataManagerHistoricalSource,
     FixtureHistoricalSource,
@@ -18,7 +25,11 @@ __all__ = [
     "BacktestEvent",
     "CharacterizationArtifact",
     "DataManagerHistoricalSource",
+    "DrawdownEnvelope",
+    "EdgeEstimate",
     "FixtureHistoricalSource",
     "HistoricalDataSource",
+    "SensitivityAnalysis",
+    "SensitivityPoint",
     "make_decision_id",
 ]

@@ -14,11 +14,16 @@ from datetime import datetime
 
 import pandas as pd
 
+from backtest.analytics import (
+    compute_drawdown_envelope,
+    compute_edge_estimate,
+    compute_sensitivity_analysis,
+)
 from backtest.artifact import BacktestEvent, CharacterizationArtifact
 from backtest.data_source import HistoricalDataSource
 from backtest.identifiers import make_decision_id
 
-ARTIFACT_SCHEMA_VERSION = "1.0.0"
+ARTIFACT_SCHEMA_VERSION = "1.1.0"
 BACKTEST_SOURCE = "backtest"
 
 logger = logging.getLogger(__name__)
@@ -90,7 +95,10 @@ class BacktestEngine:
                 candle_count=candle_count,
                 signal_count=0,
                 source=BACKTEST_SOURCE,
-                events=[],
+                events=(),
+                edge_estimate=compute_edge_estimate([]),
+                drawdown_envelope=compute_drawdown_envelope([]),
+                sensitivity_analysis=compute_sensitivity_analysis([]),
             )
 
         sequence = 0
@@ -127,6 +135,7 @@ class BacktestEngine:
                 )
                 sequence += 1
 
+        events_tuple = tuple(events)
         return CharacterizationArtifact(
             schema_version=ARTIFACT_SCHEMA_VERSION,
             strategy_id=request.strategy_id,
@@ -135,9 +144,12 @@ class BacktestEngine:
             range_from=request.range_from.isoformat(),
             range_to=request.range_to.isoformat(),
             candle_count=candle_count,
-            signal_count=len(events),
+            signal_count=len(events_tuple),
             source=BACKTEST_SOURCE,
-            events=events,
+            events=events_tuple,
+            edge_estimate=compute_edge_estimate(events_tuple),
+            drawdown_envelope=compute_drawdown_envelope(events_tuple),
+            sensitivity_analysis=compute_sensitivity_analysis(events_tuple),
         )
 
 
