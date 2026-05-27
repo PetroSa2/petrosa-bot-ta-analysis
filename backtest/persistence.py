@@ -38,8 +38,9 @@ _DATABASE = "mongodb"
 class ArtifactPersister:
     """Post a ``CharacterizationArtifact`` to the data-manager audit trail."""
 
-    def __init__(self, base_url: str | None = None) -> None:
+    def __init__(self, base_url: str | None = None, _client_factory=None) -> None:
         self._base_url = base_url or os.getenv("DATA_MANAGER_URL", _DEFAULT_URL)
+        self._client_factory = _client_factory  # injectable for unit tests
 
     def _build_record(self, artifact: CharacterizationArtifact) -> dict[str, Any]:
         record = artifact.to_dict()
@@ -52,10 +53,15 @@ class ArtifactPersister:
 
     async def apersist(self, artifact: CharacterizationArtifact) -> bool:
         """Async variant — use this from within an async context."""
-        from ta_bot.services.data_manager_client import DataManagerClient
+        if self._client_factory is not None:
+            factory = self._client_factory
+        else:
+            from ta_bot.services.data_manager_client import DataManagerClient
+
+            factory = DataManagerClient
 
         record = self._build_record(artifact)
-        client = DataManagerClient(base_url=self._base_url)
+        client = factory(base_url=self._base_url)
         try:
             await client.connect()
             result = await client._client.insert(
