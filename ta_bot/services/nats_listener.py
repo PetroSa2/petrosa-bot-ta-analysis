@@ -5,6 +5,8 @@ NATS listener service for receiving candle data and processing signals.
 import asyncio
 import json
 import logging
+import time
+from collections import deque
 from typing import Any
 
 from nats.aio.client import Client as NATS
@@ -56,6 +58,11 @@ class NATSListener:
         self.subscriptions: list[Any] = []
         self.leader_election = None
         self.mysql_client = MySQLClient()
+
+        # Health signals consumed by BotTaAnalysisHealthEvaluator (P2.7 #248).
+        self._recent_analysis_latencies: deque[float] = deque(maxlen=200)
+        self.signals_emitted = 0
+        self._mysql_healthy = True
 
     async def start(self):
         """Start the NATS listener."""
@@ -213,7 +220,15 @@ class NATSListener:
             logger.info(f"Processing extraction completion for {symbol} {period}")
 
             # Fetch candle data from MySQL (250 candles needed for EMA200)
-            df = await self.mysql_client.fetch_candles(symbol, period, limit=250)
+            try:
+                df = await self.mysql_client.fetch_candles(symbol, period, limit=250)
+                self._mysql_healthy = True
+            except Exception as fetch_exc:
+                self._mysql_healthy = False
+                logger.error(
+                    f"Candle-data fetch failed for {symbol} {period}: {fetch_exc}"
+                )
+                return
 
             if df is None or len(df) == 0:
                 logger.warning(f"No candle data available for {symbol} {period}")
@@ -235,6 +250,7 @@ class NATSListener:
             # Run CPU-bound pandas/numpy computation in a thread pool executor to avoid
             # blocking the asyncio event loop and causing readiness probe timeouts.
             loop = asyncio.get_running_loop()
+            _analysis_start = time.perf_counter()
             signals = await loop.run_in_executor(
                 None,
                 lambda: self.signal_engine.analyze_candles(
@@ -245,6 +261,9 @@ class NATSListener:
                     min_confidence=min_confidence,
                     max_confidence=max_confidence,
                 ),
+            )
+            self._recent_analysis_latencies.append(
+                time.perf_counter() - _analysis_start
             )
 
             if signals:
@@ -274,6 +293,7 @@ class NATSListener:
                     f"🚀 PUBLISHING {len(signals)} signals to Trade Engine via publisher"
                 )
                 await self.publisher.publish_signals(signals)
+                self.signals_emitted += len(signals)
                 logger.info(f"✅ Publisher call completed for {len(signals)} signals")
 
             else:
@@ -282,6 +302,19 @@ class NATSListener:
                 )
         except Exception as e:
             logger.error(f"Error processing symbol {symbol} {period}: {e}")
+
+    def get_health_metrics(self) -> dict[str, Any]:
+        """Expose readable health signals for BotTaAnalysisHealthEvaluator (#248)."""
+        pub_client = getattr(self.publisher, "nats_client", None)
+        latencies = self._recent_analysis_latencies
+        return {
+            "nats_connected": bool(pub_client and pub_client.is_connected),
+            "mysql_healthy": self._mysql_healthy,
+            "analysis_latency_s": (
+                sum(latencies) / len(latencies) if latencies else 0.0
+            ),
+            "signals_emitted": self.signals_emitted,
+        }
 
     async def _cleanup(self):
         """Clean up NATS connections and subscriptions."""
