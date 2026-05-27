@@ -14,9 +14,14 @@ from pathlib import Path
 
 import pytest
 
-from backtest.artifact import CharacterizationArtifact
+from backtest.artifact import (
+    CharacterizationArtifact,
+    DrawdownEnvelope,
+    EdgeEstimate,
+    SensitivityAnalysis,
+)
 from backtest.data_source import FixtureHistoricalSource
-from backtest.engine import BacktestEngine, BacktestRequest
+from backtest.engine import ARTIFACT_SCHEMA_VERSION, BacktestEngine, BacktestRequest
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "candles_BTCUSDT_15m_recorded.json"
 
@@ -54,6 +59,18 @@ def test_backtest_emits_artifact_from_recorded_fixture() -> None:
         assert pattern.match(event.decision_id), event.decision_id
         assert event.action in {"buy", "sell", "hold", "close"}
         assert 0.0 <= event.confidence <= 1.0
+
+    # v1.1.0 analytic fields must be present and structurally valid (AC1–AC3, AC4)
+    assert artifact.schema_version == ARTIFACT_SCHEMA_VERSION == "1.1.0"
+    assert isinstance(artifact.edge_estimate, EdgeEstimate)
+    assert isinstance(artifact.drawdown_envelope, DrawdownEnvelope)
+    assert isinstance(artifact.sensitivity_analysis, SensitivityAnalysis)
+    assert artifact.edge_estimate.trade_count >= 0
+    assert 0.0 <= artifact.edge_estimate.win_rate <= 1.0
+    assert artifact.drawdown_envelope.p50 <= artifact.drawdown_envelope.p90
+    assert artifact.drawdown_envelope.p90 <= artifact.drawdown_envelope.p100
+    assert artifact.sensitivity_analysis.parameter == "confidence_threshold"
+    assert len(artifact.sensitivity_analysis.points) == 5
 
 
 @pytest.mark.e2e
@@ -95,4 +112,9 @@ def test_backtest_handles_short_window() -> None:
     )
     artifact = engine.run(req)
     assert artifact.signal_count == 0
-    assert artifact.events == []
+    assert artifact.events == ()
+    # Even empty artifacts carry the analytic stubs
+    assert artifact.edge_estimate is not None
+    assert artifact.edge_estimate.trade_count == 0
+    assert artifact.drawdown_envelope is not None
+    assert artifact.sensitivity_analysis is not None
