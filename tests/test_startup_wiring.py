@@ -5,9 +5,43 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# Ensure petrosa_otel is mocked globally for this test session
-if "petrosa_otel" not in sys.modules:
+_PETROSA_OTEL_PREFIXES = ("petrosa_otel", "ta_bot.evaluators")
+
+
+@pytest.fixture(autouse=True)
+def _mock_petrosa_otel():
+    """Scope the petrosa_otel mock to this module's tests only.
+
+    main() initializes telemetry via petrosa_otel and (per P2.7 #248) wires a
+    health evaluator that imports ``petrosa_otel.evaluators``. These tests mock
+    the whole package so telemetry init is a no-op and the evaluator import
+    fails fast (leaving the evaluator disabled). Previously this stub was
+    installed at module import time and leaked into sys.modules globally,
+    breaking other modules (e.g. tests/unit/test_health_evaluator.py) that need
+    the real framework. Saving/restoring around each test keeps it isolated.
+    """
+    saved = {
+        k: sys.modules[k]
+        for k in list(sys.modules)
+        if k == "petrosa_otel"
+        or k.startswith(tuple(p + "." for p in _PETROSA_OTEL_PREFIXES))
+        or k in _PETROSA_OTEL_PREFIXES
+    }
+    for k in saved:
+        del sys.modules[k]
     sys.modules["petrosa_otel"] = MagicMock()
+    try:
+        yield
+    finally:
+        for k in [
+            m
+            for m in list(sys.modules)
+            if m == "petrosa_otel"
+            or m.startswith(tuple(p + "." for p in _PETROSA_OTEL_PREFIXES))
+            or m in _PETROSA_OTEL_PREFIXES
+        ]:
+            del sys.modules[k]
+        sys.modules.update(saved)
 
 
 def reload_ta_bot_modules():
