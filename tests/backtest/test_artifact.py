@@ -14,6 +14,7 @@ from backtest.artifact import (
     SensitivityAnalysis,
     SensitivityPoint,
 )
+from backtest.strategy_revision import StrategyRevision
 
 
 def _v1_artifact() -> CharacterizationArtifact:
@@ -152,3 +153,74 @@ def test_write_json_creates_parent_dir(tmp_path) -> None:
     assert out.exists()
     on_disk = json.loads(out.read_text())
     assert on_disk["strategy_id"] == "momentum_pulse"
+
+
+def _v3_artifact_with_revision() -> CharacterizationArtifact:
+    return CharacterizationArtifact(
+        schema_version="1.2.0",
+        strategy_id="momentum_pulse",
+        symbol="BTCUSDT",
+        period="15m",
+        range_from="2026-01-01T00:00:00+00:00",
+        range_to="2026-01-05T00:00:00+00:00",
+        candle_count=4,
+        signal_count=1,
+        source="backtest",
+        events=(
+            BacktestEvent(
+                decision_id="dec_20260101T000000000_abc123",
+                candle_timestamp="2026-01-01T00:00:00+00:00",
+                action="buy",
+                confidence=0.74,
+                current_price=50000.0,
+                metadata={},
+            ),
+        ),
+        edge_estimate=EdgeEstimate(
+            expected_pnl=0.02, win_rate=1.0, sharpe_ratio=0.0, trade_count=1
+        ),
+        drawdown_envelope=DrawdownEnvelope(p50=0.0, p90=0.0, p99=0.0, p100=0.0),
+        sensitivity_analysis=SensitivityAnalysis(
+            parameter="confidence_threshold",
+            points=(
+                SensitivityPoint(
+                    confidence_threshold=0.0,
+                    win_rate=1.0,
+                    expected_pnl=0.02,
+                    trade_count=1,
+                ),
+            ),
+        ),
+        strategy_revision_id="srev_abc123abc123_def456def456",
+        strategy_revision=StrategyRevision(
+            strategy_id="momentum_pulse",
+            revision_id="srev_abc123abc123_def456def456",
+            module_hash="abc123abc123" + "0" * 52,
+            parameter_hash="def456def456" + "0" * 52,
+        ),
+    )
+
+
+@pytest.mark.unit
+def test_v3_to_json_contains_revision_fields() -> None:
+    artifact = _v3_artifact_with_revision()
+    parsed = json.loads(artifact.to_json())
+    assert parsed["schema_version"] == "1.2.0"
+    assert parsed["strategy_revision_id"] == "srev_abc123abc123_def456def456"
+    assert parsed["strategy_revision"]["module_hash"].startswith("abc123abc123")
+    assert parsed["strategy_revision"]["parameter_hash"].startswith("def456def456")
+
+
+@pytest.mark.unit
+def test_v3_from_json_roundtrip() -> None:
+    artifact = _v3_artifact_with_revision()
+    restored = CharacterizationArtifact.from_json(artifact.to_json())
+    assert restored == artifact
+
+
+@pytest.mark.unit
+def test_legacy_v1_load_leaves_revision_none() -> None:
+    artifact = _v1_artifact()
+    restored = CharacterizationArtifact.from_dict(json.loads(artifact.to_json()))
+    assert restored.strategy_revision_id is None
+    assert restored.strategy_revision is None

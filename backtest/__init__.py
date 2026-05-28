@@ -19,6 +19,13 @@ from backtest.data_source import (
 )
 from backtest.engine import BacktestEngine
 from backtest.identifiers import make_decision_id
+from backtest.strategy_revision import (
+    StrategyRevision,
+    build_strategy_revision,
+    compute_parameter_set_hash,
+    compute_strategy_module_hash,
+    compute_strategy_revision_id,
+)
 
 __all__ = [
     "BacktestEngine",
@@ -31,5 +38,10 @@ __all__ = [
     "HistoricalDataSource",
     "SensitivityAnalysis",
     "SensitivityPoint",
+    "StrategyRevision",
+    "build_strategy_revision",
+    "compute_parameter_set_hash",
+    "compute_strategy_module_hash",
+    "compute_strategy_revision_id",
     "make_decision_id",
 ]

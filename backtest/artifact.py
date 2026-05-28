@@ -4,6 +4,10 @@ Schema evolution:
   1.0.0 — per-event signals only (decision_id, action, confidence, price)
   1.1.0 — adds edge_estimate, drawdown_envelope, sensitivity_analysis
            (all three are Optional for backward compat when loading 1.0.0 JSON)
+  1.2.0 — adds strategy_revision_id + strategy_revision (FR53 / P3.4 AC1):
+           content-addressable identity bound to the strategy snapshot used
+           to produce this artifact. Optional on load so legacy artifacts
+           still deserialize.
 """
 
 from __future__ import annotations
@@ -12,6 +16,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+
+from backtest.strategy_revision import StrategyRevision
 
 
 @dataclass(frozen=True)
@@ -91,6 +97,12 @@ class CharacterizationArtifact:
     edge_estimate: EdgeEstimate | None = None
     drawdown_envelope: DrawdownEnvelope | None = None
     sensitivity_analysis: SensitivityAnalysis | None = None
+    # v1.2.0 strategy-revision binding (FR53 / P3.4 AC1+AC2). Short id is
+    # duplicated at the top level so consumers can refuse-on-mismatch without
+    # walking the nested dict; the full StrategyRevision carries the
+    # component hashes so consumers can attribute drift to code vs params.
+    strategy_revision_id: str | None = None
+    strategy_revision: StrategyRevision | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -108,7 +120,7 @@ class CharacterizationArtifact:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CharacterizationArtifact:
-        """Deserialise from a dict; handles both v1.0.0 and v1.1.0 shapes."""
+        """Deserialise from a dict; handles v1.0.0, v1.1.0, and v1.2.0 shapes."""
         events = tuple(
             BacktestEvent(**e) if isinstance(e, dict) else e
             for e in data.get("events", [])
@@ -127,6 +139,9 @@ class CharacterizationArtifact:
         else:
             sa = None
 
+        revision_raw = data.get("strategy_revision")
+        revision = StrategyRevision.from_dict(revision_raw) if revision_raw else None
+
         return cls(
             schema_version=data["schema_version"],
             strategy_id=data["strategy_id"],
@@ -141,6 +156,8 @@ class CharacterizationArtifact:
             edge_estimate=edge,
             drawdown_envelope=dd,
             sensitivity_analysis=sa,
+            strategy_revision_id=data.get("strategy_revision_id"),
+            strategy_revision=revision,
         )
 
     @classmethod

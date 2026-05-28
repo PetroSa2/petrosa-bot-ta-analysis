@@ -22,8 +22,9 @@ from backtest.analytics import (
 from backtest.artifact import BacktestEvent, CharacterizationArtifact
 from backtest.data_source import HistoricalDataSource
 from backtest.identifiers import make_decision_id
+from backtest.strategy_revision import StrategyRevision, build_strategy_revision
 
-ARTIFACT_SCHEMA_VERSION = "1.1.0"
+ARTIFACT_SCHEMA_VERSION = "1.2.0"
 BACKTEST_SOURCE = "backtest"
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,8 @@ class BacktestEngine:
         if request.warmup < 1:
             raise ValueError("warmup must be >= 1")
 
+        revision = self._resolve_strategy_revision(engine, request.strategy_id)
+
         df = self._data_source.load(
             symbol=request.symbol,
             period=request.period,
@@ -99,6 +102,8 @@ class BacktestEngine:
                 edge_estimate=compute_edge_estimate([]),
                 drawdown_envelope=compute_drawdown_envelope([]),
                 sensitivity_analysis=compute_sensitivity_analysis([]),
+                strategy_revision_id=revision.revision_id,
+                strategy_revision=revision,
             )
 
         sequence = 0
@@ -150,6 +155,27 @@ class BacktestEngine:
             edge_estimate=compute_edge_estimate(events_tuple),
             drawdown_envelope=compute_drawdown_envelope(events_tuple),
             sensitivity_analysis=compute_sensitivity_analysis(events_tuple),
+            strategy_revision_id=revision.revision_id,
+            strategy_revision=revision,
+        )
+
+    @staticmethod
+    def _resolve_strategy_revision(engine, strategy_id: str) -> StrategyRevision:
+        """Bind the artifact to ``(strategy module source, default parameters)``.
+
+        Live overrides flow through ``metadata['config']`` at signal time; the
+        backtest path takes the defaults registry as the parameter snapshot so
+        re-runs over the same window remain byte-identical (FR4) and produce
+        the same revision id.
+        """
+        from ta_bot.strategies.defaults import get_strategy_defaults
+
+        strategy_cls = type(engine.strategies[strategy_id])
+        parameters = get_strategy_defaults(strategy_id)
+        return build_strategy_revision(
+            strategy_id=strategy_id,
+            strategy_cls=strategy_cls,
+            parameters=parameters,
         )
 
 
