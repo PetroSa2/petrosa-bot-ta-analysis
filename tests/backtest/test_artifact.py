@@ -224,3 +224,106 @@ def test_legacy_v1_load_leaves_revision_none() -> None:
     restored = CharacterizationArtifact.from_dict(json.loads(artifact.to_json()))
     assert restored.strategy_revision_id is None
     assert restored.strategy_revision is None
+
+
+# ---------------------------------------------------------------------------
+# v1.3.0 — max_leverage_envelope (P1.5-AC2 / #252)
+# ---------------------------------------------------------------------------
+
+
+def _v4_artifact_with_envelope() -> CharacterizationArtifact:
+    """Helper — v1.3.0 artifact carrying both the v1.2 revision and the new
+    v1.3 max_leverage_envelope field."""
+    return CharacterizationArtifact(
+        schema_version="1.3.0",
+        strategy_id="momentum_pulse",
+        symbol="BTCUSDT",
+        period="15m",
+        range_from="2026-01-01T00:00:00+00:00",
+        range_to="2026-01-05T00:00:00+00:00",
+        candle_count=4,
+        signal_count=1,
+        source="backtest",
+        events=(
+            BacktestEvent(
+                decision_id="dec_20260101T000000000_abc123",
+                candle_timestamp="2026-01-01T00:00:00+00:00",
+                action="buy",
+                confidence=0.74,
+                current_price=50000.0,
+                metadata={},
+            ),
+        ),
+        edge_estimate=EdgeEstimate(
+            expected_pnl=0.02, win_rate=1.0, sharpe_ratio=0.0, trade_count=1
+        ),
+        drawdown_envelope=DrawdownEnvelope(p50=0.0, p90=0.0, p99=0.02, p100=0.05),
+        sensitivity_analysis=SensitivityAnalysis(
+            parameter="confidence_threshold",
+            points=(
+                SensitivityPoint(
+                    confidence_threshold=0.0,
+                    win_rate=1.0,
+                    expected_pnl=0.02,
+                    trade_count=1,
+                ),
+            ),
+        ),
+        strategy_revision_id="srev_abc123abc123_def456def456",
+        strategy_revision=StrategyRevision(
+            strategy_id="momentum_pulse",
+            revision_id="srev_abc123abc123_def456def456",
+            module_hash="abc123abc123" + "0" * 52,
+            parameter_hash="def456def456" + "0" * 52,
+        ),
+        max_leverage_envelope=5.0,
+    )
+
+
+@pytest.mark.unit
+def test_v4_to_json_contains_max_leverage_envelope() -> None:
+    artifact = _v4_artifact_with_envelope()
+    parsed = json.loads(artifact.to_json())
+    assert parsed["schema_version"] == "1.3.0"
+    assert parsed["max_leverage_envelope"] == 5.0
+
+
+@pytest.mark.unit
+def test_v4_from_json_roundtrip() -> None:
+    artifact = _v4_artifact_with_envelope()
+    restored = CharacterizationArtifact.from_json(artifact.to_json())
+    assert restored == artifact
+    assert restored.max_leverage_envelope == 5.0
+
+
+@pytest.mark.unit
+def test_legacy_v1_load_leaves_max_leverage_envelope_none() -> None:
+    artifact = _v1_artifact()
+    restored = CharacterizationArtifact.from_dict(json.loads(artifact.to_json()))
+    assert restored.max_leverage_envelope is None
+
+
+@pytest.mark.unit
+def test_legacy_v2_load_leaves_max_leverage_envelope_none() -> None:
+    artifact = _v2_artifact()
+    restored = CharacterizationArtifact.from_dict(json.loads(artifact.to_json()))
+    assert restored.max_leverage_envelope is None
+
+
+@pytest.mark.unit
+def test_legacy_v3_load_leaves_max_leverage_envelope_none() -> None:
+    artifact = _v3_artifact_with_revision()
+    restored = CharacterizationArtifact.from_dict(json.loads(artifact.to_json()))
+    assert restored.max_leverage_envelope is None
+
+
+@pytest.mark.unit
+def test_int_max_leverage_envelope_coerced_to_float() -> None:
+    """JSON ints (e.g. 5) must deserialize as a float so consumers comparing
+    against `>= 1.0` thresholds don't trip on a stray int."""
+    base = _v4_artifact_with_envelope()
+    payload = json.loads(base.to_json())
+    payload["max_leverage_envelope"] = 7  # JSON int, not 7.0
+    restored = CharacterizationArtifact.from_dict(payload)
+    assert restored.max_leverage_envelope == 7.0
+    assert isinstance(restored.max_leverage_envelope, float)

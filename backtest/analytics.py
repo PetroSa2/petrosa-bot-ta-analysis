@@ -35,6 +35,14 @@ from backtest.artifact import (
 
 _SENSITIVITY_THRESHOLDS = (0.0, 0.30, 0.50, 0.70, 0.90)
 
+# P1.5-AC2 (#252) — defaults for the max-leverage envelope helper. The operator
+# can override these per-strategy in the persistence path; the values here are
+# the conservative producer-side fallbacks used when the artifact is generated
+# without an explicit operator budget. Operator-configurable bounds + versioning
+# is petrosa-data-manager#182 (separate child story under EPIC #691).
+DEFAULT_OPERATOR_DRAWDOWN_BUDGET = 0.10  # 10% drawdown budget — safe default
+DEFAULT_OPERATOR_MAX_LEVERAGE = 10.0  # P1.5 absolute cap on producer recommendation
+
 
 def _pair_trades(events: Sequence[BacktestEvent]) -> list[float]:
     """Return per-trade returns (fraction) for consecutive buy→sell/close pairs."""
@@ -137,3 +145,53 @@ def compute_sensitivity_analysis(
     """Sweep confidence thresholds and report how edge changes."""
     points = tuple(_edge_at_threshold(events, t) for t in thresholds)
     return SensitivityAnalysis(parameter="confidence_threshold", points=points)
+
+
+def compute_max_leverage_envelope(
+    events: Sequence[BacktestEvent],
+    drawdown_envelope: DrawdownEnvelope,
+    budget: float = DEFAULT_OPERATOR_DRAWDOWN_BUDGET,
+    operator_max: float = DEFAULT_OPERATOR_MAX_LEVERAGE,
+) -> float:
+    """P1.5-AC2 (#252) — analytic upper bound on leverage from the drawdown envelope.
+
+    Derives the max leverage at which the strategy's characterized 99th-percentile
+    drawdown stays inside the operator's drawdown budget::
+
+        leverage_bound = budget / drawdown_envelope.p99
+
+    The returned value is clipped to ``operator_max`` so a near-zero drawdown
+    cannot recommend unbounded leverage. ``events`` is accepted to keep the
+    helper's signature symmetric with ``compute_edge_estimate`` /
+    ``compute_drawdown_envelope`` (the parent EPIC's per-artifact callback
+    convention) and is reserved for future per-event refinements; the current
+    formula reads only the already-characterized ``drawdown_envelope``.
+
+    Properties (locked by unit tests in tests/backtest/test_analytics.py):
+      - Monotone in budget: more budget → more leverage (until the cap).
+      - Inverse-monotone in p99 drawdown: more drawdown → less leverage.
+      - Zero-drawdown floor: when ``drawdown_envelope.p99 <= 0`` the bound is
+        ``operator_max`` (cannot divide by zero, and a flat equity curve is a
+        characterization artifact of a strategy with no realised trades, not
+        a license for infinite leverage).
+      - Returns 0.0 when ``budget <= 0`` (operator has forbidden any drawdown).
+
+    Inputs must be non-negative: a negative ``budget`` or ``operator_max`` is
+    clipped to zero before the formula runs. The output is always
+    ``0.0 <= result <= operator_max``.
+    """
+    # ``events`` is intentionally unused on the current code path — the
+    # signature accepts it for forward-compat with per-event refinements
+    # (e.g. tail-conditioning on the equity-curve shape) the EPIC may pull in
+    # later without churning the public API.
+    _ = events
+
+    safe_budget = max(0.0, float(budget))
+    safe_cap = max(0.0, float(operator_max))
+    if safe_budget == 0.0:
+        return 0.0
+    p99 = float(drawdown_envelope.p99)
+    if p99 <= 0.0:
+        return safe_cap
+    bound = safe_budget / p99
+    return min(safe_cap, bound)

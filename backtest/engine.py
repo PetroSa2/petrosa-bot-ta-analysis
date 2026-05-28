@@ -17,6 +17,7 @@ import pandas as pd
 from backtest.analytics import (
     compute_drawdown_envelope,
     compute_edge_estimate,
+    compute_max_leverage_envelope,
     compute_sensitivity_analysis,
 )
 from backtest.artifact import BacktestEvent, CharacterizationArtifact
@@ -24,7 +25,7 @@ from backtest.data_source import HistoricalDataSource
 from backtest.identifiers import make_decision_id
 from backtest.strategy_revision import StrategyRevision, build_strategy_revision
 
-ARTIFACT_SCHEMA_VERSION = "1.2.0"
+ARTIFACT_SCHEMA_VERSION = "1.3.0"
 BACKTEST_SOURCE = "backtest"
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,7 @@ class BacktestEngine:
                 candle_count,
                 request.warmup,
             )
+            empty_dd = compute_drawdown_envelope([])
             return CharacterizationArtifact(
                 schema_version=ARTIFACT_SCHEMA_VERSION,
                 strategy_id=request.strategy_id,
@@ -100,10 +102,16 @@ class BacktestEngine:
                 source=BACKTEST_SOURCE,
                 events=(),
                 edge_estimate=compute_edge_estimate([]),
-                drawdown_envelope=compute_drawdown_envelope([]),
+                drawdown_envelope=empty_dd,
                 sensitivity_analysis=compute_sensitivity_analysis([]),
                 strategy_revision_id=revision.revision_id,
                 strategy_revision=revision,
+                # P1.5-AC2.c (#252): producer-side max-leverage envelope. The
+                # under-warmup branch has no trades → drawdown_envelope.p99 == 0
+                # → helper returns operator_max so the artifact still carries a
+                # bounded recommendation rather than ``None`` (the absence path
+                # is reserved for legacy v1.0–v1.2 artifacts loaded from disk).
+                max_leverage_envelope=compute_max_leverage_envelope([], empty_dd),
             )
 
         sequence = 0
@@ -141,6 +149,7 @@ class BacktestEngine:
                 sequence += 1
 
         events_tuple = tuple(events)
+        drawdown_envelope = compute_drawdown_envelope(events_tuple)
         return CharacterizationArtifact(
             schema_version=ARTIFACT_SCHEMA_VERSION,
             strategy_id=request.strategy_id,
@@ -153,10 +162,16 @@ class BacktestEngine:
             source=BACKTEST_SOURCE,
             events=events_tuple,
             edge_estimate=compute_edge_estimate(events_tuple),
-            drawdown_envelope=compute_drawdown_envelope(events_tuple),
+            drawdown_envelope=drawdown_envelope,
             sensitivity_analysis=compute_sensitivity_analysis(events_tuple),
             strategy_revision_id=revision.revision_id,
             strategy_revision=revision,
+            # P1.5-AC2.c (#252): computed once per artifact, persisted via
+            # ArtifactPersister together with drawdown_envelope. Producer's
+            # opinion only — CIO arbitration ships in petrosa-cio#137.
+            max_leverage_envelope=compute_max_leverage_envelope(
+                events_tuple, drawdown_envelope
+            ),
         )
 
     @staticmethod
