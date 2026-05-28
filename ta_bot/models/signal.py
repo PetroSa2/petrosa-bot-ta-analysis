@@ -146,6 +146,20 @@ class Signal(BaseModel):
     take_profit_pct: float | None = Field(None, ge=0, le=1)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    # FR52 / P1.5-AC1 (#251) — content-addressable max-leverage opinion
+    # carried from the producer to CIO. `None` (not 0) means "no
+    # recommendation — CIO picks from strategy/portfolio defaults".
+    # `ge=1` rejects 0 explicitly as a sentinel. CIO arbitration logic
+    # against portfolio aggregates ships in a separate child story.
+    recommended_leverage: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Max leverage multiplier the producer's characterization supports. "
+            "None = no recommendation."
+        ),
+    )
+
     # Traceability: intent_id generated per signal, carried through to CIO
     intent_id: str = Field(
         default_factory=lambda: uuid.uuid4().hex,
