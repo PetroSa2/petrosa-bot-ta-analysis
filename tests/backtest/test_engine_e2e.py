@@ -61,8 +61,9 @@ def test_backtest_emits_artifact_from_recorded_fixture() -> None:
         assert event.action in {"buy", "sell", "hold", "close"}
         assert 0.0 <= event.confidence <= 1.0
 
-    # v1.2.0 analytic fields must be present and structurally valid (AC1–AC3, AC4)
-    assert artifact.schema_version == ARTIFACT_SCHEMA_VERSION == "1.2.0"
+    # v1.3.0 analytic fields must be present and structurally valid
+    # (AC1–AC3, AC4 from #131, plus max_leverage_envelope from #252 AC2.c).
+    assert artifact.schema_version == ARTIFACT_SCHEMA_VERSION == "1.3.0"
     assert isinstance(artifact.edge_estimate, EdgeEstimate)
     assert isinstance(artifact.drawdown_envelope, DrawdownEnvelope)
     assert isinstance(artifact.sensitivity_analysis, SensitivityAnalysis)
@@ -72,6 +73,11 @@ def test_backtest_emits_artifact_from_recorded_fixture() -> None:
     assert artifact.drawdown_envelope.p90 <= artifact.drawdown_envelope.p100
     assert artifact.sensitivity_analysis.parameter == "confidence_threshold"
     assert len(artifact.sensitivity_analysis.points) == 5
+    # P1.5-AC2.c (#252): every produced artifact carries a non-None envelope
+    # bounded by the operator-configured maximum (no implicit unbounded leverage).
+    assert isinstance(artifact.max_leverage_envelope, float)
+    assert artifact.max_leverage_envelope >= 0.0
+    assert artifact.max_leverage_envelope <= 10.0  # DEFAULT_OPERATOR_MAX_LEVERAGE
 
     # FR53 strategy-revision binding (P3.4 AC1/AC2): every emitted artifact
     # carries the content-addressable revision of the producing strategy.

@@ -8,6 +8,10 @@ Schema evolution:
            content-addressable identity bound to the strategy snapshot used
            to produce this artifact. Optional on load so legacy artifacts
            still deserialize.
+  1.3.0 — adds max_leverage_envelope (FR3 + FR52 / P1.5-AC2 / #252): analytic
+           upper bound on intent leverage derived from drawdown_envelope.p99
+           and the operator's drawdown budget. Optional on load so v1.0–v1.2
+           artifacts still deserialize with ``max_leverage_envelope=None``.
 """
 
 from __future__ import annotations
@@ -103,6 +107,12 @@ class CharacterizationArtifact:
     # component hashes so consumers can attribute drift to code vs params.
     strategy_revision_id: str | None = None
     strategy_revision: StrategyRevision | None = None
+    # v1.3.0 producer-side max-leverage opinion (FR3 + FR52 / P1.5-AC2, #252).
+    # Bounds the leverage CIO is allowed to admit for intents tagged with this
+    # artifact's `strategy_revision_id`. ``None`` on legacy v1.0–v1.2 artifacts
+    # so the field stays optional on load; producers (engine.py) compute it
+    # at characterization time from `drawdown_envelope.p99` + operator budget.
+    max_leverage_envelope: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -142,6 +152,13 @@ class CharacterizationArtifact:
         revision_raw = data.get("strategy_revision")
         revision = StrategyRevision.from_dict(revision_raw) if revision_raw else None
 
+        # v1.3.0: max_leverage_envelope is optional on load — older artifacts
+        # surface it as ``None`` and producers (engine.py) compute it for new
+        # artifacts. Coerce to float when present so JSON ints round-trip
+        # without surprising consumers that compare against floats.
+        mle_raw = data.get("max_leverage_envelope")
+        mle: float | None = float(mle_raw) if mle_raw is not None else None
+
         return cls(
             schema_version=data["schema_version"],
             strategy_id=data["strategy_id"],
@@ -158,6 +175,7 @@ class CharacterizationArtifact:
             sensitivity_analysis=sa,
             strategy_revision_id=data.get("strategy_revision_id"),
             strategy_revision=revision,
+            max_leverage_envelope=mle,
         )
 
     @classmethod
