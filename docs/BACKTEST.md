@@ -120,6 +120,44 @@ The hex suffix is derived deterministically from
 `(strategy_id, symbol, candle_timestamp, sequence)` so a re-run against the
 same window yields a byte-identical artifact — the reproducibility AC.
 
+## Strategy revision binding (FR53 / P3.4)
+
+Every emitted artifact now carries a content-addressable **strategy revision
+id** so a consumer (CIO arbitration in `petrosa-cio`, the FR20 fidelity
+evaluator) can refuse to apply a characterization to a strategy whose code
+or default parameters have drifted since the characterization was produced.
+
+The revision id is short and shaped `srev_{module_hash[:12]}_{parameter_hash[:12]}`
+— compact enough for log lines and Grafana labels. The full 64-hex
+component hashes are also stored on the nested `strategy_revision`
+object so a consumer can attribute drift to a code change vs. a parameter
+change without re-running the backtest:
+
+```json
+"strategy_revision_id": "srev_5d92f1c0a8e2_d3b71f3c2e3a",
+"strategy_revision": {
+  "strategy_id": "ema_alignment_bullish",
+  "revision_id": "srev_5d92f1c0a8e2_d3b71f3c2e3a",
+  "module_hash": "5d92f1c0a8e2…",
+  "parameter_hash": "d3b71f3c2e3a…"
+}
+```
+
+Determinism:
+
+* `module_hash` is SHA-256 of the strategy class's source *file* (so refactors
+  that move helpers out of the class body still register as a code change).
+* `parameter_hash` is SHA-256 over canonical JSON of the resolved default
+  parameter set (`ta_bot.strategies.defaults.get_strategy_defaults`).
+  Key-order, naive vs. UTC-aware datetimes, and `Enum`/`Path` values all
+  canonicalize the same way as `petrosa-data-manager`'s `compute_inputs_hash`,
+  so the two hashes are interchangeable across the boundary.
+* Empty / missing parameters collapse to the same hash as `{}`.
+
+The CIO consumer side (refusal logic, `rejection_source="stale_characterization"`)
+and the FR20 evaluator binding are tracked separately — they live in
+`petrosa-cio`, not this service.
+
 ## Reproducibility
 
 The engine guarantees that two runs with the same `(strategy_id, symbol,

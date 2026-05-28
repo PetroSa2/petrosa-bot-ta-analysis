@@ -22,6 +22,7 @@ from backtest.artifact import (
 )
 from backtest.data_source import FixtureHistoricalSource
 from backtest.engine import ARTIFACT_SCHEMA_VERSION, BacktestEngine, BacktestRequest
+from backtest.strategy_revision import StrategyRevision
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "candles_BTCUSDT_15m_recorded.json"
 
@@ -60,8 +61,8 @@ def test_backtest_emits_artifact_from_recorded_fixture() -> None:
         assert event.action in {"buy", "sell", "hold", "close"}
         assert 0.0 <= event.confidence <= 1.0
 
-    # v1.1.0 analytic fields must be present and structurally valid (AC1–AC3, AC4)
-    assert artifact.schema_version == ARTIFACT_SCHEMA_VERSION == "1.1.0"
+    # v1.2.0 analytic fields must be present and structurally valid (AC1–AC3, AC4)
+    assert artifact.schema_version == ARTIFACT_SCHEMA_VERSION == "1.2.0"
     assert isinstance(artifact.edge_estimate, EdgeEstimate)
     assert isinstance(artifact.drawdown_envelope, DrawdownEnvelope)
     assert isinstance(artifact.sensitivity_analysis, SensitivityAnalysis)
@@ -71,6 +72,15 @@ def test_backtest_emits_artifact_from_recorded_fixture() -> None:
     assert artifact.drawdown_envelope.p90 <= artifact.drawdown_envelope.p100
     assert artifact.sensitivity_analysis.parameter == "confidence_threshold"
     assert len(artifact.sensitivity_analysis.points) == 5
+
+    # FR53 strategy-revision binding (P3.4 AC1/AC2): every emitted artifact
+    # carries the content-addressable revision of the producing strategy.
+    assert isinstance(artifact.strategy_revision, StrategyRevision)
+    assert artifact.strategy_revision_id == artifact.strategy_revision.revision_id
+    assert artifact.strategy_revision_id.startswith("srev_")
+    assert artifact.strategy_revision.strategy_id == "ema_alignment_bullish"
+    assert len(artifact.strategy_revision.module_hash) == 64
+    assert len(artifact.strategy_revision.parameter_hash) == 64
 
 
 @pytest.mark.e2e
@@ -118,3 +128,7 @@ def test_backtest_handles_short_window() -> None:
     assert artifact.edge_estimate.trade_count == 0
     assert artifact.drawdown_envelope is not None
     assert artifact.sensitivity_analysis is not None
+    # And the strategy revision (FR53) — short-window artifacts still bind
+    # to the producing strategy so consumers can refuse them on drift.
+    assert artifact.strategy_revision is not None
+    assert artifact.strategy_revision_id.startswith("srev_")
