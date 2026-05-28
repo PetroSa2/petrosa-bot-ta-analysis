@@ -222,8 +222,27 @@ async def main():
                 )
             logger.info("✅ Publisher NATS connection verified successfully")
 
+            # Start health evaluator (publishes evaluator.bot-ta-analysis.verdict).
+            # Optional: skipped if petrosa-otel lacks the evaluators framework.
+            health_evaluator = None
+            try:
+                from ta_bot.evaluators import build_bot_ta_analysis_health_evaluator
+
+                health_evaluator = build_bot_ta_analysis_health_evaluator(nats_listener)
+                if health_evaluator is not None:
+                    await health_evaluator.start()
+                    logger.info("Health evaluator started")
+            except ImportError:
+                logger.warning(
+                    "petrosa_otel.evaluators unavailable; health evaluator disabled"
+                )
+
             # Wait for health task to keep the application running
-            await health_task
+            try:
+                await health_task
+            finally:
+                if health_evaluator is not None:
+                    await health_evaluator.stop()
         else:
             logger.info("NATS is disabled, skipping NATS listener startup")
             # Keep the application running for health checks
