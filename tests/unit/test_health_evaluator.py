@@ -1,5 +1,6 @@
 """Unit tests for BotTaAnalysisHealthEvaluator (#248, P2.7 AC4)."""
 
+import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 
@@ -185,3 +186,66 @@ def test_build_returns_none_without_nats():
         publisher = _Pub()
 
     assert build_bot_ta_analysis_health_evaluator(_Listener()) is None
+
+
+def test_build_returns_evaluator_with_nats():
+    class _Pub:
+        nats_client = FakeNats()
+
+    class _Listener:
+        publisher = _Pub()
+
+        def get_health_metrics(self):
+            return {
+                "nats_connected": True,
+                "mysql_healthy": True,
+                "analysis_latency_s": 0.0,
+                "signals_emitted": 0,
+            }
+
+    ev = build_bot_ta_analysis_health_evaluator(_Listener())
+    assert isinstance(ev, BotTaAnalysisHealthEvaluator)
+
+
+@pytest.mark.asyncio
+async def test_emit_loop_tolerates_source_errors(clock):
+    """The emit loop logs and continues when a tick raises (never crashes)."""
+
+    def _bad_source() -> dict:
+        raise RuntimeError("boom")
+
+    ev = BotTaAnalysisHealthEvaluator(
+        metrics_source=_bad_source,
+        publisher=None,
+        hysteresis=ConsecutiveSamplesHysteresis(n=1),
+        emit_interval_s=0.01,
+        time_source=clock,
+    )
+    await ev.start()
+    await asyncio.sleep(0.03)
+    await ev.stop()  # must not raise despite the failing source
+
+
+@pytest.mark.asyncio
+async def test_start_stop_lifecycle_publishes(clock):
+    """start() runs the emit loop (at least one tick) and stop() cancels it."""
+    src = MetricsSource()
+    nats = FakeNats()
+    publisher = NatsVerdictPublisher(nats_client=nats)
+    ev = BotTaAnalysisHealthEvaluator(
+        metrics_source=src,
+        publisher=publisher,
+        hysteresis=ConsecutiveSamplesHysteresis(n=1),
+        emit_interval_s=0.01,
+        time_source=clock,
+    )
+    await ev.start()
+    await ev.start()  # idempotent — second call is a no-op
+    # Let the loop tick a few times (unknown → healthy).
+    await asyncio.sleep(0.05)
+    await ev.stop()
+    await ev.stop()  # idempotent when already stopped
+
+    assert nats.messages, "emit loop did not publish"
+    subject, _ = nats.messages[-1]
+    assert subject == "evaluator.bot-ta-analysis.verdict"

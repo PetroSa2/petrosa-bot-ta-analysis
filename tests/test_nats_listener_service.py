@@ -285,3 +285,64 @@ class TestNATSListener:
 
                 nats_listener.publisher.stop.assert_called_once()
                 mock_nats_client.close.assert_called_once()
+
+    async def test_get_health_metrics(self, nats_listener):
+        """get_health_metrics exposes the evaluator signal snapshot (#248)."""
+        nats_listener.publisher.nats_client = MagicMock()
+        nats_listener.publisher.nats_client.is_connected = True
+        nats_listener.signals_emitted = 7
+        nats_listener._mysql_healthy = True
+        nats_listener._recent_analysis_latencies.extend([1.0, 3.0])
+
+        metrics = nats_listener.get_health_metrics()
+
+        assert metrics["nats_connected"] is True
+        assert metrics["mysql_healthy"] is True
+        assert metrics["signals_emitted"] == 7
+        assert metrics["analysis_latency_s"] == 2.0
+
+    async def test_get_health_metrics_no_nats(self, nats_listener):
+        """get_health_metrics reports disconnected when no NATS client (#248)."""
+        nats_listener.publisher.nats_client = None
+        metrics = nats_listener.get_health_metrics()
+        assert metrics["nats_connected"] is False
+        assert metrics["analysis_latency_s"] == 0.0
+
+    async def test_process_extraction_fetch_failure_sets_unhealthy(self, nats_listener):
+        """A candle-fetch exception flips mysql_healthy to False (#248)."""
+        nats_listener._mysql_healthy = True
+        with patch.object(
+            nats_listener.mysql_client,
+            "fetch_candles",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("db down"),
+        ):
+            await nats_listener._process_symbol_extraction("BTCUSDT", "15m")
+
+        assert nats_listener._mysql_healthy is False
+
+    async def test_process_extraction_success_tracks_signals(self, nats_listener):
+        """A successful extraction records latency and increments signals_emitted (#248)."""
+        df = pd.DataFrame({"close": [1.0, 2.0, 3.0]})
+        sig = MagicMock()
+        sig.to_dict.return_value = {"strategy_id": "s", "action": "buy"}
+        nats_listener.signal_engine.analyze_candles.return_value = [sig]
+        nats_listener.publisher.publish_signals = AsyncMock()
+
+        with patch.object(
+            nats_listener.mysql_client,
+            "fetch_candles",
+            new_callable=AsyncMock,
+            return_value=df,
+        ):
+            with patch.object(
+                nats_listener.mysql_client,
+                "persist_signals_batch",
+                new_callable=AsyncMock,
+                return_value=True,
+            ):
+                await nats_listener._process_symbol_extraction("BTCUSDT", "15m")
+
+        assert nats_listener._mysql_healthy is True
+        assert nats_listener.signals_emitted == 1
+        assert len(nats_listener._recent_analysis_latencies) == 1
