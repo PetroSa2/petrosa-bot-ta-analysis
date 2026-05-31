@@ -313,6 +313,58 @@ def test_get_strategy_raises_on_non_2xx() -> None:
     assert "HTTP 500" in str(exc_info.value)
 
 
+def test_get_strategy_raises_on_non_json_body() -> None:
+    fake = _FakeOpener(_FakeResponse(200, b"not-json"))
+    with pytest.raises(RuntimeError, match="non-JSON") as exc_info:
+        cli_strategy._get_strategy(
+            "http://dm.local/api/strategies/x", timeout=5.0, opener=fake
+        )
+    assert "non-JSON" in str(exc_info.value)
+
+
+def test_run_status_returns_1_on_url_error(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import urllib.error as _err
+
+    class _ErrOpener:
+        def open(self, req: Any, timeout: float = 0) -> Any:
+            raise _err.URLError("connection refused")
+
+    monkeypatch.setattr(
+        cli_strategy.urllib.request,
+        "build_opener",
+        lambda *a, **kw: _ErrOpener(),
+    )
+    rc = cli_strategy.main(
+        ["status", "--strategy-id", "x", "--data-manager-url", "http://dm.local"]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "cannot reach" in err
+
+
+def test_run_status_returns_1_on_runtime_error(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """_get_strategy raises RuntimeError if the response body isn't JSON;
+    run_status converts that to exit 1 with the error message."""
+    fake = _FakeOpener(_FakeResponse(200, b"not-json-not-anything"))
+    monkeypatch.setattr(
+        cli_strategy.urllib.request,
+        "build_opener",
+        lambda *a, **kw: fake,
+    )
+    rc = cli_strategy.main(
+        ["status", "--strategy-id", "x", "--data-manager-url", "http://dm.local"]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "non-JSON" in err
+
+
 def test_run_submit_returns_1_on_http_error(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
