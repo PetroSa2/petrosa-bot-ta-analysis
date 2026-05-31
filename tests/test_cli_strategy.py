@@ -154,6 +154,101 @@ def test_parse_parameter_set_rejects_non_object() -> None:
     assert "JSON object" in str(exc_info.value)
 
 
+def test_parse_parameter_set_rejects_invalid_json() -> None:
+    import argparse as _ap
+
+    with pytest.raises(_ap.ArgumentTypeError) as exc_info:
+        cli_strategy._parse_parameter_set("{not json")
+    assert "valid JSON object" in str(exc_info.value)
+
+
+def test_run_submit_returns_1_on_url_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import urllib.error as _err
+
+    code_path = _write_sample_strategy(tmp_path)
+
+    class _ErroringOpener:
+        def open(self, req: Any, timeout: float = 0) -> Any:
+            raise _err.URLError("connection refused")
+
+    monkeypatch.setattr(
+        cli_strategy.urllib.request,
+        "build_opener",
+        lambda *a, **kw: _ErroringOpener(),
+    )
+    rc = cli_strategy.main(
+        [
+            "submit",
+            "--strategy-id",
+            "x",
+            "--code-file",
+            str(code_path),
+            "--params",
+            "{}",
+            "--symbols",
+            "BTCUSDT",
+            "--submitted-by",
+            "alice",
+            "--signed-action-id",
+            "sa-1",
+        ]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "cannot reach" in err
+
+
+def test_run_submit_returns_1_on_http_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import urllib.error as _err
+
+    code_path = _write_sample_strategy(tmp_path)
+
+    class _HttpErroringOpener:
+        def open(self, req: Any, timeout: float = 0) -> Any:
+            raise _err.HTTPError(
+                req.full_url,
+                503,
+                "Service Unavailable",
+                {},
+                io.BytesIO(b'{"detail":"mongo down"}'),
+            )
+
+    monkeypatch.setattr(
+        cli_strategy.urllib.request,
+        "build_opener",
+        lambda *a, **kw: _HttpErroringOpener(),
+    )
+    rc = cli_strategy.main(
+        [
+            "submit",
+            "--strategy-id",
+            "x",
+            "--code-file",
+            str(code_path),
+            "--params",
+            "{}",
+            "--symbols",
+            "BTCUSDT",
+            "--submitted-by",
+            "alice",
+            "--signed-action-id",
+            "sa-1",
+        ]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "HTTP 503" in err
+    assert "mongo down" in err
+
+
 # ─── parser wiring ───────────────────────────────────────────────────────────
 
 
