@@ -202,6 +202,117 @@ def test_run_submit_returns_1_on_url_error(
     assert "cannot reach" in err
 
 
+# ─── status subcommand (FR54-C, #257) ────────────────────────────────────────
+
+
+def test_run_status_happy_path_prints_response_and_returns_zero(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    response_body = json.dumps(
+        {
+            "strategy_id": "momentum-v3",
+            "status": "candidate",
+            "registered_at": "2026-05-30T22:00:00Z",
+            "version": 1,
+        }
+    ).encode("utf-8")
+    fake = _FakeOpener(_FakeResponse(200, response_body))
+    monkeypatch.setattr(
+        cli_strategy.urllib.request,
+        "build_opener",
+        lambda *a, **kw: fake,
+    )
+    rc = cli_strategy.main(
+        [
+            "status",
+            "--strategy-id",
+            "momentum-v3",
+            "--data-manager-url",
+            "http://dm.local/",
+        ]
+    )
+    assert rc == 0
+    out = capsys.readouterr().out
+    printed = json.loads(out)
+    assert printed["strategy_id"] == "momentum-v3"
+    assert printed["status"] == "candidate"
+    assert len(fake.requests) == 1
+    assert fake.requests[0]["url"] == "http://dm.local/api/strategies/momentum-v3"
+    assert fake.requests[0]["method"] == "GET"
+
+
+def test_run_status_returns_3_on_404_distinct_from_other_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import urllib.error as _err
+
+    class _NotFoundOpener:
+        def open(self, req: Any, timeout: float = 0) -> Any:
+            raise _err.HTTPError(
+                req.full_url,
+                404,
+                "Not Found",
+                {},
+                io.BytesIO(b'{"detail":"unknown strategy"}'),
+            )
+
+    monkeypatch.setattr(
+        cli_strategy.urllib.request,
+        "build_opener",
+        lambda *a, **kw: _NotFoundOpener(),
+    )
+    rc = cli_strategy.main(
+        ["status", "--strategy-id", "ghost", "--data-manager-url", "http://dm.local"]
+    )
+    assert rc == 3
+    err = capsys.readouterr().err
+    assert "'ghost' not found" in err
+
+
+def test_run_status_returns_1_on_5xx(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import urllib.error as _err
+
+    class _ErrOpener:
+        def open(self, req: Any, timeout: float = 0) -> Any:
+            raise _err.HTTPError(req.full_url, 503, "boom", {}, io.BytesIO(b"down"))
+
+    monkeypatch.setattr(
+        cli_strategy.urllib.request,
+        "build_opener",
+        lambda *a, **kw: _ErrOpener(),
+    )
+    rc = cli_strategy.main(
+        ["status", "--strategy-id", "x", "--data-manager-url", "http://dm.local"]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "HTTP 503" in err
+
+
+def test_get_strategy_sends_get_and_returns_body() -> None:
+    body = json.dumps({"strategy_id": "abc", "status": "accepted"}).encode("utf-8")
+    fake = _FakeOpener(_FakeResponse(200, body))
+    result = cli_strategy._get_strategy(
+        "http://dm.local/api/strategies/abc", timeout=5.0, opener=fake
+    )
+    assert result["strategy_id"] == "abc"
+    assert fake.requests[0]["method"] == "GET"
+
+
+def test_get_strategy_raises_on_non_2xx() -> None:
+    fake = _FakeOpener(_FakeResponse(500, b'{"detail":"boom"}'))
+    with pytest.raises(RuntimeError, match="HTTP 500") as exc_info:
+        cli_strategy._get_strategy(
+            "http://dm.local/api/strategies/x", timeout=5.0, opener=fake
+        )
+    assert "HTTP 500" in str(exc_info.value)
+
+
 def test_run_submit_returns_1_on_http_error(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -137,6 +137,23 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=False,
     )
 
+    status = sub.add_parser(
+        "status",
+        help="GET /api/strategies/{strategy_id} and print the registered document (FR54-C, #257)",
+    )
+    status.add_argument("--strategy-id", required=True, help="Strategy ID to query")
+    status.add_argument(
+        "--data-manager-url",
+        default=DEFAULT_DATA_MANAGER_URL,
+        help=f"Base URL for petrosa-data-manager (default: {DEFAULT_DATA_MANAGER_URL} or $DATA_MANAGER_URL)",
+    )
+    status.add_argument(
+        "--timeout",
+        type=float,
+        default=30.0,
+        help="HTTP timeout in seconds (default 30)",
+    )
+
     return parser
 
 
@@ -211,6 +228,62 @@ def run_backtest(forwarded: Sequence[str]) -> int:
     return backtest_main(list(forwarded))
 
 
+def _get_strategy(
+    url: str,
+    timeout: float,
+    opener: urllib.request.OpenerDirector | None = None,
+) -> dict[str, Any]:
+    """GET the strategy document. Mirrors :func:`_post_strategy` for the read side
+    so the lifecycle status query (FR54-C) uses the same urllib transport
+    contract as the submit path.
+    """
+    req = urllib.request.Request(
+        url,
+        method="GET",
+        headers={"Accept": "application/json"},
+    )
+    op = opener or urllib.request.build_opener()
+    with op.open(req, timeout=timeout) as resp:
+        raw = resp.read()
+        status = getattr(resp, "status", None) or resp.getcode()
+        text = raw.decode("utf-8") if raw else ""
+        if status < 200 or status >= 300:
+            raise RuntimeError(f"Strategy status query failed: HTTP {status}: {text}")
+        try:
+            return json.loads(text) if text else {}
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"Strategy status returned non-JSON response: {text!r}"
+            ) from exc
+
+
+def run_status(args: argparse.Namespace) -> int:
+    url = args.data_manager_url.rstrip("/") + STRATEGIES_PATH + "/" + args.strategy_id
+    try:
+        result = _get_strategy(url, args.timeout)
+    except urllib.error.HTTPError as e:
+        try:
+            err_text = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            err_text = ""
+        # 404 is a normal "not registered" answer in the lifecycle context;
+        # surface it explicitly to the operator with a distinct exit code so a
+        # CI script can disambiguate "doesn't exist" from "transport failure".
+        if e.code == 404:
+            print(f"error: strategy {args.strategy_id!r} not found", file=sys.stderr)
+            return 3
+        print(f"error: HTTP {e.code} from {url}: {err_text}", file=sys.stderr)
+        return 1
+    except urllib.error.URLError as e:
+        print(f"error: cannot reach {url}: {e.reason}", file=sys.stderr)
+        return 1
+    except RuntimeError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     raw = list(sys.argv[1:] if argv is None else argv)
     if raw and raw[0] == "backtest":
@@ -219,6 +292,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(raw)
     if args.command == "submit":
         return run_submit(args)
+    if args.command == "status":
+        return run_status(args)
     parser.print_help(sys.stderr)
     return 2
 
