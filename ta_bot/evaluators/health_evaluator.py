@@ -10,10 +10,10 @@ signal publisher) on each emit tick:
 
 1. **Indicator-compute latency** — rolling mean of the per-extraction
    ``analyze_candles`` duration. A sustained high value means the strategy
-   computation is degrading (slow MySQL reads, CPU starvation, etc.).
-2. **MySQL connection health** — whether the most recent candle-data fetch
-   succeeded. Repeated fetch failures mean the candle source (direct MySQL or
-   the Data Manager fronting it) is unreachable, so no analysis can run.
+   computation is degrading (slow candle-data reads, CPU starvation, etc.).
+2. **Candle-data connection health** — whether the most recent candle-data fetch
+   succeeded. Repeated fetch failures mean the candle source (data-manager API)
+   is unreachable, so no analysis can run.
 3. **Signal-emission rate** — outbound signal count. TA signals are sparse
    (emitted only on candle-close extraction events), so the collapse check
    stays dormant until a meaningful emission baseline is established; it then
@@ -182,9 +182,9 @@ class BotTaAnalysisHealthEvaluator(Evaluator):
         if not nats_connected:
             return "unhealthy", "NATS publisher disconnected; cannot emit signals"
 
-        # 2) MySQL / candle-data connection health.
+        # 2) Candle-data / Data Manager connection health.
         if not mysql_healthy:
-            return "unhealthy", "candle-data source unreachable (MySQL/Data Manager)"
+            return "unhealthy", "candle-data source unreachable (data-manager API)"
 
         # 3) Indicator-compute latency.
         if latency_s > self._latency_threshold_s:
@@ -216,7 +216,7 @@ class BotTaAnalysisHealthEvaluator(Evaluator):
 
         return (
             "healthy",
-            f"compute {latency_s:.2f}s, {signal_rate:.3f} signals/s, MySQL ok",
+            f"compute {latency_s:.2f}s, {signal_rate:.3f} signals/s, candle-data ok",
         )
 
 
