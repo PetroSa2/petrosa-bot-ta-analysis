@@ -78,7 +78,7 @@ async def test_healthy_when_connected_and_ok(clock):
     await ev.evaluate()
     verdict, reason = await ev.evaluate()
     assert verdict == "healthy"
-    assert "MySQL ok" in reason
+    assert "candle-data ok" in reason
 
 
 @pytest.mark.asyncio
