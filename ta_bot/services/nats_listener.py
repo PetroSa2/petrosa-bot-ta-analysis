@@ -64,9 +64,18 @@ class NATSListener:
         self.signals_emitted = 0
         self._mysql_healthy = True
 
+        # Proof-of-life signals for #265: distinguish "listening, zero NATS
+        # traffic ever arrived" from "listening, traffic arrived, no signals
+        # matched" so the health evaluator can detect a truly stalled listener
+        # instead of reporting healthy forever on connectivity alone.
+        self.messages_received = 0
+        self._started_at: float | None = None
+        self._last_message_at: float | None = None
+
     async def start(self):
         """Start the NATS listener."""
         try:
+            self._started_at = time.monotonic()
             # Connect to NATS
             await self.nc.connect(self.nats_url)
             logger.info(f"Connected to NATS server: {self.nats_url}")
@@ -126,6 +135,9 @@ class NATSListener:
 
         sys.stdout.write(f"\n[RAW] !!! NATS MESSAGE RECEIVED ON {msg.subject} !!!\n")
         sys.stdout.flush()
+
+        self.messages_received += 1
+        self._last_message_at = time.monotonic()
 
         try:
             # Log every message received with subject and data length
@@ -204,15 +216,20 @@ class NATSListener:
             else:
                 active_timeframes = self.supported_timeframes
 
-            # Check if symbol and timeframe are supported
+            # Check if symbol and timeframe are supported.
+            # Logged at WARNING (not DEBUG, per #265): a config-drift mismatch
+            # between the extractor's published symbols/timeframes and this
+            # bot's active_symbols/active_timeframes would otherwise silently
+            # drop every inbound message with zero visible trace at default
+            # log levels.
             if symbol not in active_symbols:
-                logger.debug(
+                logger.warning(
                     f"Skipping unsupported symbol: {symbol} (active: {active_symbols})"
                 )
                 return
 
             if period not in active_timeframes:
-                logger.debug(
+                logger.warning(
                     f"Skipping unsupported timeframe: {period} (active: {active_timeframes})"
                 )
                 return
@@ -304,9 +321,10 @@ class NATSListener:
             logger.error(f"Error processing symbol {symbol} {period}: {e}")
 
     def get_health_metrics(self) -> dict[str, Any]:
-        """Expose readable health signals for BotTaAnalysisHealthEvaluator (#248)."""
+        """Expose readable health signals for BotTaAnalysisHealthEvaluator (#248, #265)."""
         pub_client = getattr(self.publisher, "nats_client", None)
         latencies = self._recent_analysis_latencies
+        now = time.monotonic()
         return {
             "nats_connected": bool(pub_client and pub_client.is_connected),
             "mysql_healthy": self._mysql_healthy,
@@ -314,6 +332,18 @@ class NATSListener:
                 sum(latencies) / len(latencies) if latencies else 0.0
             ),
             "signals_emitted": self.signals_emitted,
+            # Proof-of-life signals (#265): let the evaluator distinguish
+            # "connected, zero candle-extraction messages ever received" from
+            # "connected, receiving traffic, just no signal matches".
+            "messages_received": self.messages_received,
+            "seconds_since_start": (
+                (now - self._started_at) if self._started_at is not None else 0.0
+            ),
+            "seconds_since_last_message": (
+                (now - self._last_message_at)
+                if self._last_message_at is not None
+                else None
+            ),
         }
 
     async def _cleanup(self):

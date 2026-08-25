@@ -308,6 +308,45 @@ class TestNATSListener:
         assert metrics["nats_connected"] is False
         assert metrics["analysis_latency_s"] == 0.0
 
+    async def test_get_health_metrics_no_messages_yet(self, nats_listener):
+        """#265: before start()/first message, proof-of-life fields are zero/None."""
+        metrics = nats_listener.get_health_metrics()
+        assert metrics["messages_received"] == 0
+        assert metrics["seconds_since_start"] == 0.0
+        assert metrics["seconds_since_last_message"] is None
+
+    async def test_handle_candle_message_increments_messages_received(
+        self, nats_listener
+    ):
+        """#265: every inbound message increments the proof-of-life counter,
+        even when it's later dropped for an unsupported symbol/timeframe."""
+        assert nats_listener.messages_received == 0
+
+        mock_msg = MagicMock()
+        mock_msg.subject = "test.subject"
+        mock_msg.data = b'{"symbol": "UNSUPPORTED", "period": "15m"}'
+        await nats_listener._handle_candle_message(mock_msg)
+
+        assert nats_listener.messages_received == 1
+        assert nats_listener.get_health_metrics()["messages_received"] == 1
+        assert nats_listener.get_health_metrics()["seconds_since_last_message"] >= 0
+
+    async def test_start_sets_started_at(self, nats_listener, mock_nats_client):
+        """#265: start() records a monotonic start timestamp for staleness checks."""
+        assert nats_listener._started_at is None
+        with patch("nats.aio.client.Client.connect", new_callable=AsyncMock):
+            with patch.object(
+                nats_listener.mysql_client, "connect", new_callable=AsyncMock
+            ):
+                with patch.object(
+                    nats_listener.publisher, "start", new_callable=AsyncMock
+                ):
+                    nats_listener.nc = mock_nats_client
+                    await nats_listener.start()
+
+        assert nats_listener._started_at is not None
+        assert nats_listener.get_health_metrics()["seconds_since_start"] >= 0
+
     async def test_process_extraction_fetch_failure_sets_unhealthy(self, nats_listener):
         """A candle-fetch exception flips mysql_healthy to False (#248)."""
         nats_listener._mysql_healthy = True
