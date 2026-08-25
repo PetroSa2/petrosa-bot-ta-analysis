@@ -79,6 +79,14 @@ DEFAULT_MIN_SIGNAL_RATE = 0.02
 # Rolling baseline window (8 samples ≈ 2 min at 15s).
 DEFAULT_BASELINE_WINDOW = 8
 DEFAULT_MIN_BASELINE_SAMPLES = 4
+# No-messages stall detection (#265): the shortest supported candle interval
+# is 5m (SUPPORTED_INTERVALS), so a listener that is connected but has never
+# received a single NATS candle-extraction message within 2x that interval
+# is a genuine stall (upstream extractor outage, subject mismatch, or
+# config-drift dropping every message) — not merely "no signal opportunities
+# found". Previously the evaluator had no way to distinguish that state from
+# healthy, since connectivity alone stayed green.
+DEFAULT_NO_MESSAGES_GRACE_S = 600.0
 
 
 class BotTaAnalysisHealthEvaluator(Evaluator):
@@ -96,6 +104,7 @@ class BotTaAnalysisHealthEvaluator(Evaluator):
         baseline_window: int = DEFAULT_BASELINE_WINDOW,
         min_baseline_samples: int = DEFAULT_MIN_BASELINE_SAMPLES,
         emit_interval_s: float = EMIT_INTERVAL_S,
+        no_messages_grace_s: float = DEFAULT_NO_MESSAGES_GRACE_S,
         time_source: Callable[[], datetime] | None = None,
     ) -> None:
         super().__init__(
@@ -109,6 +118,7 @@ class BotTaAnalysisHealthEvaluator(Evaluator):
         self._min_signal_rate = min_signal_rate
         self._min_baseline_samples = max(1, min_baseline_samples)
         self._emit_interval_s = emit_interval_s
+        self._no_messages_grace_s = no_messages_grace_s
         self._time = time_source or (lambda: datetime.now(UTC))
 
         self._signal_baseline: deque[float] = deque(maxlen=max(1, baseline_window))
@@ -164,6 +174,8 @@ class BotTaAnalysisHealthEvaluator(Evaluator):
         latency_s = float(snapshot.get("analysis_latency_s", 0.0) or 0.0)
         nats_connected = bool(snapshot.get("nats_connected"))
         mysql_healthy = bool(snapshot.get("mysql_healthy", True))
+        messages_received = int(snapshot.get("messages_received", 0) or 0)
+        seconds_since_start = float(snapshot.get("seconds_since_start", 0.0) or 0.0)
 
         prev_signals = self._prev_signals
         prev_at = self._prev_sample_at
@@ -185,6 +197,22 @@ class BotTaAnalysisHealthEvaluator(Evaluator):
         # 2) Candle-data / Data Manager connection health.
         if not mysql_healthy:
             return "unhealthy", "candle-data source unreachable (data-manager API)"
+
+        # 2b) No-traffic stall (#265): connected to NATS/MySQL but zero
+        # candle-extraction messages have ever arrived past the grace period.
+        # Without this check the evaluator reports "healthy" indefinitely on
+        # connectivity alone even if the listener never received a single
+        # message — indistinguishable from a genuinely idle "no opportunities
+        # found" period.
+        if messages_received == 0 and seconds_since_start >= self._no_messages_grace_s:
+            return (
+                "unhealthy",
+                f"no NATS candle-extraction messages received in "
+                f"{seconds_since_start:.0f}s since listener start "
+                f"(>= {self._no_messages_grace_s:.0f}s grace) — check upstream "
+                f"extractor output, NATS subject alignment, or "
+                f"symbol/timeframe config drift",
+            )
 
         # 3) Indicator-compute latency.
         if latency_s > self._latency_threshold_s:
@@ -216,7 +244,8 @@ class BotTaAnalysisHealthEvaluator(Evaluator):
 
         return (
             "healthy",
-            f"compute {latency_s:.2f}s, {signal_rate:.3f} signals/s, candle-data ok",
+            f"compute {latency_s:.2f}s, {signal_rate:.3f} signals/s, "
+            f"{messages_received} msgs received, candle-data ok",
         )
 
 

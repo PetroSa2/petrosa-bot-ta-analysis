@@ -35,6 +35,8 @@ class MetricsSource:
             "mysql_healthy": True,
             "analysis_latency_s": 0.5,
             "signals_emitted": 0,
+            "messages_received": 1,
+            "seconds_since_start": 30.0,
         }
 
     def __call__(self) -> dict:
@@ -112,6 +114,39 @@ async def test_unhealthy_on_high_latency(clock):
     verdict, reason = await ev.evaluate()
     assert verdict == "unhealthy"
     assert "latency" in reason
+
+
+@pytest.mark.asyncio
+async def test_unhealthy_when_no_messages_past_grace_period(clock):
+    """#265: connected + mysql-healthy but zero NATS messages ever received
+    past the grace period must report unhealthy, not healthy-by-default."""
+    src = MetricsSource()
+    src.snap["messages_received"] = 0
+    src.snap["seconds_since_start"] = 30.0
+    ev = _make(src, clock)
+    await ev.evaluate()  # baseline sample
+
+    src.snap["seconds_since_start"] = 700.0  # past DEFAULT_NO_MESSAGES_GRACE_S (600s)
+    verdict, reason = await ev.evaluate()
+
+    assert verdict == "unhealthy"
+    assert "no nats candle-extraction messages received" in reason.lower()
+
+
+@pytest.mark.asyncio
+async def test_healthy_when_no_messages_within_grace_period(clock):
+    """#265: zero messages received is NOT yet unhealthy inside the grace
+    window — avoids false positives on a freshly-started listener."""
+    src = MetricsSource()
+    src.snap["messages_received"] = 0
+    src.snap["seconds_since_start"] = 30.0
+    ev = _make(src, clock)
+    await ev.evaluate()  # baseline sample
+
+    src.snap["seconds_since_start"] = 45.0  # still well within grace period
+    verdict, _reason = await ev.evaluate()
+
+    assert verdict == "healthy"
 
 
 @pytest.mark.asyncio
