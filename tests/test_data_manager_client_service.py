@@ -2,42 +2,17 @@
 Comprehensive tests for Data Manager client service.
 """
 
-import sys
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
 
-
-# Define exception classes for the mock module
-class APIError(Exception):
-    """Mock API error."""
-
-    pass
-
-
-class ConnectionError(Exception):
-    """Mock connection error."""
-
-    pass
-
-
-class TimeoutError(Exception):
-    """Mock timeout error."""
-
-    pass
-
-
-# Mock the data_manager_client module before importing DataManagerClient
-mock_exceptions = Mock()
-mock_exceptions.APIError = APIError
-mock_exceptions.ConnectionError = ConnectionError
-mock_exceptions.TimeoutError = TimeoutError
-
-sys.modules["data_manager_client"] = Mock()
-sys.modules["data_manager_client.exceptions"] = mock_exceptions
-
-from ta_bot.services.data_manager_client import DataManagerClient  # noqa: E402
+# Vendored SDK (petrosa-bot-ta-analysis#267) — no more sys.modules faking of a
+# top-level `data_manager_client` package that was never actually installable.
+# The wrapper now imports the vendored ta_bot.services.dm_sdk package directly,
+# so these are the real exception classes, not mocks.
+from ta_bot.services.data_manager_client import DataManagerClient
+from ta_bot.services.dm_sdk.exceptions import APIError, ConnectionError, TimeoutError
 
 
 @pytest.fixture

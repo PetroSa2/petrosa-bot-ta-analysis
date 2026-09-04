@@ -16,16 +16,44 @@ import pandas as pd
 import pymysql
 from pymysql.cursors import DictCursor
 
+logger = logging.getLogger(__name__)
+
 # Import Data Manager client
 try:
     from .data_manager_client import DataManagerClient
 
     DATA_MANAGER_AVAILABLE = True
-except ImportError:
+except ImportError as _dm_import_error:
+    # AC3 (#267): fail loud, not silent. A missing/broken Data Manager client
+    # import used to be swallowed here with no log line, silently routing
+    # every signal write onto the legacy raw-MySQL fallback with zero
+    # visibility. Log at WARNING so a future regression is observable in
+    # deployed logs instead of only discoverable by manually exec'ing into a
+    # pod and checking DATA_MANAGER_AVAILABLE by hand.
+    logger.warning(
+        "Data Manager client unavailable (%s: %s) — signal/candle persistence "
+        "will fall back to the legacy raw-MySQL path. This is NOT the "
+        "recommended path (nothing reads the MySQL `signals` table); "
+        "investigate why '.data_manager_client' failed to import.",
+        type(_dm_import_error).__name__,
+        _dm_import_error,
+    )
     DATA_MANAGER_AVAILABLE = False
     DataManagerClient = None
 
-logger = logging.getLogger(__name__)
+
+def _use_data_manager_env_default() -> bool:
+    """Resolve the default for `use_data_manager` from the USE_DATA_MANAGER env var.
+
+    AC4/AC7 (#267): this is the documented kill-switch. `USE_DATA_MANAGER=false`
+    instantly reverts ALL signal/candle persistence to the legacy MySQL path via
+    config + restart only — no code change, no redeploy of new logic. Because no
+    confirmed consumer of the `signals` collection exists yet (see #267's
+    required follow-up ticket), operators must be able to disable the new Mongo
+    write path immediately if it proves to be quota-risky or unread.
+    """
+    raw = os.getenv("USE_DATA_MANAGER", "true")
+    return raw.strip().lower() not in ("false", "0", "no", "off")
 
 
 class MySQLClient:
@@ -44,14 +72,21 @@ class MySQLClient:
         password: str | None = None,
         database: str | None = None,
         uri: str | None = None,
-        use_data_manager: bool = True,
+        use_data_manager: bool | None = None,
     ):
         """
         Initialize MySQL client.
 
         Args:
-            use_data_manager: If True, use Data Manager API instead of direct MySQL
+            use_data_manager: If True, use Data Manager API instead of direct MySQL.
+                Defaults to the `USE_DATA_MANAGER` env var (AC4/AC7 of #267) when
+                not explicitly passed, so the documented kill-switch actually
+                controls every caller — including `NATSListener`'s no-arg
+                `MySQLClient()` construction — not just tests that pass it
+                explicitly.
         """
+        if use_data_manager is None:
+            use_data_manager = _use_data_manager_env_default()
         self.use_data_manager = use_data_manager and DATA_MANAGER_AVAILABLE
 
         if self.use_data_manager:

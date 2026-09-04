@@ -193,29 +193,17 @@ class TestDatetimeIndexDataManagerClient:
 
     @pytest.mark.asyncio
     async def test_fetch_candles_returns_datetime_index(self):
-        # Mock the data_manager_client module
-        mock_exceptions = Mock()
-        mock_exceptions.APIError = Exception
-        mock_exceptions.ConnectionError = Exception
-        mock_exceptions.TimeoutError = Exception
-
-        mock_dm_module = Mock()
+        # petrosa-bot-ta-analysis#267: data_manager_client.py now imports the
+        # vendored ta_bot.services.dm_sdk package directly, so faking a
+        # top-level `data_manager_client` module in sys.modules no longer has
+        # any effect. Patch BaseDataManagerClient at its real import site
+        # instead (same pattern as test_data_manager_client_service.py).
         mock_base_instance = AsyncMock()
-        mock_dm_module.DataManagerClient = Mock(return_value=mock_base_instance)
 
-        with (
-            patch.dict(
-                "sys.modules",
-                {
-                    "data_manager_client": mock_dm_module,
-                    "data_manager_client.exceptions": mock_exceptions,
-                },
-            ),
+        with patch(
+            "ta_bot.services.data_manager_client.BaseDataManagerClient",
+            return_value=mock_base_instance,
         ):
-            # Re-import to pick up mocks
-            if "ta_bot.services.data_manager_client" in sys.modules:
-                del sys.modules["ta_bot.services.data_manager_client"]
-
             mock_base_instance.get_candles.return_value = {
                 "data": [
                     {
@@ -273,26 +261,11 @@ class TestDefaultLimitDataManagerClient:
     def test_fetch_candles_default_limit_is_250(self):
         import inspect
 
-        mock_exceptions = Mock()
-        mock_exceptions.APIError = Exception
-        mock_exceptions.ConnectionError = Exception
-        mock_exceptions.TimeoutError = Exception
+        # petrosa-bot-ta-analysis#267: no mocking needed here at all — this
+        # only introspects the method signature, and the vendored SDK
+        # (ta_bot.services.dm_sdk) is a real, always-importable local module.
+        from ta_bot.services.data_manager_client import DataManagerClient
 
-        mock_dm_module = Mock()
-        mock_dm_module.DataManagerClient = Mock()
-
-        with patch.dict(
-            "sys.modules",
-            {
-                "data_manager_client": mock_dm_module,
-                "data_manager_client.exceptions": mock_exceptions,
-            },
-        ):
-            if "ta_bot.services.data_manager_client" in sys.modules:
-                del sys.modules["ta_bot.services.data_manager_client"]
-
-            from ta_bot.services.data_manager_client import DataManagerClient
-
-            sig = inspect.signature(DataManagerClient.fetch_candles)
-            default = sig.parameters["limit"].default
-            assert default == 250, f"Expected default limit=250, got {default}"
+        sig = inspect.signature(DataManagerClient.fetch_candles)
+        default = sig.parameters["limit"].default
+        assert default == 250, f"Expected default limit=250, got {default}"

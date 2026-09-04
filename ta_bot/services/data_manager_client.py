@@ -10,8 +10,11 @@ from typing import Any
 
 import pandas as pd
 
-from data_manager_client import DataManagerClient as BaseDataManagerClient
-from data_manager_client.exceptions import APIError, ConnectionError, TimeoutError
+# Vendored locally — see ta_bot/services/dm_sdk/__init__.py for rationale
+# (petrosa-bot-ta-analysis#267): the external `data_manager_client` package
+# this used to import was never actually installable.
+from ta_bot.services.dm_sdk import DataManagerClient as BaseDataManagerClient
+from ta_bot.services.dm_sdk.exceptions import APIError, ConnectionError, TimeoutError
 
 logger = None
 
