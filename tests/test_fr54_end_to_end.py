@@ -4,14 +4,16 @@ Chains FR54-A (submit) → FR54-B (persist-characterization + register-with-cio)
 → FR54-C (status) with no live HTTP calls.
 
 Zero-shim assertions:
-  1. No new .py files added to ta_bot/ since origin/main.
-  2. No k8s/ directory exists in this repo (manifests live in petrosa_k8s).
+  1. No k8s/ directory exists in this repo (manifests live in petrosa_k8s).
+
+(The original assertion #1 — "no new .py files added to ta_bot/ since
+origin/main" — was a one-time regression guard for this PR's own diff and
+was retired in #267; see TestFR54ZeroShimProperties for the full rationale.)
 """
 
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -352,33 +354,19 @@ class TestFR54ZeroShimProperties:
             "manifests belong in petrosa_k8s"
         )
 
-    def test_no_new_source_py_files_added_by_fr54c(self) -> None:
-        """FR54-C must add zero new .py files to ta_bot/ (the source package).
-
-        Compares HEAD against origin/main via ``git diff --diff-filter=A``.
-        Skips gracefully when origin/main is unreachable (detached CI HEAD or
-        shallow clone without remote).
-        """
-        repo_root = Path(__file__).parent.parent
-        result = subprocess.run(
-            [
-                "git",
-                "diff",
-                "--name-only",
-                "--diff-filter=A",
-                "origin/main",
-                "--",
-                "ta_bot/",
-            ],
-            cwd=str(repo_root),
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            pytest.skip(f"git diff unavailable: {result.stderr.strip()}")
-        new_source_files = [
-            f for f in result.stdout.strip().splitlines() if f.endswith(".py")
-        ]
-        assert new_source_files == [], (
-            f"FR54-C added unexpected new .py files to ta_bot/: {new_source_files}"
-        )
+    # test_no_new_source_py_files_added_by_fr54c was retired in #267.
+    #
+    # It was a one-time regression guard for the FR54-C PR (#264, closing
+    # #257) asserting that *that specific PR's diff* added zero new .py
+    # files to ta_bot/ — a point-in-time check that FR54-C's status-query
+    # feature was implemented as a zero-shim addition to existing files,
+    # not a permanent "no source file may ever be added to ta_bot/ again"
+    # architectural rule. #257 is closed; the guard's job is done.
+    #
+    # Left unconditional, it compared HEAD's diff against origin/main
+    # forever, so it failed on ANY unrelated future PR that added ANY new
+    # .py file under ta_bot/ — which is exactly what happened to #267's
+    # vendored ta_bot/services/dm_sdk/ package (a legitimate, reviewed
+    # addition unrelated to FR54-C). A test with no allowlist/opt-out and
+    # no time-box is not a durable CI gate; it is stale technical debt
+    # that would block every future module addition to this package.
