@@ -16,8 +16,9 @@ routing every trading signal through a legacy raw-MySQL `INSERT` path that
 nothing reads.
 
 This module vendors the working client source
-(`petrosa-data-manager/client/{client,exceptions,models}.py`, verified
-functionally identical at vendor time) directly into this repo, mirroring the
+(`petrosa-data-manager/client/{client,exceptions}.py`, trimmed to only the
+operations this repo actually calls — see `client.py`'s module docstring)
+directly into this repo, mirroring the
 pattern already used by `petrosa-binance-data-extractor` (`clients/data_manager_client.py`)
 and `petrosa-tradeengine` (`shared/mysql_client.py` + local Data Manager
 client), which each vendor their own local client rather than depending on

@@ -1,8 +1,17 @@
 """
 Data Manager Client - Main client class for interacting with the API.
+
+Trimmed vendor (petrosa-bot-ta-analysis#267): this is a reduced copy of
+petrosa-data-manager/client/client.py, keeping only the operations
+ta_bot/services/data_manager_client.py actually calls — health(), close(),
+get_candles(), and insert(). The full upstream SDK also exposes query(),
+update(), delete(), batch(), get_trades(), get_funding(), get_depth(), and
+get_metrics(), none of which this repo uses; vendoring unused surface area
+only adds untested/untestable dead code. If a future caller in this repo
+needs one of those methods, re-add it (and its tests) at that point rather
+than carrying it speculatively.
 """
 
-import asyncio
 import json
 import logging
 from datetime import datetime
@@ -21,18 +30,6 @@ from .exceptions import (
     APIError,
     ConnectionError as ClientConnectionError,
     TimeoutError as ClientTimeoutError,
-    ValidationError,
-)
-from .models import (
-    APIResponse,
-    CandleData,
-    DeleteOptions,
-    DepthData,
-    FundingData,
-    InsertOptions,
-    QueryOptions,
-    TradeData,
-    UpdateOptions,
 )
 
 logger = logging.getLogger(__name__)
@@ -174,17 +171,23 @@ class DataManagerClient:
             # Check for HTTP errors
             if response.status_code >= 400:
                 error_detail = response.text
+                error_json: dict[str, Any] | None = None
                 try:
                     error_json = response.json()
                     error_detail = error_json.get("detail", error_detail)
                 except Exception:
+                    # petrosa-bot-ta-analysis#267: a non-JSON error body (plain
+                    # text 500s are common) must not crash the error handler
+                    # itself with a second, unprotected .json() parse attempt —
+                    # this was a latent bug in the vendored source. error_json
+                    # stays None; APIError.response reflects that honestly.
                     pass
 
                 self._record_failure()
                 raise APIError(
                     f"API error: {error_detail}",
                     status_code=response.status_code,
-                    response=response.json() if response.text else None,
+                    response=error_json,
                 )
 
             self._record_success()
@@ -204,51 +207,9 @@ class DataManagerClient:
             raise
 
     # =============================================================================
-    # GENERIC CRUD OPERATIONS
+    # GENERIC CRUD OPERATIONS (trimmed to what ta_bot actually calls — see
+    # module docstring)
     # =============================================================================
-
-    async def query(
-        self,
-        database: str,
-        collection: str,
-        filter: dict[str, Any] | None = None,
-        sort: dict[str, int] | None = None,
-        limit: int = 100,
-        offset: int = 0,
-        fields: list[str] | None = None,
-    ) -> dict[str, Any]:
-        """
-        Query records from a database collection.
-
-        Args:
-            database: Database name ('mysql' or 'mongodb')
-            collection: Collection/table name
-            filter: Query filter conditions
-            sort: Sort specification (field: 1 for asc, -1 for desc)
-            limit: Maximum records to return
-            offset: Number of records to skip
-            fields: Fields to include in response
-
-        Returns:
-            API response with data, pagination, and metadata
-        """
-        params = {
-            "limit": limit,
-            "offset": offset,
-        }
-
-        if filter:
-            params["filter"] = json.dumps(filter)
-        if sort:
-            params["sort"] = json.dumps(sort)
-        if fields:
-            params["fields"] = ",".join(fields)
-
-        return await self._request(
-            "GET",
-            f"/api/v1/{database}/{collection}",
-            params=params,
-        )
 
     async def insert(
         self,
@@ -282,94 +243,6 @@ class DataManagerClient:
             f"/api/v1/{database}/{collection}",
             params=params,
             json_data={"data": data},
-        )
-
-    async def update(
-        self,
-        database: str,
-        collection: str,
-        filter: dict[str, Any],
-        data: dict[str, Any],
-        upsert: bool = False,
-        schema: str | None = None,
-        validate: bool = False,
-    ) -> dict[str, Any]:
-        """
-        Update records in a database collection.
-
-        Args:
-            database: Database name ('mysql' or 'mongodb')
-            collection: Collection/table name
-            filter: Filter to identify records to update
-            data: Data to update
-            upsert: Create record if not found
-            schema: Schema name for validation
-            validate: Enable schema validation
-
-        Returns:
-            API response with updated count
-        """
-        params = {}
-        if schema:
-            params["schema"] = schema
-        if validate:
-            params["validate"] = "true"
-
-        return await self._request(
-            "PUT",
-            f"/api/v1/{database}/{collection}",
-            params=params,
-            json_data={
-                "filter": filter,
-                "data": data,
-                "upsert": upsert,
-            },
-        )
-
-    async def delete(
-        self,
-        database: str,
-        collection: str,
-        filter: dict[str, Any],
-    ) -> dict[str, Any]:
-        """
-        Delete records from a database collection.
-
-        Args:
-            database: Database name ('mysql' or 'mongodb')
-            collection: Collection/table name
-            filter: Filter to identify records to delete
-
-        Returns:
-            API response with deleted count
-        """
-        return await self._request(
-            "DELETE",
-            f"/api/v1/{database}/{collection}",
-            json_data={"filter": filter},
-        )
-
-    async def batch(
-        self,
-        database: str,
-        collection: str,
-        operations: list[dict[str, Any]],
-    ) -> dict[str, Any]:
-        """
-        Perform batch operations on a database collection.
-
-        Args:
-            database: Database name ('mysql' or 'mongodb')
-            collection: Collection/table name
-            operations: List of operations (insert, update, delete)
-
-        Returns:
-            API response with operation results
-        """
-        return await self._request(
-            "POST",
-            f"/api/v1/{database}/{collection}/batch",
-            json_data={"operations": operations},
         )
 
     # =============================================================================
@@ -416,92 +289,6 @@ class DataManagerClient:
 
         return await self._request("GET", "/data/candles", params=params)
 
-    async def get_trades(
-        self,
-        pair: str,
-        start: datetime | None = None,
-        end: datetime | None = None,
-        limit: int = 100,
-        offset: int = 0,
-        sort_order: str = "asc",
-    ) -> dict[str, Any]:
-        """
-        Get individual trade data for a trading pair.
-
-        Args:
-            pair: Trading pair symbol
-            start: Start timestamp
-            end: End timestamp
-            limit: Maximum number of trades
-            offset: Pagination offset
-            sort_order: Sort order ('asc' or 'desc')
-
-        Returns:
-            API response with trade data
-        """
-        params = {
-            "pair": pair,
-            "limit": limit,
-            "offset": offset,
-            "sort_order": sort_order,
-        }
-
-        if start:
-            params["start"] = start.isoformat()
-        if end:
-            params["end"] = end.isoformat()
-
-        return await self._request("GET", "/data/trades", params=params)
-
-    async def get_funding(
-        self,
-        pair: str,
-        start: datetime | None = None,
-        end: datetime | None = None,
-        limit: int = 100,
-        offset: int = 0,
-        sort_order: str = "asc",
-    ) -> dict[str, Any]:
-        """
-        Get funding rate data for a futures trading pair.
-
-        Args:
-            pair: Trading pair symbol
-            start: Start timestamp
-            end: End timestamp
-            limit: Maximum number of records
-            offset: Pagination offset
-            sort_order: Sort order ('asc' or 'desc')
-
-        Returns:
-            API response with funding rate data
-        """
-        params = {
-            "pair": pair,
-            "limit": limit,
-            "offset": offset,
-            "sort_order": sort_order,
-        }
-
-        if start:
-            params["start"] = start.isoformat()
-        if end:
-            params["end"] = end.isoformat()
-
-        return await self._request("GET", "/data/funding", params=params)
-
-    async def get_depth(self, pair: str) -> dict[str, Any]:
-        """
-        Get current order book depth for a trading pair.
-
-        Args:
-            pair: Trading pair symbol
-
-        Returns:
-            API response with order book depth
-        """
-        return await self._request("GET", "/data/depth", params={"pair": pair})
-
     # =============================================================================
     # HEALTH AND MONITORING
     # =============================================================================
@@ -514,12 +301,3 @@ class DataManagerClient:
             Health status information
         """
         return await self._request("GET", "/health/readiness")
-
-    async def get_metrics(self) -> dict[str, Any]:
-        """
-        Get Prometheus metrics from Data Manager.
-
-        Returns:
-            Metrics data
-        """
-        return await self._request("GET", "/metrics")
