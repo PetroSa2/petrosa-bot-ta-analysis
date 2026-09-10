@@ -55,3 +55,6 @@ starlette>=0.37.0
 # Logging and monitoring
 structlog>=23.0.0
 uvicorn>=0.24.0
+
+# Retry logic for vendored Data Manager client SDK (ta_bot/services/dm_sdk, #267)
+tenacity>=8.2.0

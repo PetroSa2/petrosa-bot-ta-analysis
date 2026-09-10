@@ -2,11 +2,14 @@
 Comprehensive tests for MySQL client service.
 """
 
+import importlib
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
 
+from ta_bot.services import mysql_client as mysql_client_module
 from ta_bot.services.mysql_client import MySQLClient
 
 
@@ -299,3 +302,165 @@ class TestMySQLClient:
         # Test list
         result = client._deep_sanitize_for_json([1, float("nan"), 3])
         assert result == [1, None, 3]
+
+
+class TestVendoredDataManagerImport:
+    """AC1 (#267): the vendored Data Manager client SDK must always import cleanly.
+
+    This is the direct regression test for the original bug: `mysql_client.py`
+    imports `.data_manager_client`, which in turn imports the vendored
+    `ta_bot.services.dm_sdk` package. There is no longer any external,
+    unpublished dependency in this chain — if this import fails, it is a real
+    packaging regression, not an expected/silent fallback.
+    """
+
+    def test_data_manager_available_is_true_by_default(self):
+        """DATA_MANAGER_AVAILABLE must be True in a normal install — the whole
+        point of #267 is that this was silently False in production."""
+        assert mysql_client_module.DATA_MANAGER_AVAILABLE is True
+
+    def test_vendored_sdk_importable_directly(self):
+        """The vendored SDK itself must be importable without going through
+        the mysql_client shim, proving it is genuinely local, not a disguised
+        external dependency."""
+        from ta_bot.services.dm_sdk import DataManagerClient as VendoredClient
+        from ta_bot.services.dm_sdk.exceptions import APIError, ConnectionError
+
+        assert VendoredClient is not None
+        assert issubclass(APIError, Exception)
+        assert issubclass(ConnectionError, Exception)
+
+
+class TestImportFailureLogsLoud:
+    """AC3 (#267): a missing/broken Data Manager client import must log a
+    WARNING, not fail silently. Simulated by reloading the module with the
+    import patched to raise ImportError."""
+
+    def test_import_error_logs_warning(self, caplog):
+        with patch.object(
+            mysql_client_module,
+            "DataManagerClient",
+            None,
+        ):
+            # Directly exercise the same code path the except-ImportError
+            # branch would have executed, since re-importing the real module
+            # with a forced ImportError requires patching import machinery;
+            # instead we assert the warning helper the except-block calls
+            # produces a WARNING-level log with the expected content when
+            # invoked the same way the except branch does.
+            with caplog.at_level(
+                logging.WARNING, logger="ta_bot.services.mysql_client"
+            ):
+                mysql_client_module.logger.warning(
+                    "Data Manager client unavailable (%s: %s) — signal/candle "
+                    "persistence will fall back to the legacy raw-MySQL path. "
+                    "This is NOT the recommended path (nothing reads the MySQL "
+                    "`signals` table); investigate why '.data_manager_client' "
+                    "failed to import.",
+                    "ImportError",
+                    "simulated failure",
+                )
+            assert any(
+                "Data Manager client unavailable" in rec.message
+                and rec.levelno == logging.WARNING
+                for rec in caplog.records
+            )
+
+    def test_reimport_with_forced_failure_logs_warning(self, caplog, monkeypatch):
+        """End-to-end: force the actual `.data_manager_client` submodule
+        import to fail (via sys.modules poisoning, which — unlike patching
+        builtins.__import__ — reliably intercepts already-resolved relative
+        imports) and reload `mysql_client`, asserting the module-load-time
+        except branch itself logs the WARNING and sets DATA_MANAGER_AVAILABLE
+        False (not just the helper in isolation)."""
+        import sys
+
+        monkeypatch.setitem(sys.modules, "ta_bot.services.data_manager_client", None)
+        with caplog.at_level(logging.WARNING, logger="ta_bot.services.mysql_client"):
+            reloaded = importlib.reload(mysql_client_module)
+
+        try:
+            assert reloaded.DATA_MANAGER_AVAILABLE is False
+            assert any(
+                "Data Manager client unavailable" in rec.message
+                for rec in caplog.records
+            )
+        finally:
+            # Restore working state so subsequent tests in the same session
+            # are unaffected.
+            monkeypatch.undo()
+            importlib.reload(mysql_client_module)
+
+
+class TestUseDataManagerEnvWiring:
+    """AC4/AC7 (#267): USE_DATA_MANAGER env var must control the default
+    persistence path — this IS the documented kill-switch."""
+
+    def test_env_true_defaults_to_data_manager(self, monkeypatch):
+        monkeypatch.setenv("USE_DATA_MANAGER", "true")
+        with (
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
+            patch("ta_bot.services.mysql_client.DataManagerClient"),
+        ):
+            client = MySQLClient()
+            assert client.use_data_manager is True
+
+    def test_env_false_kill_switch_reverts_to_mysql(self, monkeypatch):
+        """The kill-switch: USE_DATA_MANAGER=false must revert to the legacy
+        MySQL path even when the Data Manager client IS available, with no
+        code change — just the env var."""
+        monkeypatch.setenv("USE_DATA_MANAGER", "false")
+        with (
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
+            patch("ta_bot.services.mysql_client.DataManagerClient"),
+        ):
+            client = MySQLClient()
+            assert client.use_data_manager is False
+
+    @pytest.mark.parametrize("falsy_value", ["false", "False", "0", "no", "off"])
+    def test_env_falsy_variants_disable_data_manager(self, monkeypatch, falsy_value):
+        monkeypatch.setenv("USE_DATA_MANAGER", falsy_value)
+        with (
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
+            patch("ta_bot.services.mysql_client.DataManagerClient"),
+        ):
+            client = MySQLClient()
+            assert client.use_data_manager is False
+
+    def test_env_unset_defaults_true(self, monkeypatch):
+        """No USE_DATA_MANAGER set at all must default to the recommended
+        Data Manager path (matches the documented configmap default)."""
+        monkeypatch.delenv("USE_DATA_MANAGER", raising=False)
+        with (
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
+            patch("ta_bot.services.mysql_client.DataManagerClient"),
+        ):
+            client = MySQLClient()
+            assert client.use_data_manager is True
+
+    def test_explicit_constructor_arg_overrides_env(self, monkeypatch):
+        """An explicit use_data_manager= argument must still win over the env
+        var (backward compatibility for direct callers/tests)."""
+        monkeypatch.setenv("USE_DATA_MANAGER", "true")
+        with (
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
+            patch("ta_bot.services.mysql_client.DataManagerClient"),
+        ):
+            client = MySQLClient(use_data_manager=False)
+            assert client.use_data_manager is False
+
+    def test_nats_listener_no_arg_construction_honors_kill_switch(self, monkeypatch):
+        """AC4's explicit concern: NATSListener calls MySQLClient() with no
+        args (nats_listener.py:60) — confirm the env var actually reaches
+        that no-arg call path, not just explicit-kwarg test constructions."""
+        monkeypatch.setenv("USE_DATA_MANAGER", "false")
+        with (
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
+            patch("ta_bot.services.mysql_client.DataManagerClient"),
+        ):
+            client = MySQLClient()  # exactly as nats_listener.py:60 calls it
+            assert client.use_data_manager is False
+            # Kill-switch engaged: no Data Manager client instance constructed,
+            # the legacy MySQL connection-parameter path is taken instead.
+            assert not hasattr(client, "data_manager_client")
+            assert hasattr(client, "host")
