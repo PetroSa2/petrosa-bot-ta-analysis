@@ -70,9 +70,13 @@ class DataManagerClient:
     async def connect(self):
         """Connect to the Data Manager service."""
         try:
-            # Test connection with health check
+            # Test connection with health check. Data Manager's real
+            # `/health/readiness` response is `{ready: bool, components: dict,
+            # timestamp: ...}` — it never returns a `status` key (see
+            # petrosa-data-manager/data_manager/api/routes/health.py's
+            # `ReadinessStatus` model). petrosa-bot-ta-analysis#270.
             health = await self._client.health()
-            if health.get("status") != "healthy":
+            if not health.get("ready", False):
                 raise ConnectionError(f"Data Manager health check failed: {health}")
 
             self._logger.info("Connected to Data Manager service")
@@ -254,12 +258,12 @@ class DataManagerClient:
         try:
             health = await self._client.health()
             self._logger.info(
-                f"Data Manager health check: {health.get('status', 'unknown')}"
+                f"Data Manager health check: ready={health.get('ready', 'unknown')}"
             )
             return health
         except Exception as e:
             self._logger.error(f"Data Manager health check failed: {e}")
-            return {"status": "unhealthy", "error": str(e)}
+            return {"ready": False, "error": str(e)}
 
     async def __aenter__(self):
         """Async context manager entry."""

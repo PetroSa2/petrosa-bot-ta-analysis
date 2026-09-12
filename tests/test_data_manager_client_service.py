@@ -61,16 +61,29 @@ class TestDataManagerClient:
             assert client.max_retries == 3
 
     async def test_connect_success(self, data_manager_client, mock_base_client):
-        """Test successful connection to Data Manager."""
-        mock_base_client.health.return_value = {"status": "healthy"}
+        """Test successful connection to Data Manager.
+
+        Mirrors the real `/health/readiness` response shape (petrosa-data-manager's
+        `ReadinessStatus` model): `{ready: bool, components: dict, timestamp: ...}` —
+        there is no `status` key (petrosa-bot-ta-analysis#270).
+        """
+        mock_base_client.health.return_value = {
+            "ready": True,
+            "components": {"nats": "healthy", "mysql": "healthy"},
+            "timestamp": "2026-09-12T00:00:00Z",
+        }
 
         await data_manager_client.connect()
 
         mock_base_client.health.assert_called_once()
 
     async def test_connect_unhealthy(self, data_manager_client, mock_base_client):
-        """Test connection when Data Manager is unhealthy."""
-        mock_base_client.health.return_value = {"status": "unhealthy"}
+        """Test connection when Data Manager is not ready."""
+        mock_base_client.health.return_value = {
+            "ready": False,
+            "components": {"mongodb": "unhealthy"},
+            "timestamp": "2026-09-12T00:00:00Z",
+        }
 
         with pytest.raises(Exception):
             await data_manager_client.connect()
@@ -214,11 +227,15 @@ class TestDataManagerClient:
 
     async def test_health_check_success(self, data_manager_client, mock_base_client):
         """Test successful health check."""
-        mock_base_client.health.return_value = {"status": "healthy"}
+        mock_base_client.health.return_value = {
+            "ready": True,
+            "components": {"nats": "healthy"},
+            "timestamp": "2026-09-12T00:00:00Z",
+        }
 
         health = await data_manager_client.health_check()
 
-        assert health["status"] == "healthy"
+        assert health["ready"] is True
 
     async def test_health_check_failure(self, data_manager_client, mock_base_client):
         """Test health check failure."""
@@ -226,12 +243,16 @@ class TestDataManagerClient:
 
         health = await data_manager_client.health_check()
 
-        assert health["status"] == "unhealthy"
+        assert health["ready"] is False
         assert "error" in health
 
     async def test_async_context_manager(self, mock_base_client):
         """Test using client as async context manager."""
-        mock_base_client.health.return_value = {"status": "healthy"}
+        mock_base_client.health.return_value = {
+            "ready": True,
+            "components": {},
+            "timestamp": "2026-09-12T00:00:00Z",
+        }
 
         async with DataManagerClient() as client:
             assert client is not None
