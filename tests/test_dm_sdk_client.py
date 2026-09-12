@@ -34,14 +34,23 @@ def _client_with_transport(handler) -> DataManagerClient:
 @pytest.mark.asyncio
 class TestDataManagerClientRequest:
     async def test_successful_health_request(self):
+        # Real `/health/readiness` shape (petrosa-data-manager's `ReadinessStatus`
+        # model): `{ready, components, timestamp}` — no `status` key.
+        # petrosa-bot-ta-analysis#270.
+        real_health_response = {
+            "ready": True,
+            "components": {"nats": "healthy", "mysql": "healthy"},
+            "timestamp": "2026-09-12T00:00:00Z",
+        }
+
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.method == "GET"
             assert request.url.path == "/health/readiness"
-            return httpx.Response(200, json={"status": "healthy"})
+            return httpx.Response(200, json=real_health_response)
 
         client = _client_with_transport(handler)
         result = await client.health()
-        assert result == {"status": "healthy"}
+        assert result == real_health_response
 
     async def test_successful_insert_request(self):
         def handler(request: httpx.Request) -> httpx.Response:
@@ -141,7 +150,7 @@ class TestCircuitBreaker:
             state["calls"] += 1
             if state["calls"] <= 2:
                 raise httpx.ConnectError("flaky")
-            return httpx.Response(200, json={"status": "healthy"})
+            return httpx.Response(200, json={"ready": True, "components": {}})
 
         client = _client_with_transport(handler)
         for _ in range(2):
@@ -150,7 +159,7 @@ class TestCircuitBreaker:
         assert client._circuit_breaker_failures == 2
 
         result = await client.health()
-        assert result == {"status": "healthy"}
+        assert result == {"ready": True, "components": {}}
         assert client._circuit_breaker_failures == 0
         assert client._circuit_breaker_open is False
 
@@ -172,7 +181,7 @@ class TestLifecycle:
 
         def handler(request: httpx.Request) -> httpx.Response:
             captured["auth"] = request.headers.get("authorization")
-            return httpx.Response(200, json={"status": "healthy"})
+            return httpx.Response(200, json={"ready": True, "components": {}})
 
         client = DataManagerClient(base_url="http://test-dm:80", api_key="secret-key")
         client._client = httpx.AsyncClient(
