@@ -42,6 +42,14 @@ logger = logging.getLogger(__name__)
 
 async def main():
     """Main entry point for the TA bot."""
+    # Resources appended here only after they connect successfully, so the
+    # startup-failure cleanup below never touches an object mid-construction.
+    # Fixes the aiohttp/httpx "Unclosed client session"/"Unclosed connector"
+    # leak on startup failure (petrosa-bot-ta-analysis#269): previously, if
+    # e.g. mongodb_client.connect() failed after data_manager_client had
+    # already connected, data_manager_client's session was never closed
+    # before the process exited.
+    _opened_resources: list = []
     try:
         # 2. Setup logging (may call basicConfig)
         # Note: logging is already configured at module level
@@ -90,12 +98,14 @@ async def main():
             base_url=os.getenv("DATA_MANAGER_URL")
         )
         await data_manager_client.connect()
+        _opened_resources.append(data_manager_client)
         logger.info("Data Manager client initialized")
 
         # Initialize MongoDB client for fallback configuration persistence
         # This one uses Data Manager if available (the default behavior)
         mongodb_client = MongoDBClient()
         await mongodb_client.connect()
+        _opened_resources.append(mongodb_client)
         logger.info("General MongoDB client initialized")
 
         # Initialize dedicated direct MongoDB client for the Rate Limiter
@@ -106,6 +116,7 @@ async def main():
                 "Failed to connect to direct MongoDB for rate limiter; aborting startup"
             )
             raise RuntimeError("Direct MongoDB connection for rate limiter failed")
+        _opened_resources.append(rate_limit_mongo_client)
         logger.info("Rate limiter MongoDB client (direct) initialized")
 
         # Initialize Rate Limiter
@@ -250,6 +261,17 @@ async def main():
 
     except Exception as e:
         logger.error(f"Failed to start TA Bot: {e}")
+        # Close every resource that connected successfully before this
+        # failure so a startup crash never leaks an open HTTP session or
+        # connector (petrosa-bot-ta-analysis#269).
+        for resource in reversed(_opened_resources):
+            try:
+                await resource.disconnect()
+            except Exception as close_err:
+                logger.warning(
+                    f"Error closing {resource.__class__.__name__} during "
+                    f"startup-failure cleanup: {close_err}"
+                )
         raise
 
 

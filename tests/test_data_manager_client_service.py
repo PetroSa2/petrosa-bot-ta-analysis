@@ -15,6 +15,16 @@ from ta_bot.services.data_manager_client import DataManagerClient
 from ta_bot.services.dm_sdk.exceptions import APIError, ConnectionError, TimeoutError
 
 
+@pytest.fixture(autouse=True)
+def _no_real_sleep():
+    """connect() backs off between retries with asyncio.sleep; patch it out
+    so tests exercising retry paths don't actually wait (petrosa-bot-ta-analysis#269)."""
+    with patch(
+        "ta_bot.services.data_manager_client.asyncio.sleep", new=AsyncMock()
+    ) as mock_sleep:
+        yield mock_sleep
+
+
 @pytest.fixture
 def mock_base_client():
     """Create a mock base Data Manager client."""
@@ -77,8 +87,15 @@ class TestDataManagerClient:
 
         mock_base_client.health.assert_called_once()
 
-    async def test_connect_unhealthy(self, data_manager_client, mock_base_client):
-        """Test connection when Data Manager is not ready."""
+    async def test_connect_unhealthy(
+        self, data_manager_client, mock_base_client, _no_real_sleep
+    ):
+        """Test connection when Data Manager is not ready.
+
+        Exhausts all retries (max_retries=3, per the fixture) before raising,
+        and closes the underlying HTTP client on final failure so a failed
+        startup does not leak an open session (petrosa-bot-ta-analysis#269).
+        """
         mock_base_client.health.return_value = {
             "ready": False,
             "components": {"mongodb": "unhealthy"},
@@ -87,6 +104,42 @@ class TestDataManagerClient:
 
         with pytest.raises(Exception):
             await data_manager_client.connect()
+
+        assert mock_base_client.health.call_count == 3
+        assert _no_real_sleep.await_count == 2
+        mock_base_client.close.assert_called_once()
+
+    async def test_connect_retries_then_succeeds(
+        self, data_manager_client, mock_base_client, _no_real_sleep
+    ):
+        """Test connect() recovers if Data Manager becomes ready on a retry.
+
+        A transient "not ready" (e.g. data-manager still starting its own
+        dependencies) must not hard-crash startup (petrosa-bot-ta-analysis#269).
+        """
+        mock_base_client.health.side_effect = [
+            {"ready": False, "components": {"mongodb": "unhealthy"}},
+            {"ready": True, "components": {"mongodb": "healthy"}},
+        ]
+
+        await data_manager_client.connect()
+
+        assert mock_base_client.health.call_count == 2
+        mock_base_client.close.assert_not_called()
+
+    async def test_connect_unreachable_closes_client(
+        self, data_manager_client, mock_base_client, _no_real_sleep
+    ):
+        """Test connect() closes the HTTP client when Data Manager is
+        entirely unreachable (network/transport error) after all retries
+        (petrosa-bot-ta-analysis#269)."""
+        mock_base_client.health.side_effect = ConnectionError("boom")
+
+        with pytest.raises(Exception):
+            await data_manager_client.connect()
+
+        assert mock_base_client.health.call_count == 3
+        mock_base_client.close.assert_called_once()
 
     async def test_disconnect(self, data_manager_client, mock_base_client):
         """Test disconnecting from Data Manager."""

@@ -5,7 +5,8 @@ This module provides a client for interacting with the petrosa-data-manager API
 for fetching candle data and persisting signals.
 """
 
-import os  # noqa: I001
+import asyncio  # noqa: I001
+import os
 from typing import Any
 
 import pandas as pd
@@ -42,6 +43,7 @@ class DataManagerClient:
         base_url: str | None = None,
         timeout: int = 30,
         max_retries: int = 3,
+        retry_backoff_base: float = 0.5,
     ):
         """
         Initialize the Data Manager client.
@@ -50,12 +52,16 @@ class DataManagerClient:
             base_url: Data Manager API base URL
             timeout: Request timeout in seconds
             max_retries: Maximum number of retry attempts
+            retry_backoff_base: Base seconds for the exponential backoff used
+                by connect() between "not ready yet" retries
+                (petrosa-bot-ta-analysis#269)
         """
         self.base_url = base_url or os.getenv(
             "DATA_MANAGER_URL", "http://petrosa-data-manager:80"
         )
         self.timeout = timeout
         self.max_retries = max_retries
+        self._retry_backoff_base = retry_backoff_base
 
         # Initialize the base client
         self._client = BaseDataManagerClient(
@@ -68,22 +74,81 @@ class DataManagerClient:
         self._logger.info(f"Initialized Data Manager client: {self.base_url}")
 
     async def connect(self):
-        """Connect to the Data Manager service."""
+        """Connect to the Data Manager service.
+
+        Retries a "not ready" response with exponential backoff before
+        giving up — data-manager can still be starting its own dependencies
+        at pod startup, which is a transient condition, not a contract
+        break. On final failure (whether unreachable or still-not-ready
+        after all retries) the underlying HTTP client is closed so a failed
+        startup never leaks an open Data Manager connection
+        (petrosa-bot-ta-analysis#269).
+        """
+        last_health: dict[str, Any] | None = None
+        last_error: Exception | None = None
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                # Test connection with health check. Data Manager's real
+                # `/health/readiness` response is `{ready: bool, components: dict,
+                # timestamp: ...}` — it never returns a `status` key (see
+                # petrosa-data-manager/data_manager/api/routes/health.py's
+                # `ReadinessStatus` model). petrosa-bot-ta-analysis#270.
+                health = await self._client.health()
+            except Exception as e:
+                last_error = e
+                last_health = None
+                self._logger.warning(
+                    f"Data Manager unreachable (attempt {attempt}/"
+                    f"{self.max_retries}): {e}"
+                )
+            else:
+                last_error = None
+                last_health = health
+                if health.get("ready", False):
+                    self._logger.info("Connected to Data Manager service")
+                    return
+                self._logger.warning(
+                    f"Data Manager not ready yet (attempt {attempt}/"
+                    f"{self.max_retries}): {health}"
+                )
+
+            if attempt < self.max_retries:
+                await asyncio.sleep(self._retry_backoff_base * (2 ** (attempt - 1)))
+
+        await self._close_silently()
+
+        if last_error is not None:
+            self._logger.error(
+                f"Failed to connect to Data Manager after {self.max_retries} "
+                f"attempts: {last_error}"
+            )
+            raise ConnectionError(
+                f"Data Manager unreachable after {self.max_retries} attempts: "
+                f"{last_error}"
+            ) from last_error
+
+        self._logger.error(
+            f"Data Manager health-check contract not satisfied after "
+            f"{self.max_retries} attempts: {last_health}"
+        )
+        raise ConnectionError(
+            f"Data Manager health check failed after {self.max_retries} "
+            f"attempts: {last_health}"
+        )
+
+    async def _close_silently(self):
+        """Close the underlying HTTP client, swallowing close-time errors.
+
+        Used on the connect() failure path so a failed startup never leaves
+        an open HTTP session/connector behind (petrosa-bot-ta-analysis#269).
+        """
         try:
-            # Test connection with health check. Data Manager's real
-            # `/health/readiness` response is `{ready: bool, components: dict,
-            # timestamp: ...}` — it never returns a `status` key (see
-            # petrosa-data-manager/data_manager/api/routes/health.py's
-            # `ReadinessStatus` model). petrosa-bot-ta-analysis#270.
-            health = await self._client.health()
-            if not health.get("ready", False):
-                raise ConnectionError(f"Data Manager health check failed: {health}")
-
-            self._logger.info("Connected to Data Manager service")
-
-        except Exception as e:
-            self._logger.error(f"Failed to connect to Data Manager: {e}")
-            raise
+            await self._client.close()
+        except Exception as close_err:
+            self._logger.warning(
+                f"Error closing Data Manager client after failed connect: {close_err}"
+            )
 
     async def disconnect(self):
         """Disconnect from the Data Manager service."""
