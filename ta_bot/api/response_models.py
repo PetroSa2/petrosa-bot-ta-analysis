@@ -383,7 +383,7 @@ class AppConfigUpdateRequest(BaseModel):
         None,
         description=(
             "Minimum confidence threshold for signals (0.0 to 1.0). "
-            "Must be less than max_confidence. Example: 0.6"
+            "Must be less than max_confidence. Example: 0.7"
         ),
     )
     max_confidence: float | None = Field(
@@ -441,7 +441,7 @@ class AppConfigUpdateRequest(BaseModel):
                 ],
                 "symbols": ["BTCUSDT", "ETHUSDT"],
                 "candle_periods": ["5m", "15m"],
-                "min_confidence": 0.6,
+                "min_confidence": 0.70,
                 "max_confidence": 0.9,
                 "max_positions": 5,
                 "position_sizes": [100, 200, 500],
@@ -500,7 +500,7 @@ class AppConfigResponse(BaseModel):
                 ],
                 "symbols": ["BTCUSDT", "ETHUSDT", "ADAUSDT"],
                 "candle_periods": ["5m", "15m", "1h"],
-                "min_confidence": 0.6,
+                "min_confidence": 0.70,
                 "max_confidence": 0.95,
                 "max_positions": 10,
                 "position_sizes": [100, 200, 500, 1000],
@@ -539,7 +539,7 @@ class AppAuditTrailItem(BaseModel):
                 },
                 "new_config": {
                     "enabled_strategies": ["momentum_pulse", "rsi_extreme_reversal"],
-                    "min_confidence": 0.6,
+                    "min_confidence": 0.70,
                 },
                 "changed_by": "llm_agent_v1",
                 "changed_at": "2025-10-21T14:45:00Z",

@@ -150,7 +150,7 @@ class DataManagerConfigClient:
                 "enabled_strategies": config_data.get("enabled_strategies", []),
                 "symbols": config_data.get("symbols", []),
                 "candle_periods": config_data.get("candle_periods", []),
-                "min_confidence": config_data.get("min_confidence", 0.6),
+                "min_confidence": config_data.get("min_confidence", 0.70),
                 "max_confidence": config_data.get("max_confidence", 0.95),
                 "max_positions": config_data.get("max_positions", 10),
                 "position_sizes": config_data.get(
@@ -312,7 +312,7 @@ class DataManagerConfigClient:
             "enabled_strategies": [],
             "symbols": [],
             "candle_periods": [],
-            "min_confidence": 0.6,
+            "min_confidence": 0.70,
             "max_confidence": 0.95,
             "max_positions": 10,
             "position_sizes": [100, 200, 500, 1000],

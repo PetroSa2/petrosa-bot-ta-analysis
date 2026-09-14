@@ -606,7 +606,7 @@ class MongoDBClient:
                 "enabled_strategies": config.get("enabled_strategies", []),
                 "symbols": config.get("symbols", []),
                 "candle_periods": config.get("candle_periods", []),
-                "min_confidence": config.get("min_confidence", 0.6),
+                "min_confidence": config.get("min_confidence", 0.70),
                 "max_confidence": config.get("max_confidence", 0.95),
                 "max_positions": config.get("max_positions", 10),
                 "position_sizes": config.get("position_sizes", [100, 200, 500, 1000]),

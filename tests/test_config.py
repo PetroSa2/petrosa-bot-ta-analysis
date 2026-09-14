@@ -28,7 +28,10 @@ class TestConfig:
         assert config.health_check_interval == 30
         assert config.max_retries == 3
         assert config.timeout == 30
-        assert config.min_confidence == 0.6
+        # Restored per issue #282: 0.6 never rejected a signal (every
+        # strategy's emitted confidence sits >= 0.6); raised to 0.70 based
+        # on the measured post-restore confidence distribution.
+        assert config.min_confidence == 0.70
         assert config.max_confidence == 0.95
         assert config.max_positions == 10
 

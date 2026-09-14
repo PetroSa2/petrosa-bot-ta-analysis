@@ -17,6 +17,7 @@ try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
+
     UTC = timezone.utc  # noqa: UP017
 from typing import Any
 
@@ -176,7 +177,7 @@ class AppConfigManager:
             "enabled_strategies": [],
             "symbols": [],
             "candle_periods": [],
-            "min_confidence": 0.6,
+            "min_confidence": 0.70,
             "max_confidence": 0.95,
             "max_positions": 10,
             "position_sizes": [100, 200, 500, 1000],
@@ -317,7 +318,7 @@ class AppConfigManager:
             enabled_strategies=config.get("enabled_strategies", []),
             symbols=config.get("symbols", []),
             candle_periods=config.get("candle_periods", []),
-            min_confidence=config.get("min_confidence", 0.6),
+            min_confidence=config.get("min_confidence", 0.70),
             max_confidence=config.get("max_confidence", 0.95),
             max_positions=config.get("max_positions", 10),
             position_sizes=config.get("position_sizes", [100, 200, 500, 1000]),
@@ -566,7 +567,7 @@ class AppConfigManager:
             "enabled_strategies": doc.get("enabled_strategies", []),
             "symbols": doc.get("symbols", []),
             "candle_periods": doc.get("candle_periods", []),
-            "min_confidence": doc.get("min_confidence", 0.6),
+            "min_confidence": doc.get("min_confidence", 0.70),
             "max_confidence": doc.get("max_confidence", 0.95),
             "max_positions": doc.get("max_positions", 10),
             "position_sizes": doc.get("position_sizes", [100, 200, 500, 1000]),

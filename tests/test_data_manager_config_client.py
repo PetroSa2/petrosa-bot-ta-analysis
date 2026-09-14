@@ -435,7 +435,7 @@ class TestDataManagerConfigClient:
         assert result["enabled_strategies"] == []
         assert result["symbols"] == []
         assert result["candle_periods"] == []
-        assert result["min_confidence"] == 0.6
+        assert result["min_confidence"] == 0.70  # raised per issue #282
         assert result["max_confidence"] == 0.95
         assert result["max_positions"] == 10
         assert result["position_sizes"] == [100, 200, 500, 1000]

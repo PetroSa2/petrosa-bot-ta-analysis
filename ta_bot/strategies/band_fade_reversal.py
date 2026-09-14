@@ -15,7 +15,18 @@ logger = logging.getLogger(__name__)
 
 
 class BandFadeReversalStrategy(BaseStrategy):
-    """Band Fade Reversal strategy implementation."""
+    """
+    Band Fade Reversal strategy implementation.
+
+    Trigger (BUY only, per issue #282 Design Decision 2 -- the lower-band /
+    oversold framing is internally consistent and is kept; this strategy
+    does NOT flip back to the pre-2025-08 SELL/upper-band variant):
+        - Price fades to the lower Bollinger Band and shows an early 2-bar
+          reversal off it.
+    Confirmations:
+        - RSI oversold (<= 30, per defaults.py rsi_oversold)
+        - Breakout volume > 1.5x the 10-candle average
+    """
 
     def __init__(self):
         """Initialize the strategy."""
@@ -41,8 +52,17 @@ class BandFadeReversalStrategy(BaseStrategy):
         logger.info(f"Available indicators: {list(indicators.keys())}")
         logger.info(f"Current values: {list(current_values.keys())}")
 
-        # Check if we have all required indicators
-        required_indicators = ["bb_lower", "bb_upper", "bb_middle", "close"]
+        # Check if we have all required indicators. `rsi` is required again
+        # per issue #282 -- the RSI oversold gate honours the bound declared
+        # in defaults.py (rsi_oversold: 30) that the loosened code never read.
+        required_indicators = [
+            "bb_lower",
+            "bb_upper",
+            "bb_middle",
+            "rsi",
+            "close",
+            "volume",
+        ]
         missing_indicators = [
             ind for ind in required_indicators if ind not in current_values
         ]
@@ -54,12 +74,17 @@ class BandFadeReversalStrategy(BaseStrategy):
         current_bb_lower = current_values["bb_lower"]
         current_bb_upper = current_values["bb_upper"]
         current_bb_middle = current_values["bb_middle"]
+        current_rsi = current_values["rsi"]
+        volume = current_values["volume"]
 
         # Check if price is near the lower band
         near_lower_band = close <= current_bb_lower * 1.01
 
         # Check if price is below the middle band
         below_middle = close < current_bb_middle
+
+        # RSI oversold confirmation (defaults.py rsi_oversold: 30)
+        rsi_oversold = current_rsi <= 30
 
         # Check for reversal pattern (price was lower but now moving up)
         if len(df) >= 3:
@@ -74,7 +99,25 @@ class BandFadeReversalStrategy(BaseStrategy):
         else:
             reversal_pattern = False
 
-        if near_lower_band and below_middle and reversal_pattern:
+        # Breakout volume confirmation, restored per issue #282. NOTE: the
+        # pre-2025-08 code read `metadata.get("volume_ratio", 0) > 1.5`, but
+        # `volume_ratio` was never populated by
+        # `SignalEngine._calculate_indicators` in any commit (verified via
+        # `git log --all -p -- ta_bot/core/signal_engine.py | grep
+        # volume_ratio`) -- that gate was dead code that always evaluated to
+        # False. Computed directly here instead, same pattern already used
+        # by `range_break_pop`.
+        avg_volume = df["volume"].iloc[-11:-1].mean()
+        volume_ratio = volume / avg_volume if avg_volume > 0 else 0.0
+        volume_ok = volume_ratio > 1.5
+
+        if (
+            near_lower_band
+            and below_middle
+            and reversal_pattern
+            and rsi_oversold
+            and volume_ok
+        ):
             # Calculate stop loss and take profit (mean reversion strategy)
             # Stop loss below lower band
             stop_loss = current_bb_lower * 0.98  # 2% below lower band
@@ -96,6 +139,8 @@ class BandFadeReversalStrategy(BaseStrategy):
                     "bb_lower": current_bb_lower,
                     "bb_middle": current_bb_middle,
                     "bb_upper": current_bb_upper,
+                    "rsi": current_rsi,
+                    "volume_ratio": volume_ratio,
                     "distance_from_lower": (close - current_bb_lower)
                     / current_bb_lower,
                     "stop_loss": stop_loss,

@@ -126,7 +126,16 @@ class Config:
     )
 
     # Confidence thresholds
-    min_confidence: float = 0.6
+    # 0.6 never rejected a signal: every strategy's emitted confidence sits
+    # >= 0.6 (issue #282 evidence). Raised to 0.70 based on the measured
+    # post-restore confidence distribution across all 28 strategy modules
+    # (`python -m backtest` over the recorded fixture window, see PR
+    # description table): 0.70 fully rejects the two lowest-confidence
+    # emitters (`inside_bar_sell`, max observed 0.601; `ema_slope_reversal_sell`,
+    # max observed 0.682) while leaving every other strategy's typical
+    # confidence range intact (e.g. `golden_trend_sync` emits exactly 0.700,
+    # which still clears the `>=` comparison in `SignalEngine.analyze_candles`).
+    min_confidence: float = 0.70
     max_confidence: float = 0.95
 
     # Risk management

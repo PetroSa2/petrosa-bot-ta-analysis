@@ -81,6 +81,40 @@ class TestBandFadeReversalStrategy:
         signal = strategy.analyze(sample_data, metadata)
         assert signal is None
 
+    def test_gate_rejects_signal_missing_rsi_and_volume_confirmation(self):
+        """Issue #282: restored production gates reject a candle series that
+        `main` at HEAD accepts. Before this fix, `analyze()` only checked
+        `near_lower_band`, `below_middle`, and `reversal_pattern` -- RSI and
+        volume confirmation were never read. This series satisfies all three
+        of those (loosened) conditions but fails RSI-oversold (rsi=51, not
+        <= 30) and volume confirmation (flat volume, ratio ~1.0, not > 1.5),
+        both restored here as hard gates."""
+        strategy = BandFadeReversalStrategy()
+        n = 20
+        closes = [100] * 15 + [99, 98, 97, 90, 91]
+        highs = [c + 2 for c in closes]
+        lows = [c - 2 for c in closes]
+        volumes = [1000] * n
+        df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": volumes,
+            }
+        )
+        indicators = {
+            "bb_lower": pd.Series([91] * n),
+            "bb_middle": pd.Series([100] * n),
+            "bb_upper": pd.Series([110] * n),
+            "rsi": pd.Series([50] * 15 + [55, 54, 53, 52, 51]),
+        }
+        metadata = {"symbol": "BTCUSDT", "timeframe": "15m", **indicators}
+
+        signal = strategy.analyze(df, metadata)
+        assert signal is None
+
     def test_analyze_no_reversal_pattern(self, sample_data):
         """Test strategy when no reversal pattern is detected."""
         strategy = BandFadeReversalStrategy()

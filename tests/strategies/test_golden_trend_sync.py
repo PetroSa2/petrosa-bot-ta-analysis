@@ -107,3 +107,40 @@ class TestGoldenTrendSyncStrategy:
 
         signal = strategy.analyze(df, metadata)
         assert signal is None
+
+    def test_gate_rejects_candle_not_above_midpoint(self):
+        """Issue #282: `main` at HEAD defines the bullish-candle confirmation
+        as `close > open`, which nearly every up-drifting candle satisfies.
+        This series has `close > open` on the last candle (so `main`
+        accepts) but `close` sits *below* the candle midpoint
+        `(high + low) / 2` -- the restored, documented gate -- so the fix
+        must reject it."""
+        strategy = GoldenTrendSyncStrategy()
+        n = 55
+        closes = [100 + i * 0.1 for i in range(n)]
+        opens = [c - 0.5 for c in closes]  # close > open on every candle
+        # high/low both set above close so the midpoint sits above close
+        # (close > open is still true, but close < midpoint)
+        highs = [c + 1 for c in closes]
+        lows = [c + 1 for c in closes]
+        volumes = [1000] * n
+        df = pd.DataFrame(
+            {
+                "open": opens,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": volumes,
+            }
+        )
+        current_ema21 = closes[-1] * 1.005
+        current_ema50 = closes[-1] * 0.98
+        metadata = {
+            "symbol": "BTCUSDT",
+            "timeframe": "15m",
+            "ema21": pd.Series([current_ema21] * n),
+            "ema50": pd.Series([current_ema50] * n),
+        }
+
+        signal = strategy.analyze(df, metadata)
+        assert signal is None
