@@ -178,8 +178,15 @@ STRATEGY_DEFAULTS: dict[str, dict[str, Any]] = {
         "base_confidence": 0.70,
     },
     "golden_trend_sync": {
-        "ema_fast": 50,
-        "ema_slow": 200,
+        # Corrected per issue #282 Design Decision 4: code wins over
+        # defaults.py. The implemented strategy (`golden_trend_sync.py`)
+        # uses `ema21`/`ema50` -- these were 50/200 here, matching nothing
+        # the code reads (the config-plane binding this would feed is
+        # itself unwired; tracked separately, blocked by #271). Do not
+        # change the EMA periods the code uses, only the value declared
+        # here.
+        "ema_fast": 21,
+        "ema_slow": 50,
         "min_data_points": 210,
         "base_confidence": 0.78,
         "volume_confirmation_multiplier": 1.3,

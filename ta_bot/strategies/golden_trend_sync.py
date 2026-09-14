@@ -34,12 +34,16 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         # Get current values using base strategy methods
         current_values = self._get_current_values(indicators, df)
 
-        # Check if we have all required indicators
-        required_indicators = ["ema21", "ema50", "close", "open"]
+        # Check if we have all required indicators. `high`/`low` are
+        # required again (replacing `open`) per issue #282 -- the bullish
+        # candle gate is restored to the midpoint definition.
+        required_indicators = ["ema21", "ema50", "close", "high", "low"]
         if not all(indicator in current_values for indicator in required_indicators):
             return None
 
         close = current_values["close"]
+        high = current_values["high"]
+        low = current_values["low"]
         current_ema21 = current_values["ema21"]
         current_ema50 = current_values["ema50"]
 
@@ -50,8 +54,10 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         pullback_distance = abs(close - current_ema21) / current_ema21
         pullback_to_ema21 = pullback_distance <= 0.02  # Within 2%
 
-        # Check for bullish candle (close > open)
-        bullish_candle = close > current_values["open"]
+        # Check for bullish candle: close above the candle midpoint.
+        # Restored per issue #282 (was loosened to `close > open`, which
+        # accepts far more candles than the documented midpoint check).
+        bullish_candle = close > (high + low) / 2
 
         if golden_cross and pullback_to_ema21 and bullish_candle:
             # Calculate stop loss and take profit

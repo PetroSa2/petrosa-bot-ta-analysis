@@ -1185,7 +1185,7 @@ async def validate_config(request: ConfigValidationRequest):
         "enabled_strategies": ["momentum_pulse", "rsi_extreme_reversal"],
         "symbols": ["BTCUSDT", "ETHUSDT"],
         "candle_periods": ["5m", "15m"],
-        "min_confidence": 0.6,
+        "min_confidence": 0.70,
         "max_confidence": 0.95,
         "max_positions": 10,
         "position_sizes": [100, 200, 500, 1000],
@@ -1210,7 +1210,7 @@ async def get_application_config():
             enabled_strategies=config.get("enabled_strategies", []),
             symbols=config.get("symbols", []),
             candle_periods=config.get("candle_periods", []),
-            min_confidence=config.get("min_confidence", 0.6),
+            min_confidence=config.get("min_confidence", 0.70),
             max_confidence=config.get("max_confidence", 0.95),
             max_positions=config.get("max_positions", 10),
             position_sizes=config.get("position_sizes", [100, 200, 500, 1000]),
@@ -1263,7 +1263,7 @@ async def get_application_config():
       "enabled_strategies": ["momentum_pulse", "rsi_extreme_reversal"],
       "symbols": ["BTCUSDT", "ETHUSDT"],
       "candle_periods": ["5m", "15m"],
-      "min_confidence": 0.6,
+      "min_confidence": 0.70,
       "max_confidence": 0.9,
       "max_positions": 5,
       "position_sizes": [100, 200, 500],
@@ -1308,7 +1308,9 @@ async def update_application_config(request: AppConfigUpdateRequest):
         if request.min_confidence is not None:
             updated_config["min_confidence"] = request.min_confidence
         else:
-            updated_config["min_confidence"] = current_config.get("min_confidence", 0.6)
+            updated_config["min_confidence"] = current_config.get(
+                "min_confidence", 0.70
+            )
 
         if request.max_confidence is not None:
             updated_config["max_confidence"] = request.max_confidence
@@ -1496,11 +1498,11 @@ async def restore_application_config(request: RollbackRequest):
           "action": "UPDATE",
           "old_config": {
             "enabled_strategies": ["momentum_pulse"],
-            "min_confidence": 0.7
+            "min_confidence": 0.75
           },
           "new_config": {
             "enabled_strategies": ["momentum_pulse", "rsi_extreme_reversal"],
-            "min_confidence": 0.6
+            "min_confidence": 0.70
           },
           "changed_by": "llm_agent_v1",
           "changed_at": "2025-10-21T14:45:00Z",
