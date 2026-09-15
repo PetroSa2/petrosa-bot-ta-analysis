@@ -73,6 +73,7 @@ async def test_main_startup_wiring():
             patch("ta_bot.main.setup_signal_handlers") as mock_sig,
             patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
             patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+            patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
             patch("ta_bot.main.SignalPublisher") as mock_pub_cls,
             patch("ta_bot.main.NATSListener") as mock_nats_cls,
             patch("ta_bot.main.start_health_server") as mock_health_fn,
@@ -95,6 +96,14 @@ async def test_main_startup_wiring():
                 return_value={"version": 1, "symbols": [], "candle_periods": []}
             )
             mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
+
+            # StrategyConfigManager: must not spawn a real background
+            # _cache_refresh_loop task here — this module patches
+            # ta_bot.main.asyncio.sleep (the shared asyncio module singleton),
+            # which would turn the real manager's refresh loop into a
+            # zero-delay busy spin (#271 test-hang regression).
+            mock_scm = mock_scm_cls.return_value
+            mock_scm.start = AsyncMock()
 
             # Publisher health
             mock_pub = mock_pub_cls.return_value
@@ -182,6 +191,7 @@ async def test_main_startup_no_runtime_config():
             patch("ta_bot.main.setup_signal_handlers"),
             patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
             patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+            patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
             patch("ta_bot.main.SignalPublisher"),
             patch("ta_bot.main.NATSListener") as mock_nats_cls,
             patch("ta_bot.main.start_health_server") as mock_health_fn,
@@ -201,6 +211,9 @@ async def test_main_startup_no_runtime_config():
             mock_acm.start = AsyncMock()
             mock_acm.get_config = AsyncMock(return_value={"version": 0})
             mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
+
+            # See test_main_startup_wiring for why this must be mocked.
+            mock_scm_cls.return_value.start = AsyncMock()
 
             mock_nats = mock_nats_cls.return_value
             mock_nats.start = AsyncMock(return_value=None)
@@ -230,6 +243,7 @@ async def test_main_startup_persist_config_failure():
         patch("ta_bot.main.setup_signal_handlers"),
         patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
         patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+        patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
         patch("ta_bot.main.SignalPublisher"),
         patch("ta_bot.main.NATSListener") as mock_nats_cls,
         patch("ta_bot.main.start_health_server") as mock_health_fn,
@@ -249,6 +263,9 @@ async def test_main_startup_persist_config_failure():
         mock_acm.start = AsyncMock()
         mock_acm.get_config = AsyncMock(return_value={"version": 0})
         mock_acm.set_config = AsyncMock(return_value=(False, "error", ["reason"]))
+
+        # See test_main_startup_wiring for why this must be mocked.
+        mock_scm_cls.return_value.start = AsyncMock()
 
         mock_nats = mock_nats_cls.return_value
         mock_nats.start = AsyncMock(return_value=None)
@@ -276,6 +293,7 @@ async def test_main_startup_nats_connection_failure():
         patch("ta_bot.main.setup_signal_handlers"),
         patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
         patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+        patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
         patch("ta_bot.main.SignalPublisher") as mock_pub_cls,
         patch("ta_bot.main.NATSListener") as mock_nats_cls,
         patch("ta_bot.main.start_health_server") as mock_health_fn,
@@ -294,6 +312,9 @@ async def test_main_startup_nats_connection_failure():
         mock_acm = mock_acm_cls.return_value
         mock_acm.start = AsyncMock()
         mock_acm.get_config = AsyncMock(return_value={"version": 1})
+
+        # See test_main_startup_wiring for why this must be mocked.
+        mock_scm_cls.return_value.start = AsyncMock()
 
         mock_pub = mock_pub_cls.return_value
         mock_pub.nats_client = None
