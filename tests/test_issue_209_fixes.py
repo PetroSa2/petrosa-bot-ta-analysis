@@ -147,38 +147,48 @@ class TestSafeSignalHandler:
 
 
 class TestDatetimeIndexMySQLClient:
-    """Verify mysql_client.fetch_candles returns a DatetimeIndex."""
+    """Verify mysql_client.fetch_candles returns a DatetimeIndex.
+
+    Per petrosa-bot-ta-analysis#284: MySQLClient is a pure Data Manager
+    gateway facade now (no raw-MySQL branch), so this exercises the facade's
+    delegation with a mocked `DataManagerClient.fetch_candles` return value.
+    """
 
     @pytest.mark.asyncio
     async def test_fetch_candles_returns_datetime_index(self):
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-        mock_conn.cursor.return_value.__exit__.return_value = None
-        mock_cursor.fetchall.return_value = [
-            {
-                "timestamp": "2025-10-24 00:00:00",
-                "open": 50000.0,
-                "high": 51000.0,
-                "low": 49000.0,
-                "close": 50500.0,
-                "volume": 100.5,
-            },
-            {
-                "timestamp": "2025-10-24 00:15:00",
-                "open": 50500.0,
-                "high": 51500.0,
-                "low": 50000.0,
-                "close": 51000.0,
-                "volume": 150.2,
-            },
-        ]
+        from ta_bot.services.mysql_client import MySQLClient
 
-        with patch("pymysql.connect", return_value=mock_conn):
-            from ta_bot.services.mysql_client import MySQLClient
+        mock_df = pd.DataFrame(
+            [
+                {
+                    "open": 50000.0,
+                    "high": 51000.0,
+                    "low": 49000.0,
+                    "close": 50500.0,
+                    "volume": 100.5,
+                },
+                {
+                    "open": 50500.0,
+                    "high": 51500.0,
+                    "low": 50000.0,
+                    "close": 51000.0,
+                    "volume": 150.2,
+                },
+            ],
+            index=pd.DatetimeIndex(
+                ["2025-10-24 00:00:00", "2025-10-24 00:15:00"], name="timestamp"
+            ),
+        )
 
-            client = MySQLClient(use_data_manager=False)
-            await client.connect()
+        with (
+            patch("ta_bot.services.mysql_client.DataManagerClient") as mock_dm,
+            patch("ta_bot.services.mysql_client.DATA_MANAGER_AVAILABLE", True),
+        ):
+            mock_dm_instance = AsyncMock()
+            mock_dm_instance.fetch_candles.return_value = mock_df
+            mock_dm.return_value = mock_dm_instance
+
+            client = MySQLClient()
             df = await client.fetch_candles("BTCUSDT", "15m", limit=2)
 
         assert isinstance(df.index, pd.DatetimeIndex), (
