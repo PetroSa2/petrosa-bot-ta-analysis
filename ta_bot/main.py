@@ -17,7 +17,7 @@ try:
         initialize_telemetry_standard,
         setup_signal_handlers,
     )
-except ImportError:
+except ImportError:  # pragma: no cover — petrosa_otel is always installed in CI/prod
     initialize_telemetry_standard = None
     attach_logging_handler = None
     setup_signal_handlers = None

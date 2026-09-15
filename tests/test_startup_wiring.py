@@ -118,6 +118,7 @@ async def test_main_startup_wiring():
             mock_nats = mock_nats_cls.return_value
             mock_nats.start = AsyncMock(return_value=None)
 
+            from ta_bot.api import config_routes
             from ta_bot.main import main
 
             # Run main
@@ -139,6 +140,80 @@ async def test_main_startup_wiring():
                 mock_pub_cls.call_args.kwargs["nats_publisher_topic"]
                 == "cio.intent.trading"
             )
+
+            # petrosa-bot-ta-analysis#271: StrategyConfigManager must actually be
+            # instantiated (with the general MongoDB client and a cache TTL),
+            # started, and registered with the API routes module — otherwise every
+            # /api/v1/config/* endpoint 503s forever with "not initialized".
+            mock_scm_cls.assert_called_once_with(
+                mongodb_client=mock_mongo, cache_ttl_seconds=60
+            )
+            mock_scm.start.assert_called_once()
+            assert config_routes.get_config_manager() is mock_scm
+
+
+@pytest.mark.asyncio
+async def test_main_registers_strategy_config_manager_with_routes():
+    """
+    Regression test for #271: previously ``StrategyConfigManager`` was never
+    instantiated/registered, so ``config_routes._config_manager`` stayed ``None``
+    and every ``/api/v1/config/*`` endpoint permanently 503'd. This test drives
+    the real ``main()`` startup path and asserts the module-level registration
+    actually happened, independent of the broader wiring assertions above.
+    """
+    reload_ta_bot_modules()
+    with patch.dict(os.environ, {"NATS_ENABLED": "False"}):
+        with (
+            patch("ta_bot.main.initialize_telemetry_standard"),
+            patch("ta_bot.main.attach_logging_handler"),
+            patch("ta_bot.main.setup_signal_handlers"),
+            patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
+            patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+            patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
+            patch("ta_bot.main.SignalPublisher"),
+            patch("ta_bot.main.NATSListener") as mock_nats_cls,
+            patch("ta_bot.main.start_health_server") as mock_health_fn,
+            patch("ta_bot.main.asyncio.gather", new_callable=AsyncMock),
+            patch("ta_bot.main.asyncio.sleep", new_callable=AsyncMock),
+            patch(
+                "ta_bot.services.data_manager_config_client.DataManagerConfigClient"
+            ) as mock_dm_cls,
+        ):
+            mock_mongo = mock_mongo_cls.return_value
+            mock_mongo.connect = AsyncMock(return_value=True)
+
+            mock_dm = mock_dm_cls.return_value
+            mock_dm.connect = AsyncMock(return_value=True)
+
+            mock_acm = mock_acm_cls.return_value
+            mock_acm.start = AsyncMock()
+            mock_acm.get_config = AsyncMock(return_value={"version": 0})
+            mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
+
+            mock_scm = mock_scm_cls.return_value
+            mock_scm.start = AsyncMock()
+
+            mock_nats = mock_nats_cls.return_value
+            mock_nats.start = AsyncMock(return_value=None)
+
+            mock_health_server = MagicMock()
+            mock_health_server.start = AsyncMock(return_value=None)
+            mock_health_fn.return_value = mock_health_server
+
+            from ta_bot.api import config_routes
+            from ta_bot.main import main
+
+            # Reset any registration left over from a previous test/run so this
+            # assertion can't pass on stale module state.
+            config_routes.set_config_manager(None)  # type: ignore[arg-type]
+
+            await main()
+
+            mock_scm_cls.assert_called_once_with(
+                mongodb_client=mock_mongo, cache_ttl_seconds=60
+            )
+            mock_scm.start.assert_awaited_once()
+            assert config_routes.get_config_manager() is mock_scm
 
 
 @pytest.mark.asyncio
