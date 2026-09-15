@@ -1,5 +1,6 @@
 import asyncio
 import os
+import signal as _signal
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -73,11 +74,13 @@ async def test_main_startup_wiring():
             patch("ta_bot.main.setup_signal_handlers") as mock_sig,
             patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
             patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+            patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
             patch("ta_bot.main.SignalPublisher") as mock_pub_cls,
             patch("ta_bot.main.NATSListener") as mock_nats_cls,
             patch("ta_bot.main.start_health_server") as mock_health_fn,
             patch("ta_bot.main.asyncio.gather", new_callable=AsyncMock) as mock_gather,
             patch("ta_bot.main.asyncio.sleep", new_callable=AsyncMock),
+            patch("ta_bot.main._signal.signal") as mock_signal_register,
             patch(
                 "ta_bot.services.data_manager_config_client.DataManagerConfigClient"
             ) as mock_dm_cls,
@@ -96,6 +99,14 @@ async def test_main_startup_wiring():
             )
             mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
 
+            # StrategyConfigManager: must not spawn a real background
+            # _cache_refresh_loop task here — this module patches
+            # ta_bot.main.asyncio.sleep (the shared asyncio module singleton),
+            # which would turn the real manager's refresh loop into a
+            # zero-delay busy spin (#271 test-hang regression).
+            mock_scm = mock_scm_cls.return_value
+            mock_scm.start = AsyncMock()
+
             # Publisher health
             mock_pub = mock_pub_cls.return_value
             mock_pub.nats_client = MagicMock()
@@ -109,6 +120,7 @@ async def test_main_startup_wiring():
             mock_nats = mock_nats_cls.return_value
             mock_nats.start = AsyncMock(return_value=None)
 
+            from ta_bot.api import config_routes
             from ta_bot.main import main
 
             # Run main
@@ -130,6 +142,174 @@ async def test_main_startup_wiring():
                 mock_pub_cls.call_args.kwargs["nats_publisher_topic"]
                 == "cio.intent.trading"
             )
+
+            # Python 3.11-safe SIGTERM/SIGINT handler override: registered for
+            # both signals, and raises SystemExit(0) on delivery instead of
+            # crashing (petrosa_otel v1.0.4's TypeError on int signum).
+            assert mock_signal_register.call_count == 2
+            registered_signums = {
+                c.args[0] for c in mock_signal_register.call_args_list
+            }
+            assert registered_signums == {_signal.SIGTERM, _signal.SIGINT}
+            safe_handler = mock_signal_register.call_args_list[0].args[1]
+            with pytest.raises(SystemExit) as exc_info:
+                safe_handler(_signal.SIGTERM, None)
+            assert exc_info.value.code == 0
+            # Unknown/int-only signum still resolves to a name via str() fallback.
+            with pytest.raises(SystemExit):
+                safe_handler(99999, None)
+
+            # petrosa-bot-ta-analysis#271: StrategyConfigManager must actually be
+            # instantiated (with the general MongoDB client and a cache TTL),
+            # started, and registered with the API routes module — otherwise every
+            # /api/v1/config/* endpoint 503s forever with "not initialized".
+            mock_scm_cls.assert_called_once_with(
+                mongodb_client=mock_mongo, cache_ttl_seconds=60
+            )
+            mock_scm.start.assert_called_once()
+            assert config_routes.get_config_manager() is mock_scm
+
+
+@pytest.mark.asyncio
+async def test_main_registers_strategy_config_manager_with_routes():
+    """
+    Regression test for #271: previously ``StrategyConfigManager`` was never
+    instantiated/registered, so ``config_routes._config_manager`` stayed ``None``
+    and every ``/api/v1/config/*`` endpoint permanently 503'd. This test drives
+    the real ``main()`` startup path and asserts the module-level registration
+    actually happened, independent of the broader wiring assertions above.
+    """
+    reload_ta_bot_modules()
+    with patch.dict(os.environ, {"NATS_ENABLED": "False"}):
+        with (
+            patch("ta_bot.main.initialize_telemetry_standard"),
+            patch("ta_bot.main.attach_logging_handler"),
+            patch("ta_bot.main.setup_signal_handlers"),
+            patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
+            patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+            patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
+            patch("ta_bot.main.SignalPublisher"),
+            patch("ta_bot.main.NATSListener") as mock_nats_cls,
+            patch("ta_bot.main.start_health_server") as mock_health_fn,
+            patch("ta_bot.main.asyncio.gather", new_callable=AsyncMock),
+            patch("ta_bot.main.asyncio.sleep", new_callable=AsyncMock),
+            patch(
+                "ta_bot.services.data_manager_config_client.DataManagerConfigClient"
+            ) as mock_dm_cls,
+        ):
+            mock_mongo = mock_mongo_cls.return_value
+            mock_mongo.connect = AsyncMock(return_value=True)
+
+            mock_dm = mock_dm_cls.return_value
+            mock_dm.connect = AsyncMock(return_value=True)
+
+            mock_acm = mock_acm_cls.return_value
+            mock_acm.start = AsyncMock()
+            mock_acm.get_config = AsyncMock(return_value={"version": 0})
+            mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
+
+            mock_scm = mock_scm_cls.return_value
+            mock_scm.start = AsyncMock()
+
+            mock_nats = mock_nats_cls.return_value
+            mock_nats.start = AsyncMock(return_value=None)
+
+            mock_health_server = MagicMock()
+            mock_health_server.start = AsyncMock(return_value=None)
+            mock_health_fn.return_value = mock_health_server
+
+            from ta_bot.api import config_routes
+            from ta_bot.main import main
+
+            # Reset any registration left over from a previous test/run so this
+            # assertion can't pass on stale module state.
+            config_routes.set_config_manager(None)  # type: ignore[arg-type]
+
+            await main()
+
+            mock_scm_cls.assert_called_once_with(
+                mongodb_client=mock_mongo, cache_ttl_seconds=60
+            )
+            mock_scm.start.assert_awaited_once()
+            assert config_routes.get_config_manager() is mock_scm
+
+
+@pytest.mark.asyncio
+async def test_main_starts_and_stops_health_evaluator_when_available():
+    """
+    When ``ta_bot.evaluators`` can build a health evaluator (petrosa_otel's
+    evaluators framework is present), ``main()`` must start it after the NATS
+    connection is verified and stop it once the health task returns. This
+    covers the success branch that the ``_mock_petrosa_otel`` autouse fixture
+    otherwise always forces down the ``except ImportError`` path.
+    """
+    reload_ta_bot_modules()
+    mock_evaluator = MagicMock()
+    mock_evaluator.start = AsyncMock()
+    mock_evaluator.stop = AsyncMock()
+    mock_build_evaluator = MagicMock(return_value=mock_evaluator)
+
+    # The autouse fixture deletes any ``ta_bot.evaluators*`` modules from
+    # sys.modules before each test, so the real package (which imports
+    # petrosa_otel.evaluators at module scope) would otherwise be
+    # re-imported and fail. Inject a fake module directly so
+    # ``from ta_bot.evaluators import build_bot_ta_analysis_health_evaluator``
+    # resolves to our stub instead of touching the real (mocked-away)
+    # petrosa_otel package.
+    fake_evaluators_module = MagicMock()
+    fake_evaluators_module.build_bot_ta_analysis_health_evaluator = mock_build_evaluator
+    sys.modules["ta_bot.evaluators"] = fake_evaluators_module
+
+    with patch.dict(os.environ, {"NATS_ENABLED": "True"}):
+        with (
+            patch("ta_bot.main.initialize_telemetry_standard"),
+            patch("ta_bot.main.attach_logging_handler"),
+            patch("ta_bot.main.setup_signal_handlers"),
+            patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
+            patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+            patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
+            patch("ta_bot.main.SignalPublisher") as mock_pub_cls,
+            patch("ta_bot.main.NATSListener") as mock_nats_cls,
+            patch("ta_bot.main.start_health_server") as mock_health_fn,
+            patch("ta_bot.main.asyncio.sleep", new_callable=AsyncMock),
+            patch(
+                "ta_bot.services.data_manager_config_client.DataManagerConfigClient"
+            ) as mock_dm_cls,
+        ):
+            mock_mongo = mock_mongo_cls.return_value
+            mock_mongo.connect = AsyncMock(return_value=True)
+
+            mock_dm = mock_dm_cls.return_value
+            mock_dm.connect = AsyncMock(return_value=True)
+
+            mock_acm = mock_acm_cls.return_value
+            mock_acm.start = AsyncMock()
+            mock_acm.get_config = AsyncMock(return_value={"version": 0})
+            mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
+
+            mock_scm = mock_scm_cls.return_value
+            mock_scm.start = AsyncMock()
+
+            mock_pub = mock_pub_cls.return_value
+            mock_pub.nats_client = MagicMock()
+
+            mock_nats = mock_nats_cls.return_value
+            mock_nats.start = AsyncMock(return_value=None)
+
+            mock_health_server = MagicMock()
+            mock_health_server.start = AsyncMock(return_value=None)
+            mock_health_fn.return_value = mock_health_server
+
+            from ta_bot.main import main
+
+            try:
+                await main()
+            finally:
+                del sys.modules["ta_bot.evaluators"]
+
+            mock_build_evaluator.assert_called_once_with(mock_nats)
+            mock_evaluator.start.assert_awaited_once()
+            mock_evaluator.stop.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -182,6 +362,7 @@ async def test_main_startup_no_runtime_config():
             patch("ta_bot.main.setup_signal_handlers"),
             patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
             patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+            patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
             patch("ta_bot.main.SignalPublisher"),
             patch("ta_bot.main.NATSListener") as mock_nats_cls,
             patch("ta_bot.main.start_health_server") as mock_health_fn,
@@ -201,6 +382,9 @@ async def test_main_startup_no_runtime_config():
             mock_acm.start = AsyncMock()
             mock_acm.get_config = AsyncMock(return_value={"version": 0})
             mock_acm.set_config = AsyncMock(return_value=(True, "ok", []))
+
+            # See test_main_startup_wiring for why this must be mocked.
+            mock_scm_cls.return_value.start = AsyncMock()
 
             mock_nats = mock_nats_cls.return_value
             mock_nats.start = AsyncMock(return_value=None)
@@ -230,6 +414,7 @@ async def test_main_startup_persist_config_failure():
         patch("ta_bot.main.setup_signal_handlers"),
         patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
         patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+        patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
         patch("ta_bot.main.SignalPublisher"),
         patch("ta_bot.main.NATSListener") as mock_nats_cls,
         patch("ta_bot.main.start_health_server") as mock_health_fn,
@@ -249,6 +434,9 @@ async def test_main_startup_persist_config_failure():
         mock_acm.start = AsyncMock()
         mock_acm.get_config = AsyncMock(return_value={"version": 0})
         mock_acm.set_config = AsyncMock(return_value=(False, "error", ["reason"]))
+
+        # See test_main_startup_wiring for why this must be mocked.
+        mock_scm_cls.return_value.start = AsyncMock()
 
         mock_nats = mock_nats_cls.return_value
         mock_nats.start = AsyncMock(return_value=None)
@@ -276,6 +464,7 @@ async def test_main_startup_nats_connection_failure():
         patch("ta_bot.main.setup_signal_handlers"),
         patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
         patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+        patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
         patch("ta_bot.main.SignalPublisher") as mock_pub_cls,
         patch("ta_bot.main.NATSListener") as mock_nats_cls,
         patch("ta_bot.main.start_health_server") as mock_health_fn,
@@ -294,6 +483,9 @@ async def test_main_startup_nats_connection_failure():
         mock_acm = mock_acm_cls.return_value
         mock_acm.start = AsyncMock()
         mock_acm.get_config = AsyncMock(return_value={"version": 1})
+
+        # See test_main_startup_wiring for why this must be mocked.
+        mock_scm_cls.return_value.start = AsyncMock()
 
         mock_pub = mock_pub_cls.return_value
         mock_pub.nats_client = None

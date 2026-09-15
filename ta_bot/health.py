@@ -226,12 +226,6 @@ async def root():
     )
 
 
-def set_config_manager(manager) -> None:
-    """Set the global strategy config manager instance."""
-    # This might be needed if health.py manages its own router
-    pass
-
-
 def set_rate_limiter(limiter) -> None:
     """Set the global rate limiter instance."""
     app.state.rate_limiter = limiter
