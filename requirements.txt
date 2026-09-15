@@ -6,7 +6,15 @@ fastapi>=0.110.0
 # ta-lib>=0.4.0  # Commented out - requires system dependencies
 # Using xgboosted/pandas-ta-classic fork (pandas 2.x compatible, 200+ indicators)
 # Original repo (twopirllc/pandas-ta) no longer exists
-git+https://github.com/xgboosted/pandas-ta-classic.git
+# Pinned to a specific commit (petrosa_k8s#1052 epic / #274): an unpinned
+# `git+https://...` ref floats to whatever the fork's HEAD is at install
+# time, which is exactly what turned main red — a later commit changed
+# insufficient-data behavior (empty/None result -> all-NaN DataFrame of the
+# expected shape), and ta_bot/core/indicators.py's insufficient-data check
+# was written for the old shape. Pinning removes that non-determinism; the
+# code was additionally hardened to treat all-NaN as insufficient data too,
+# so this is defense-in-depth rather than the only fix.
+git+https://github.com/xgboosted/pandas-ta-classic.git@9e92da34441f58c248f2d0e1df77a0df7969b56e
 
 # Health checks
 healthcheck>=1.3.0
