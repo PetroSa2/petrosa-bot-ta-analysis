@@ -92,7 +92,21 @@ class Indicators:
             adx_result = df.ta.adx(
                 high=df["high"], low=df["low"], close=df["close"], length=period
             )
-            if adx_result is None or adx_result.empty:
+            # pandas_ta_classic (unpinned git dependency, requirements.txt#9)
+            # changed behavior at some point: instead of returning None/empty
+            # when there are fewer rows than `period` requires, it now returns
+            # a DataFrame of the right shape filled entirely with NaN (see
+            # petrosa-bot-ta-analysis#274 / petrosa_k8s#1052 epic — CI red on main
+            # ec2a6235 for exactly this reason). Treat an all-NaN result the
+            # same as a missing/empty one so "insufficient data" is reported
+            # consistently regardless of which pandas_ta_classic revision is
+            # installed.
+            if (
+                adx_result is None
+                or adx_result.empty
+                or "ADX_14" not in adx_result
+                or adx_result["ADX_14"].isna().all()
+            ):
                 span.set_attribute("result", "insufficient_data")
                 return pd.Series(dtype=float)
 
