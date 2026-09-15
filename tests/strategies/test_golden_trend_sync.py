@@ -144,3 +144,52 @@ class TestGoldenTrendSyncStrategy:
 
         signal = strategy.analyze(df, metadata)
         assert signal is None
+
+    def test_config_override_changes_signal_outcome(self):
+        """Issue #283 AC5: overriding `min_data_points` produces a signal
+        under the default (50, satisfied by this 55-row series) and no
+        signal under a stricter override (56), for the exact same candle
+        series -- a genuine golden-cross + pullback-to-ema21 + bullish-candle
+        setup."""
+        strategy = GoldenTrendSyncStrategy()
+        n = 55
+        closes = [100 + i * 0.1 for i in range(n)]
+        opens = [c - 0.5 for c in closes]
+        highs = [c + 0.2 for c in closes]
+        lows = [c - 1.2 for c in closes]  # midpoint = c - 0.5 < close
+        volumes = [1000] * n
+        df = pd.DataFrame(
+            {
+                "open": opens,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": volumes,
+            }
+        )
+        current_ema21 = closes[-1] * 1.005
+        current_ema50 = closes[-1] * 0.98
+        indicators = {
+            "ema21": pd.Series([current_ema21] * n),
+            "ema50": pd.Series([current_ema50] * n),
+        }
+
+        baseline_metadata = {"symbol": "BTCUSDT", "timeframe": "15m", **indicators}
+        baseline_signal = strategy.analyze(df, baseline_metadata)
+
+        override_metadata = {
+            "symbol": "BTCUSDT",
+            "timeframe": "15m",
+            **indicators,
+            "config": {
+                "parameters": {"min_data_points": 56},
+                "version": 2,
+                "source": "mongodb",
+                "is_override": True,
+            },
+        }
+        override_signal = strategy.analyze(df, override_metadata)
+
+        assert baseline_signal is not None
+        assert baseline_signal.confidence == 0.70
+        assert override_signal is None

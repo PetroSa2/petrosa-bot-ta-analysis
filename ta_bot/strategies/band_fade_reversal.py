@@ -35,12 +35,31 @@ class BandFadeReversalStrategy(BaseStrategy):
 
     def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """Analyze candles for Band Fade Reversal signals."""
-        if len(df) < 20:
+        # Get configuration (pre-loaded or use defaults). #283: resolution
+        # order (see SignalEngine._resolve_strategy_config) is symbol
+        # override -> global override -> defaults.py -> these hardcoded
+        # literals, which are kept identical to defaults.py's values so a
+        # missing/failed resolution never changes behavior.
+        config = self._get_config(metadata)
+        if config:
+            params = config.get("parameters", {})
+            min_data_points = params.get("min_data_points", 20)
+            rsi_oversold_threshold = params.get("rsi_oversold", 30)
+            base_confidence = params.get("base_confidence", 0.72)
+        else:
+            # Backward compatibility: use hardcoded defaults
+            min_data_points = 20
+            rsi_oversold_threshold = 30
+            base_confidence = 0.72
+
+        if len(df) < min_data_points:
             return None
 
         # Extract indicators from metadata (now passed directly)
         indicators = {
-            k: v for k, v in metadata.items() if k not in ["symbol", "timeframe"]
+            k: v
+            for k, v in metadata.items()
+            if k not in ["symbol", "timeframe", "config"]
         }
         symbol = metadata.get("symbol", "UNKNOWN")
         timeframe = metadata.get("timeframe", "15m")
@@ -83,8 +102,8 @@ class BandFadeReversalStrategy(BaseStrategy):
         # Check if price is below the middle band
         below_middle = close < current_bb_middle
 
-        # RSI oversold confirmation (defaults.py rsi_oversold: 30)
-        rsi_oversold = current_rsi <= 30
+        # RSI oversold confirmation (defaults.py rsi_oversold, #283)
+        rsi_oversold = current_rsi <= rsi_oversold_threshold
 
         # Check for reversal pattern (price was lower but now moving up)
         if len(df) >= 3:
@@ -124,12 +143,12 @@ class BandFadeReversalStrategy(BaseStrategy):
             # Take profit at middle band (mean reversion target)
             take_profit = current_bb_middle
 
-            # Create and return Signal object
-            return Signal(
+            # Create Signal object
+            signal = Signal(
                 strategy_id="band_fade_reversal",
                 symbol=symbol,
                 action="buy",
-                confidence=0.72,  # Base confidence for band fade reversal
+                confidence=base_confidence,  # Base confidence for band fade reversal
                 current_price=close,
                 price=close,
                 timeframe=timeframe,
@@ -148,5 +167,8 @@ class BandFadeReversalStrategy(BaseStrategy):
                     "target": "middle_band",
                 },
             )
+
+            # Add configuration metadata to signal for position tracking
+            return self._add_config_to_signal(signal, config)
 
         return None

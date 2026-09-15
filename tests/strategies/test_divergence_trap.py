@@ -137,3 +137,53 @@ class TestDivergenceTrapStrategy:
 
         signal = strategy.analyze(df, metadata)
         assert signal is None
+
+    def test_config_override_changes_signal_outcome(self):
+        """Issue #283 AC5: overriding `min_data_points` produces a signal
+        under the default (30, matching this 30-row series exactly) and no
+        signal under a stricter override (31), for the exact same candle
+        series -- a genuine hidden bullish divergence: price makes a lower
+        low (90 -> 85 in the `low` column) while RSI makes a higher low
+        (20 -> 30), with the final candle oversold (rsi=22) and reversing
+        (close > prev_close)."""
+        strategy = DivergenceTrapStrategy()
+        n = 30
+        low_tail = [100, 98, 90, 98, 100, 100, 98, 85, 98, 99]
+        close_tail = [v + 1 for v in low_tail]
+        high_tail = [v + 3 for v in low_tail]
+        lows = [99] * (n - 10) + low_tail
+        closes = [100] * (n - 10) + close_tail
+        highs = [103] * (n - 10) + high_tail
+        volumes = [1000] * n
+        df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": volumes,
+            }
+        )
+        rsi_tail = [50, 45, 20, 45, 50, 50, 45, 30, 45, 22]
+        rsi_vals = [50] * (n - 10) + rsi_tail
+        indicators = {"rsi": pd.Series(rsi_vals)}
+
+        baseline_metadata = {"symbol": "BTCUSDT", "timeframe": "15m", **indicators}
+        baseline_signal = strategy.analyze(df, baseline_metadata)
+
+        override_metadata = {
+            "symbol": "BTCUSDT",
+            "timeframe": "15m",
+            **indicators,
+            "config": {
+                "parameters": {"min_data_points": 31},
+                "version": 2,
+                "source": "mongodb",
+                "is_override": True,
+            },
+        }
+        override_signal = strategy.analyze(df, override_metadata)
+
+        assert baseline_signal is not None
+        assert baseline_signal.confidence == 0.66
+        assert override_signal is None

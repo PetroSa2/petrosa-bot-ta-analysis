@@ -21,12 +21,29 @@ class GoldenTrendSyncStrategy(BaseStrategy):
 
     def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """Analyze candles for Golden Trend Sync signals."""
-        if len(df) < 50:
+        # Get configuration (pre-loaded or use defaults). #283: resolution
+        # order (see SignalEngine._resolve_strategy_config) is symbol
+        # override -> global override -> defaults.py -> these hardcoded
+        # literals, which are kept identical to defaults.py's values so a
+        # missing/failed resolution never changes behavior.
+        config = self._get_config(metadata)
+        if config:
+            params = config.get("parameters", {})
+            min_data_points = params.get("min_data_points", 50)
+            base_confidence = params.get("base_confidence", 0.70)
+        else:
+            # Backward compatibility: use hardcoded defaults
+            min_data_points = 50
+            base_confidence = 0.70
+
+        if len(df) < min_data_points:
             return None
 
         # Extract indicators from metadata (now passed directly)
         indicators = {
-            k: v for k, v in metadata.items() if k not in ["symbol", "timeframe"]
+            k: v
+            for k, v in metadata.items()
+            if k not in ["symbol", "timeframe", "config"]
         }
         symbol = metadata.get("symbol", "UNKNOWN")
         timeframe = metadata.get("timeframe", "15m")
@@ -67,12 +84,12 @@ class GoldenTrendSyncStrategy(BaseStrategy):
             risk = abs(close - stop_loss)
             take_profit = close + (risk * 2.0)
 
-            # Create and return Signal object
-            return Signal(
+            # Create Signal object
+            signal = Signal(
                 strategy_id="golden_trend_sync",
                 symbol=symbol,
                 action="buy",
-                confidence=0.70,  # Base confidence for golden trend sync
+                confidence=base_confidence,  # Base confidence for golden trend sync
                 current_price=close,
                 price=close,
                 timeframe=timeframe,
@@ -87,6 +104,9 @@ class GoldenTrendSyncStrategy(BaseStrategy):
                     "risk_reward_ratio": 2.0,
                 },
             )
+
+            # Add configuration metadata to signal for position tracking
+            return self._add_config_to_signal(signal, config)
 
         return None
 

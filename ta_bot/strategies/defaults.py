@@ -169,41 +169,91 @@ STRATEGY_DEFAULTS: dict[str, dict[str, Any]] = {
         "base_confidence": 0.72,
     },
     "band_fade_reversal": {
+        # bb_period / bb_std: NOT independently configurable -- Bollinger
+        # Bands (bb_lower/bb_middle/bb_upper) are computed once, centrally,
+        # for ALL strategies by `SignalEngine._calculate_indicators()`, same
+        # situation as golden_trend_sync's ema_fast/ema_slow above (#283).
         "bb_period": 20,
         "bb_std": 2.0,
         "rsi_period": 14,
+        # rsi_oversold: matches the restored `current_rsi <= 30` gate (#282).
         "rsi_oversold": 30,
+        # rsi_overbought: NOT read -- per issue #282 Design Decision 2 this
+        # strategy is BUY-only (lower-band/oversold framing); an overbought
+        # threshold has no corresponding SELL path to gate. Declared-but-N/A.
         "rsi_overbought": 70,
-        "min_data_points": 25,
-        "base_confidence": 0.70,
+        # min_data_points: corrected per #283 -- code requires len(df) >= 20,
+        # not 25.
+        "min_data_points": 20,
+        # base_confidence: corrected per #283 -- restored production value
+        # from #282; this file had drifted to 0.70, never the code's 0.72.
+        "base_confidence": 0.72,
     },
     "golden_trend_sync": {
         # Corrected per issue #282 Design Decision 4: code wins over
         # defaults.py. The implemented strategy (`golden_trend_sync.py`)
         # uses `ema21`/`ema50` -- these were 50/200 here, matching nothing
-        # the code reads (the config-plane binding this would feed is
-        # itself unwired; tracked separately, blocked by #271). Do not
-        # change the EMA periods the code uses, only the value declared
-        # here.
+        # the code reads. The config-plane binding is no longer unwired
+        # (#283 delivered it), but ema_fast/ema_slow remain declared-only:
+        # `ema21`/`ema50` are computed once, centrally, for ALL strategies
+        # by `SignalEngine._calculate_indicators()` with fixed periods --
+        # making them per-strategy-configurable would mean restructuring
+        # shared indicator computation, out of #283's scope ("this ticket
+        # only changes how values are delivered", not indicator plumbing).
         "ema_fast": 21,
         "ema_slow": 50,
-        "min_data_points": 210,
-        "base_confidence": 0.78,
+        # min_data_points: corrected per #283 -- code requires len(df) >= 50,
+        # not 210 (ema200/vwap aren't read by this strategy at all).
+        "min_data_points": 50,
+        # base_confidence: corrected per #283 -- restored production value
+        # from #282; this file had drifted to 0.78, never the code's 0.70.
+        "base_confidence": 0.70,
+        # volume_confirmation_multiplier: NOT currently read -- no volume
+        # confirmation gate exists in `golden_trend_sync.py`. Same "declared
+        # but no matching code gate" situation as divergence_threshold
+        # above; wiring it would add a new gate (out of scope for #283).
         "volume_confirmation_multiplier": 1.3,
     },
     "range_break_pop": {
-        "range_period": 20,
-        "breakout_threshold": 0.01,
+        # Corrected per issue #283 (same "code wins over defaults.py" rule
+        # documented on golden_trend_sync below): these values were pure
+        # decoration until #283 wired the parameter plane through, and had
+        # drifted from what `range_break_pop.py` actually does post-#282.
+        # range_period: the N-candle lookback window used for both the
+        # tight-range high/low calc and the volume average (was 20, code is 10).
+        "range_period": 10,
+        # breakout_threshold: max allowed pre-breakout range spread, in
+        # PERCENT (not a fraction like most other threshold keys in this
+        # file) -- matches the `range_spread >= breakout_threshold` percent
+        # comparison in code (was 0.01, code is 2.5).
+        "breakout_threshold": 2.5,
         "volume_multiplier_threshold": 1.5,
-        "min_data_points": 25,
-        "base_confidence": 0.74,
+        # min_data_points: code requires len(df) >= 20, not 25.
+        "min_data_points": 20,
+        # base_confidence: restored production value from #282 (was loosened
+        # to 0.68 pre-#282; this file had drifted to 0.74, never 0.68 or 0.75).
+        "base_confidence": 0.75,
     },
     "divergence_trap": {
         "rsi_period": 14,
+        # price_lookback: code's swing-low/RSI-divergence window size AND the
+        # stop-loss swing-low window -- both already matched this value (10),
+        # simply never wired until #283.
         "price_lookback": 10,
+        # divergence_threshold: NOT currently read anywhere. `divergence_trap.py`'s
+        # hidden-bullish-divergence check (issue #282 AC-A) is a pure
+        # lower-low/higher-low comparison via `_find_recent_lows` -- no
+        # percentage threshold is involved. Wiring this would mean adding a
+        # new gate, which is a behavior/threshold change out of scope for
+        # #283 ("this ticket only changes how values are delivered"). Left
+        # declared-but-unread; a candidate for a future ticket if a
+        # magnitude-based divergence filter is wanted.
         "divergence_threshold": 0.02,
-        "min_data_points": 20,
-        "base_confidence": 0.76,
+        # min_data_points: code requires len(df) >= 30, not 20 (#283).
+        "min_data_points": 30,
+        # base_confidence: restored production value from #282; this file had
+        # drifted to 0.76 (#283).
+        "base_confidence": 0.66,
     },
     "volume_surge_breakout": {
         "volume_sma_period": 20,

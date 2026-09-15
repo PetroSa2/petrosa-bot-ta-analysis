@@ -65,12 +65,31 @@ class DivergenceTrapStrategy(BaseStrategy):
 
     def analyze(self, df: pd.DataFrame, metadata: dict[str, Any]) -> Signal | None:
         """Analyze candles for Divergence Trap signals."""
-        if len(df) < 30:
+        # Get configuration (pre-loaded or use defaults). #283: resolution
+        # order (see SignalEngine._resolve_strategy_config) is symbol
+        # override -> global override -> defaults.py -> these hardcoded
+        # literals, which are kept identical to defaults.py's values so a
+        # missing/failed resolution never changes behavior.
+        config = self._get_config(metadata)
+        if config:
+            params = config.get("parameters", {})
+            min_data_points = params.get("min_data_points", 30)
+            price_lookback = params.get("price_lookback", 10)
+            base_confidence = params.get("base_confidence", 0.66)
+        else:
+            # Backward compatibility: use hardcoded defaults
+            min_data_points = 30
+            price_lookback = 10
+            base_confidence = 0.66
+
+        if len(df) < min_data_points:
             return None
 
         # Extract indicators from metadata (now passed directly)
         indicators = {
-            k: v for k, v in metadata.items() if k not in ["symbol", "timeframe"]
+            k: v
+            for k, v in metadata.items()
+            if k not in ["symbol", "timeframe", "config"]
         }
         symbol = metadata.get("symbol", "UNKNOWN")
         timeframe = metadata.get("timeframe", "15m")
@@ -89,8 +108,10 @@ class DivergenceTrapStrategy(BaseStrategy):
         # Get RSI series for divergence analysis
         rsi = indicators.get("rsi", [])
         # Properly check if RSI series is valid
-        if (isinstance(rsi, pd.Series) and (rsi.empty or len(rsi) < 10)) or (
-            not isinstance(rsi, pd.Series) and (not rsi or len(rsi) < 10)
+        if (
+            isinstance(rsi, pd.Series) and (rsi.empty or len(rsi) < price_lookback)
+        ) or (
+            not isinstance(rsi, pd.Series) and (not rsi or len(rsi) < price_lookback)
         ):
             return None
 
@@ -99,10 +120,10 @@ class DivergenceTrapStrategy(BaseStrategy):
         # issue #282 AC-A: distinct swing lows via `_find_recent_lows`
         # instead of a fixed 5-bar-offset index comparison (the latter
         # fires on any 5-bar drift and is not divergence detection).
-        if len(df) >= 10:
+        if len(df) >= price_lookback:
             try:
-                recent_lows = self._find_recent_lows(df, 10)
-                recent_rsi_lows = self._find_recent_lows(rsi, 10)
+                recent_lows = self._find_recent_lows(df, price_lookback)
+                recent_rsi_lows = self._find_recent_lows(rsi, price_lookback)
 
                 if len(recent_lows) >= 2 and len(recent_rsi_lows) >= 2:
                     price_lower_low = recent_lows[-1] < recent_lows[-2]
@@ -132,18 +153,18 @@ class DivergenceTrapStrategy(BaseStrategy):
         if hidden_bullish_divergence and oversold and momentum:
             # Calculate stop loss and take profit (reversal strategy)
             # Stop loss at recent swing low
-            recent_low_window = df["low"].iloc[-10:]
+            recent_low_window = df["low"].iloc[-price_lookback:]
             swing_low = recent_low_window.min()
             stop_loss = swing_low * 0.99  # 1% below swing low
             risk = abs(close - stop_loss)
             take_profit = close + (risk * 2.0)  # 2:1 R:R for divergence reversals
 
-            # Create and return Signal object
-            return Signal(
+            # Create Signal object
+            signal = Signal(
                 strategy_id="divergence_trap",
                 symbol=symbol,
                 action="buy",
-                confidence=0.66,  # Base confidence for divergence trap
+                confidence=base_confidence,  # Base confidence for divergence trap
                 current_price=close,
                 price=close,
                 timeframe=timeframe,
@@ -159,6 +180,9 @@ class DivergenceTrapStrategy(BaseStrategy):
                     "risk_reward_ratio": 2.0,
                 },
             )
+
+            # Add configuration metadata to signal for position tracking
+            return self._add_config_to_signal(signal, config)
 
         return None
 

@@ -183,6 +183,114 @@ class TestSignalEngine:
         assert signal.action == "buy"
 
 
+class TestSignalEngineConfigInjection:
+    """Tests for #283: the "config" metadata key must always be injected,
+    with a real, non-None resolved configuration, so
+    BaseStrategy._get_config() stops always returning None."""
+
+    @pytest.fixture
+    def signal_engine(self):
+        return SignalEngine()
+
+    def _capture_metadata(self, signal_engine, mock_strategy, indicators, **kwargs):
+        signal_engine._run_strategy(
+            mock_strategy,
+            "rsi_extreme_reversal",
+            pd.DataFrame({"close": [1]}),
+            "BTCUSDT",
+            "5m",
+            indicators,
+            45.5,
+            kwargs.get("strategy_configs"),
+        )
+        return mock_strategy.analyze.call_args[0][1]
+
+    def test_config_key_always_present_in_metadata(self, signal_engine):
+        """AC1: signal_engine.py:329 (now _run_strategy) must inject a
+        "config" key on every call -- previously this key never existed."""
+        mock_strategy = MagicMock()
+        mock_strategy.analyze.return_value = None
+        metadata = self._capture_metadata(signal_engine, mock_strategy, {})
+        assert "config" in metadata
+        assert metadata["config"] is not None
+
+    def test_defaults_py_fallback_when_no_strategy_configs_manager_wired(
+        self, signal_engine
+    ):
+        """AC2: with no live StrategyConfigManager wired (strategy_configs=None,
+        the production-today state), resolution falls back to defaults.py --
+        never raises, and the resolved value equals the known defaults.py
+        constant for rsi_extreme_reversal."""
+        mock_strategy = MagicMock()
+        mock_strategy.analyze.return_value = None
+        metadata = self._capture_metadata(
+            signal_engine, mock_strategy, {}, strategy_configs=None
+        )
+        config = metadata["config"]
+        assert config["source"] == "default"
+        assert config["is_override"] is False
+        assert config["parameters"]["base_confidence"] == 0.65
+        assert config["parameters"]["oversold_threshold"] == 25
+
+    def test_missing_strategy_configs_entry_falls_back_to_defaults_not_raise(
+        self, signal_engine
+    ):
+        """AC2: a strategy_configs dict that simply omits this strategy (e.g.
+        because its async resolution failed upstream) must not raise and
+        must resolve identically to the "no manager wired" case."""
+        mock_strategy = MagicMock()
+        mock_strategy.analyze.return_value = None
+        metadata = self._capture_metadata(
+            signal_engine, mock_strategy, {}, strategy_configs={}
+        )
+        assert metadata["config"]["source"] == "default"
+        assert metadata["config"]["parameters"]["base_confidence"] == 0.65
+
+    def test_symbol_or_global_override_takes_priority_over_defaults(
+        self, signal_engine
+    ):
+        """AC2: when an entry IS present in strategy_configs (i.e. resolved
+        upstream via StrategyConfigManager.get_config(), which already
+        implements symbol -> global -> defaults.py priority), it must win
+        over defaults.py entirely."""
+        mock_strategy = MagicMock()
+        mock_strategy.analyze.return_value = None
+        override = {
+            "parameters": {"base_confidence": 0.91, "oversold_threshold": 10},
+            "version": 3,
+            "source": "mongodb",
+            "is_override": True,
+        }
+        metadata = self._capture_metadata(
+            signal_engine,
+            mock_strategy,
+            {},
+            strategy_configs={"rsi_extreme_reversal": override},
+        )
+        assert metadata["config"] == override
+
+    def test_unknown_strategy_id_resolves_to_empty_parameters_not_raise(
+        self, signal_engine
+    ):
+        """A strategy_id absent from both strategy_configs and
+        STRATEGY_DEFAULTS must resolve to an empty parameters dict rather
+        than raising -- each strategy's own `else` branch then applies."""
+        mock_strategy = MagicMock()
+        mock_strategy.analyze.return_value = None
+        signal_engine._run_strategy(
+            mock_strategy,
+            "totally_unknown_strategy_id",
+            pd.DataFrame({"close": [1]}),
+            "BTCUSDT",
+            "5m",
+            {},
+            45.5,
+            None,
+        )
+        metadata = mock_strategy.analyze.call_args[0][1]
+        assert metadata["config"]["parameters"] == {}
+
+
 class TestSignalModel:
     """Test cases for the signal model."""
 
