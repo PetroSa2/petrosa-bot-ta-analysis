@@ -139,3 +139,50 @@ class TestBandFadeReversalStrategy:
 
         signal = strategy.analyze(df, metadata)
         assert signal is None
+
+    def test_config_override_changes_signal_outcome(self):
+        """Issue #283 AC5: overriding `rsi_oversold` produces a signal under
+        the default (30) and no signal under a stricter override (20), for
+        the exact same candle series (rsi=27 on the final candle: <= 30 but
+        not <= 20)."""
+        strategy = BandFadeReversalStrategy()
+        n = 20
+        closes = [100] * 15 + [99, 98, 97, 90, 91]
+        highs = [c + 2 for c in closes]
+        lows = [c - 2 for c in closes]
+        volumes = [1000] * 19 + [1700]
+        df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": volumes,
+            }
+        )
+        indicators = {
+            "bb_lower": pd.Series([91] * n),
+            "bb_middle": pd.Series([100] * n),
+            "bb_upper": pd.Series([110] * n),
+            "rsi": pd.Series([50] * 15 + [40, 35, 30, 28, 27]),
+        }
+
+        baseline_metadata = {"symbol": "BTCUSDT", "timeframe": "15m", **indicators}
+        baseline_signal = strategy.analyze(df, baseline_metadata)
+
+        override_metadata = {
+            "symbol": "BTCUSDT",
+            "timeframe": "15m",
+            **indicators,
+            "config": {
+                "parameters": {"rsi_oversold": 20},
+                "version": 2,
+                "source": "mongodb",
+                "is_override": True,
+            },
+        }
+        override_signal = strategy.analyze(df, override_metadata)
+
+        assert baseline_signal is not None
+        assert baseline_signal.confidence == 0.72
+        assert override_signal is None

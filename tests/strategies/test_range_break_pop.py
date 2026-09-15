@@ -103,3 +103,51 @@ class TestRangeBreakPopStrategy:
 
         signal = strategy.analyze(sample_data, metadata)
         assert signal is None
+
+    def test_config_override_changes_signal_outcome(self):
+        """Issue #283 AC5: overriding a defaults.py value produces a signal
+        under one value and no signal under another, for the same candle
+        series. A tight 20-candle plateau at 100 (range_spread ~2.02%)
+        followed by a breakout candle passes every gate under the default
+        `breakout_threshold` (2.5%), but a stricter override (2.0%) --
+        which the tight-range spread of ~2.02% now exceeds -- must reject
+        the exact same series.
+        """
+        strategy = RangeBreakPopStrategy()
+        closes = [100.0] * 20 + [108.0]
+        highs = [c + 1 for c in closes]
+        lows = [c - 1 for c in closes]
+        volumes = [1000] * 20 + [1700]
+        df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": volumes,
+            }
+        )
+        indicators = {
+            "atr": pd.Series([10] * 20 + [8]),
+            "rsi": pd.Series([50] * 21),
+        }
+
+        baseline_metadata = {"symbol": "BTCUSDT", "timeframe": "15m", **indicators}
+        baseline_signal = strategy.analyze(df, baseline_metadata)
+
+        override_metadata = {
+            "symbol": "BTCUSDT",
+            "timeframe": "15m",
+            **indicators,
+            "config": {
+                "parameters": {"breakout_threshold": 2.0},
+                "version": 2,
+                "source": "mongodb",
+                "is_override": True,
+            },
+        }
+        override_signal = strategy.analyze(df, override_metadata)
+
+        assert baseline_signal is not None
+        assert baseline_signal.confidence == 0.75
+        assert override_signal is None

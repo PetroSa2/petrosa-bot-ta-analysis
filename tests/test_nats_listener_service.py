@@ -385,3 +385,114 @@ class TestNATSListener:
         assert nats_listener._mysql_healthy is True
         assert nats_listener.signals_emitted == 1
         assert len(nats_listener._recent_analysis_latencies) == 1
+
+
+@pytest.mark.asyncio
+class TestResolveStrategyConfigs:
+    """Tests for `_resolve_strategy_configs` (#283): the async, pre-executor
+    resolution step that feeds `SignalEngine.analyze_candles(strategy_configs=...)`."""
+
+    async def test_returns_none_when_no_strategy_config_manager_wired(
+        self, nats_listener
+    ):
+        """Default/production-today state: no StrategyConfigManager wired ->
+        None, so SignalEngine falls back to defaults.py for every strategy."""
+        assert nats_listener.strategy_config_manager is None
+        result = await nats_listener._resolve_strategy_configs("BTCUSDT", None)
+        assert result is None
+
+    async def test_resolves_config_per_strategy_via_manager(
+        self, mock_signal_engine, mock_publisher
+    ):
+        """With a manager wired, resolves one get_config() call per target
+        strategy and returns a dict keyed by strategy_id."""
+        mock_signal_engine.strategies = {"rsi_extreme_reversal": object()}
+        mock_manager = AsyncMock()
+        mock_manager.get_config.return_value = {
+            "parameters": {"base_confidence": 0.9},
+            "version": 1,
+            "source": "mongodb",
+            "is_override": True,
+        }
+        listener = NATSListener(
+            nats_url="nats://test:4222",
+            signal_engine=mock_signal_engine,
+            publisher=mock_publisher,
+            strategy_config_manager=mock_manager,
+        )
+
+        result = await listener._resolve_strategy_configs(
+            "BTCUSDT", ["rsi_extreme_reversal"]
+        )
+
+        assert result == {
+            "rsi_extreme_reversal": {
+                "parameters": {"base_confidence": 0.9},
+                "version": 1,
+                "source": "mongodb",
+                "is_override": True,
+            }
+        }
+        mock_manager.get_config.assert_awaited_once_with(
+            "rsi_extreme_reversal", "BTCUSDT"
+        )
+
+    async def test_defaults_to_all_signal_engine_strategies_when_unfiltered(
+        self, mock_signal_engine, mock_publisher
+    ):
+        """When `enabled_strategies` is None (no runtime filter), every
+        strategy SignalEngine knows about is resolved."""
+        mock_signal_engine.strategies = {"strategy_a": object(), "strategy_b": object()}
+        mock_manager = AsyncMock()
+        mock_manager.get_config.return_value = {
+            "parameters": {},
+            "version": 1,
+            "source": "default",
+            "is_override": False,
+        }
+        listener = NATSListener(
+            nats_url="nats://test:4222",
+            signal_engine=mock_signal_engine,
+            publisher=mock_publisher,
+            strategy_config_manager=mock_manager,
+        )
+
+        result = await listener._resolve_strategy_configs("BTCUSDT", None)
+
+        assert set(result.keys()) == {"strategy_a", "strategy_b"}
+        assert mock_manager.get_config.await_count == 2
+
+    async def test_one_strategy_failure_does_not_block_the_others(
+        self, mock_signal_engine, mock_publisher
+    ):
+        """A single strategy's config resolution raising must not abort the
+        others in the same cycle, and must not propagate -- that strategy
+        simply falls back to defaults.py inside SignalEngine."""
+        mock_signal_engine.strategies = {
+            "good_strategy": object(),
+            "bad_strategy": object(),
+        }
+
+        async def _get_config(strategy_id, symbol):
+            if strategy_id == "bad_strategy":
+                raise RuntimeError("mongo timeout")
+            return {
+                "parameters": {"base_confidence": 0.5},
+                "version": 1,
+                "source": "mongodb",
+                "is_override": True,
+            }
+
+        mock_manager = AsyncMock()
+        mock_manager.get_config.side_effect = _get_config
+        listener = NATSListener(
+            nats_url="nats://test:4222",
+            signal_engine=mock_signal_engine,
+            publisher=mock_publisher,
+            strategy_config_manager=mock_manager,
+        )
+
+        result = await listener._resolve_strategy_configs("BTCUSDT", None)
+
+        assert "good_strategy" in result
+        assert "bad_strategy" not in result

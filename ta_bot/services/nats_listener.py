@@ -13,6 +13,7 @@ from nats.aio.client import Client as NATS
 
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.services.app_config_manager import AppConfigManager
+from ta_bot.services.config_manager import StrategyConfigManager
 from ta_bot.services.mysql_client import MySQLClient
 from ta_bot.services.publisher import SignalPublisher
 
@@ -32,6 +33,7 @@ class NATSListener:
         supported_symbols: list[str] | None = None,
         supported_timeframes: list[str] | None = None,
         app_config_manager: AppConfigManager | None = None,
+        strategy_config_manager: StrategyConfigManager | None = None,
     ):
         """
         Initialize the NATS listener.
@@ -45,6 +47,12 @@ class NATSListener:
             supported_symbols: Default symbols (fallback if no runtime config)
             supported_timeframes: Default timeframes (fallback if no runtime config)
             app_config_manager: Optional AppConfigManager for runtime configuration
+            strategy_config_manager: Optional StrategyConfigManager (#271/#283) used
+                to resolve per-strategy, per-symbol configuration before each
+                analysis cycle. `None` (the default, and the only value in
+                production until a follow-up wires the #271 instance through) means
+                every strategy resolves purely from `defaults.py` — see
+                `_resolve_strategy_configs` docstring.
         """
         self.nats_url = nats_url
         self.signal_engine = signal_engine
@@ -54,6 +62,7 @@ class NATSListener:
         self.supported_symbols = supported_symbols or ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
         self.supported_timeframes = supported_timeframes or ["15m", "1h"]
         self.app_config_manager = app_config_manager
+        self.strategy_config_manager = strategy_config_manager
         self.nc = NATS()
         self.subscriptions: list[Any] = []
         self.leader_election = None
@@ -189,6 +198,60 @@ class NATSListener:
             logger.error(f"Error processing candle message: {e}")
             logger.error(f"Subject: {msg.subject}, Data: {msg.data.decode()[:200]}...")
 
+    async def _resolve_strategy_configs(
+        self, symbol: str, enabled_strategies: list[str] | None
+    ) -> dict[str, dict] | None:
+        """
+        Resolve per-strategy configuration ahead of a synchronous analysis cycle (#283).
+
+        For each strategy that will actually run (either `enabled_strategies`, or —
+        when that runtime filter is unset — every strategy `SignalEngine` knows
+        about), calls the async `StrategyConfigManager.get_config(strategy_id,
+        symbol)`, which implements the full resolution order: symbol override ->
+        global override -> `defaults.py` -> auto-persisted default. Results are
+        collected into a plain dict and handed to `SignalEngine.analyze_candles`,
+        which never performs I/O itself.
+
+        Hot-reload behavior: `StrategyConfigManager` maintains its own 60s TTL
+        cache (`cache_ttl_seconds`, set at construction in `main.py`), so this is
+        effectively "resolved every analysis cycle, cache-backed" -- a config
+        change via `/api/v1/strategies/**` is live within at most one cache TTL
+        window, not just on process restart.
+
+        Returns `None` when no `StrategyConfigManager` is wired (the default in
+        production today -- see the constructor docstring) or when resolution
+        fails outright, in which case `SignalEngine._resolve_strategy_config`
+        falls back to `defaults.py` for every strategy. A failure resolving a
+        single strategy's config degrades only that strategy to `defaults.py`,
+        never raises, and never blocks the other strategies in the same cycle.
+        """
+        if self.strategy_config_manager is None:
+            return None
+
+        target_names = enabled_strategies or list(self.signal_engine.strategies.keys())
+        if not target_names:
+            return None
+
+        results = await asyncio.gather(
+            *(
+                self.strategy_config_manager.get_config(name, symbol)
+                for name in target_names
+            ),
+            return_exceptions=True,
+        )
+
+        strategy_configs: dict[str, dict] = {}
+        for name, result in zip(target_names, results, strict=True):
+            if isinstance(result, BaseException):
+                logger.debug(
+                    f"Config resolution failed for strategy '{name}'; it will "
+                    f"fall back to defaults.py for this cycle: {result}"
+                )
+                continue
+            strategy_configs[name] = result
+
+        return strategy_configs
+
     async def _process_symbol_extraction(self, symbol: str, period: str):
         """Process extraction completion for a specific symbol and period."""
         try:
@@ -263,6 +326,14 @@ class NATSListener:
                 min_confidence = runtime_config.get("min_confidence")
                 max_confidence = runtime_config.get("max_confidence")
 
+            # Resolve per-strategy configuration (#283) *before* handing off to
+            # the executor below -- StrategyConfigManager.get_config() is async
+            # (it may hit Mongo), and analyze_candles/its strategies must never
+            # perform I/O on the synchronous hot path.
+            strategy_configs = await self._resolve_strategy_configs(
+                symbol, enabled_strategies
+            )
+
             # Analyze candles with runtime configuration
             # Run CPU-bound pandas/numpy computation in a thread pool executor to avoid
             # blocking the asyncio event loop and causing readiness probe timeouts.
@@ -277,6 +348,7 @@ class NATSListener:
                     enabled_strategies=enabled_strategies,
                     min_confidence=min_confidence,
                     max_confidence=max_confidence,
+                    strategy_configs=strategy_configs,
                 ),
             )
             self._recent_analysis_latencies.append(

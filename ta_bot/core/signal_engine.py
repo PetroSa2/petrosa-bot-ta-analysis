@@ -22,6 +22,7 @@ from ta_bot.strategies.bollinger_breakout_signals import (
     BollingerBreakoutSignalsStrategy,
 )
 from ta_bot.strategies.bollinger_squeeze_alert import BollingerSqueezeAlertStrategy
+from ta_bot.strategies.defaults import get_strategy_defaults
 from ta_bot.strategies.divergence_trap import DivergenceTrapStrategy
 from ta_bot.strategies.doji_reversal import DojiReversalStrategy
 from ta_bot.strategies.ema_alignment_bearish import EMAAlignmentBearishStrategy
@@ -133,6 +134,7 @@ class SignalEngine:
         enabled_strategies: list[str] | None = None,
         min_confidence: float | None = None,
         max_confidence: float | None = None,
+        strategy_configs: dict[str, dict[str, Any]] | None = None,
     ) -> list[Signal]:
         """
         Analyze candle data and generate trading signals.
@@ -144,6 +146,17 @@ class SignalEngine:
             enabled_strategies: Optional list of strategy IDs to run (filters strategies)
             min_confidence: Optional minimum confidence threshold for signals
             max_confidence: Optional maximum confidence threshold for signals
+            strategy_configs: Optional per-strategy resolved configuration, keyed by
+                strategy_id, in the same shape `StrategyConfigManager.get_config()`
+                returns (`{"parameters": {...}, "version": ..., "source": ...,
+                "is_override": ...}`). Callers (e.g. `NATSListener`) resolve this
+                asynchronously *before* invoking `analyze_candles` (which itself runs
+                synchronously inside a thread-pool executor and must never perform
+                I/O). Per #283: any strategy_id missing from this dict — including
+                when the dict itself is None because no StrategyConfigManager is
+                wired yet — falls back to `defaults.py` via
+                `ta_bot.strategies.defaults.get_strategy_defaults`, so a missing/failed
+                resolution is always a safe no-op, never a behavior change or a raise.
 
         Returns:
             List of trading signals
@@ -215,6 +228,7 @@ class SignalEngine:
                     period,
                     indicators,
                     current_price,
+                    strategy_configs,
                 )
                 if signal:
                     # Apply confidence filtering if specified
@@ -315,6 +329,7 @@ class SignalEngine:
         period: str,
         indicators: dict[str, Any],
         current_price: float,
+        strategy_configs: dict[str, dict[str, Any]] | None = None,
     ) -> Signal | None:
         """Run a single strategy and return signal if valid."""
         with tracer.start_as_current_span("run_strategy") as span:
@@ -325,8 +340,19 @@ class SignalEngine:
             span.set_attribute("current_price", current_price)
 
             try:
-                # Prepare metadata for strategy - pass indicators directly
-                metadata = {**indicators, "symbol": symbol, "timeframe": period}
+                # Prepare metadata for strategy - pass indicators directly.
+                # Per #283: resolve and inject this strategy's config under the
+                # "config" key so BaseStrategy._get_config() (previously always
+                # None, since this key was never set) returns real parameters.
+                resolved_config = self._resolve_strategy_config(
+                    strategy_name, strategy_configs
+                )
+                metadata = {
+                    **indicators,
+                    "symbol": symbol,
+                    "timeframe": period,
+                    "config": resolved_config,
+                }
                 # Run strategy analysis
                 signal = strategy.analyze(df, metadata)
 
@@ -429,6 +455,49 @@ class SignalEngine:
                     },
                 )
                 return None
+
+    def _resolve_strategy_config(
+        self,
+        strategy_name: str,
+        strategy_configs: dict[str, dict[str, Any]] | None,
+    ) -> dict[str, Any]:
+        """
+        Resolve the effective configuration for a single strategy (#283).
+
+        Resolution order (matches `StrategyConfigManager.get_config()`, the
+        component responsible for producing `strategy_configs` entries):
+            1. symbol-level override
+            2. global override
+            3. `defaults.py` (`STRATEGY_DEFAULTS`)
+            4. hardcoded fallback baked into each strategy's own `else` branch
+
+        This method only ever performs step 3 as I/O-free, synchronous work;
+        steps 1-2 are resolved upstream (asynchronously, before this synchronous
+        analysis path runs) and handed in via `strategy_configs`. A missing
+        Mongo document, a missing `strategy_configs` entry, or `strategy_configs`
+        being `None` entirely (no StrategyConfigManager wired) all degrade to the
+        exact same `defaults.py` values every strategy was already using before
+        #283 — so this can never raise and never changes behavior versus the
+        pre-#283 hardcoded literals when nothing is configured.
+
+        Returns:
+            A dict shaped like `StrategyConfigManager.get_config()`'s return
+            value: `{"parameters": {...}, "version": ..., "source": ...,
+            "is_override": ...}`. `parameters` is `{}` for strategy IDs with no
+            entry in `STRATEGY_DEFAULTS` either, at which point every strategy's
+            own hardcoded `else` branch takes over via `params.get(key, default)`.
+        """
+        if strategy_configs is not None:
+            resolved = strategy_configs.get(strategy_name)
+            if resolved is not None:
+                return resolved
+
+        return {
+            "parameters": get_strategy_defaults(strategy_name),
+            "version": 1,
+            "source": "default",
+            "is_override": False,
+        }
 
     def validate_risk_parameters(self, signal: Signal) -> bool:
         """
