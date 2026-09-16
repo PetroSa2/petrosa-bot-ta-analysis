@@ -71,5 +71,6 @@ Thumbs.db
 node_modules/
 bandit-report.json
 coverage.xml
+coverage.json
 
 .serena/cache/

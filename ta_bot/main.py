@@ -144,13 +144,35 @@ async def main():
         config_routes.set_app_config_manager(app_config_manager)
         logger.info("Configuration manager registered with API routes")
 
+        # Initialize dedicated direct MongoDB client for Strategy Config.
+        # petrosa-bot-ta-analysis#293: `StrategyConfigManager` calls
+        # `get_global_config`/`upsert_global_config`/`get_symbol_config`/
+        # `upsert_symbol_config` on its `mongodb_client`. In Data Manager mode
+        # those unconditionally delegate to `data_manager_client.<method>`,
+        # but `DataManagerClient` only implements `fetch_candles`,
+        # `persist_signal(s)`, and `health_check` — no strategy-config CRUD —
+        # so every config-update call raised
+        # `AttributeError: 'DataManagerClient' object has no attribute
+        # 'get_global_config'`. `ConfigRateLimiter` above already works around
+        # this exact gap for the same collection family via
+        # `rate_limit_mongo_client`; give `StrategyConfigManager` the same
+        # direct-collection-access treatment (Option 1 from the ticket).
+        strategy_config_mongo_client = MongoDBClient(use_data_manager=False)
+        if not await strategy_config_mongo_client.connect():
+            logger.error(
+                "Failed to connect to direct MongoDB for strategy config; aborting startup"
+            )
+            raise RuntimeError("Direct MongoDB connection for strategy config failed")
+        _opened_resources.append(strategy_config_mongo_client)
+        logger.info("Strategy config MongoDB client (direct) initialized")
+
         # Initialize Strategy Configuration Manager
         # Fixes petrosa-bot-ta-analysis#271: previously never instantiated,
         # leaving every /api/v1/strategies/*/config and /api/v1/config/validate
         # endpoint permanently 503ing with "Strategy configuration manager not
         # initialized" because config_routes._config_manager stayed None.
         strategy_config_manager = StrategyConfigManager(
-            mongodb_client=mongodb_client,
+            mongodb_client=strategy_config_mongo_client,
             cache_ttl_seconds=60,
         )
         await strategy_config_manager.start()
