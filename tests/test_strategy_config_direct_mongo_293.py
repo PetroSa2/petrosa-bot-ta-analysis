@@ -291,3 +291,91 @@ async def test_main_wires_strategy_config_manager_with_direct_mongo_client():
         ]:
             del sys.modules[k]
         sys.modules.update(_petrosa_otel_saved)
+
+
+@pytest.mark.asyncio
+async def test_main_aborts_startup_when_strategy_config_mongo_fails_to_connect():
+    """When the dedicated direct-mode MongoDB client for strategy config
+    (#293) fails to connect, `main()` must log the failure, raise
+    `RuntimeError` (matching the pre-existing `rate_limit_mongo_client`
+    failure-handling precedent), and never reach `StrategyConfigManager`
+    instantiation -- rather than silently falling through to the
+    Data-Manager-mode client that reproduces the original AttributeError."""
+    for m in ["ta_bot.main", "ta_bot.config"]:
+        if m in sys.modules:
+            del sys.modules[m]
+
+    _petrosa_otel_saved = {
+        k: sys.modules[k]
+        for k in list(sys.modules)
+        if k == "petrosa_otel" or k.startswith("petrosa_otel.")
+    }
+    for k in _petrosa_otel_saved:
+        del sys.modules[k]
+    sys.modules["petrosa_otel"] = MagicMock()
+
+    try:
+        with patch.dict(os.environ, {"NATS_ENABLED": "False"}):
+            with (
+                patch("ta_bot.main.initialize_telemetry_standard"),
+                patch("ta_bot.main.attach_logging_handler"),
+                patch("ta_bot.main.setup_signal_handlers"),
+                patch("ta_bot.main.MongoDBClient") as mock_mongo_cls,
+                patch("ta_bot.main.AppConfigManager") as mock_acm_cls,
+                patch("ta_bot.main.StrategyConfigManager") as mock_scm_cls,
+                patch("ta_bot.main.SignalPublisher"),
+                patch(
+                    "ta_bot.services.data_manager_config_client.DataManagerConfigClient"
+                ) as mock_dm_cls,
+            ):
+                dm_mode_mongo = MagicMock(name="dm_mode_mongo")
+                dm_mode_mongo.connect = AsyncMock(return_value=True)
+                dm_mode_mongo.disconnect = AsyncMock()
+
+                rate_limit_mongo = MagicMock(name="rate_limit_mongo")
+                rate_limit_mongo.connect = AsyncMock(return_value=True)
+                rate_limit_mongo.disconnect = AsyncMock()
+
+                # First direct-mode client (rate limiter) connects fine; the
+                # second (strategy config, #293) fails -- proving the new
+                # failure branch is reached independently of the pre-existing
+                # rate-limiter one.
+                direct_mode_calls = {"count": 0}
+
+                def mongo_side_effect(*args, **kwargs):
+                    if kwargs.get("use_data_manager") is False:
+                        direct_mode_calls["count"] += 1
+                        if direct_mode_calls["count"] == 1:
+                            return rate_limit_mongo
+                        failing = MagicMock(name="strategy_config_mongo_failing")
+                        failing.connect = AsyncMock(return_value=False)
+                        failing.disconnect = AsyncMock()
+                        return failing
+                    return dm_mode_mongo
+
+                mock_mongo_cls.side_effect = mongo_side_effect
+
+                mock_dm = mock_dm_cls.return_value
+                mock_dm.connect = AsyncMock(return_value=True)
+                mock_dm.disconnect = AsyncMock()
+
+                mock_acm = mock_acm_cls.return_value
+                mock_acm.start = AsyncMock()
+
+                from ta_bot.main import main
+
+                with pytest.raises(
+                    RuntimeError,
+                    match="Direct MongoDB connection for strategy config failed",
+                ):
+                    await main()
+
+                mock_scm_cls.assert_not_called()
+    finally:
+        for k in [
+            m
+            for m in list(sys.modules)
+            if m == "petrosa_otel" or m.startswith("petrosa_otel.")
+        ]:
+            del sys.modules[k]
+        sys.modules.update(_petrosa_otel_saved)
