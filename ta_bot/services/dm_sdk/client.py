@@ -14,6 +14,7 @@ than carrying it speculatively.
 
 import json
 import logging
+import time
 from datetime import datetime
 from typing import Any
 from urllib.parse import urljoin
@@ -55,6 +56,7 @@ class DataManagerClient:
         max_retries: int = 3,
         pool_size: int = 10,
         api_key: str | None = None,
+        circuit_breaker_reset_timeout: float = 30.0,
     ):
         """
         Initialize Data Manager Client.
@@ -65,6 +67,12 @@ class DataManagerClient:
             max_retries: Maximum number of retry attempts
             pool_size: HTTP connection pool size
             api_key: Optional API key for authentication
+            circuit_breaker_reset_timeout: Seconds the breaker stays fully
+                open before allowing a single half-open probe request through
+                (petrosa-bot-ta-analysis#290). Without this, a breaker that
+                opens during a transient upstream outage never closes again
+                for the lifetime of the process, even once the upstream has
+                fully recovered.
         """
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -81,10 +89,12 @@ class DataManagerClient:
             follow_redirects=True,
         )
 
-        # Circuit breaker state
+        # Circuit breaker state (petrosa-bot-ta-analysis#290: half-open recovery)
         self._circuit_breaker_failures = 0
         self._circuit_breaker_threshold = 5
         self._circuit_breaker_open = False
+        self._circuit_breaker_opened_at: float | None = None
+        self._circuit_breaker_reset_timeout = circuit_breaker_reset_timeout
 
         logger.info(f"DataManagerClient initialized with base_url={base_url}")
 
@@ -102,9 +112,39 @@ class DataManagerClient:
         await self.close()
 
     def _check_circuit_breaker(self):
-        """Check if circuit breaker is open."""
-        if self._circuit_breaker_open:
-            raise ClientConnectionError("Circuit breaker is open - too many failures")
+        """Check if circuit breaker is open.
+
+        petrosa-bot-ta-analysis#290: a plain "if open: raise" never recovers
+        on its own — once opened during a transient upstream outage, every
+        subsequent call would fail fast forever, for the lifetime of the
+        process, even long after the upstream came back healthy. Once
+        `_circuit_breaker_reset_timeout` has elapsed since the breaker
+        opened (or was last re-opened by a failed probe), let exactly one
+        request through as a half-open probe: the caller's own
+        `_record_success`/`_record_failure` then decides whether the
+        breaker actually closes or stays open for another window.
+        """
+        if not self._circuit_breaker_open:
+            return
+
+        opened_at = self._circuit_breaker_opened_at
+        elapsed = (
+            time.monotonic() - opened_at if opened_at is not None else float("inf")
+        )
+        if elapsed >= self._circuit_breaker_reset_timeout:
+            logger.info(
+                "Circuit breaker reset timeout elapsed (%.1fs >= %.1fs) - "
+                "allowing a half-open probe request",
+                elapsed,
+                self._circuit_breaker_reset_timeout,
+            )
+            return
+
+        logger.warning(
+            "Circuit breaker still open (%.1fs remaining until next probe)",
+            self._circuit_breaker_reset_timeout - elapsed,
+        )
+        raise ClientConnectionError("Circuit breaker is open - too many failures")
 
     def _record_success(self):
         """Record successful request."""
@@ -112,12 +152,17 @@ class DataManagerClient:
         if self._circuit_breaker_open:
             logger.info("Circuit breaker closed after successful request")
             self._circuit_breaker_open = False
+            self._circuit_breaker_opened_at = None
 
     def _record_failure(self):
         """Record failed request."""
         self._circuit_breaker_failures += 1
         if self._circuit_breaker_failures >= self._circuit_breaker_threshold:
             self._circuit_breaker_open = True
+            # Refresh the timer on every failure while open (including a
+            # failed half-open probe) so the breaker stays fully open for a
+            # fresh window rather than immediately probing again next call.
+            self._circuit_breaker_opened_at = time.monotonic()
             logger.error("Circuit breaker opened after too many failures")
 
     @retry(
