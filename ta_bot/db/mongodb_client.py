@@ -569,7 +569,19 @@ class MongoDBClient:
         Returns:
             Configuration document or None if not found
         """
-        if not self._connected:
+        if not self._connected or self.database is None:
+            # petrosa-bot-ta-analysis#290: `_connected` is True in
+            # Data Manager mode too (see `connect()`), but `self.database`
+            # is only ever populated on the direct-MongoDB path. Without
+            # this guard, this deprecated fallback dereferences `None`
+            # and logs a confusing "'NoneType' object has no attribute
+            # 'app_config'" error on every single call when the service
+            # is (correctly) running in Data Manager mode.
+            if self.use_data_manager:
+                logger.debug(
+                    "Direct MongoDB app_config fallback skipped: running in "
+                    "Data Manager mode (no local database handle)."
+                )
             return None
 
         try:
@@ -593,7 +605,14 @@ class MongoDBClient:
         Returns:
             Configuration ID or None on failure
         """
-        if not self._connected:
+        if not self._connected or self.database is None:
+            # petrosa-bot-ta-analysis#290: see get_app_config() for why
+            # `self.database` (not just `_connected`) must be checked here.
+            if self.use_data_manager:
+                logger.debug(
+                    "Direct MongoDB app_config fallback skipped: running in "
+                    "Data Manager mode (no local database handle)."
+                )
             return None
 
         try:
@@ -650,7 +669,14 @@ class MongoDBClient:
         Returns:
             Audit record ID or None on failure
         """
-        if not self._connected:
+        if not self._connected or self.database is None:
+            # petrosa-bot-ta-analysis#290: see get_app_config() for why
+            # `self.database` (not just `_connected`) must be checked here.
+            if self.use_data_manager:
+                logger.debug(
+                    "Direct MongoDB app_config audit fallback skipped: "
+                    "running in Data Manager mode (no local database handle)."
+                )
             return None
 
         try:
@@ -675,7 +701,14 @@ class MongoDBClient:
         Returns:
             List of audit records (most recent first)
         """
-        if not self._connected:
+        if not self._connected or self.database is None:
+            # petrosa-bot-ta-analysis#290: see get_app_config() for why
+            # `self.database` (not just `_connected`) must be checked here.
+            if self.use_data_manager:
+                logger.debug(
+                    "Direct MongoDB app_config audit fallback skipped: "
+                    "running in Data Manager mode (no local database handle)."
+                )
             return []
 
         try:

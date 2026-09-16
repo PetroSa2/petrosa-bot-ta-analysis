@@ -143,6 +143,71 @@ class TestCircuitBreaker:
         with pytest.raises(DMConnectionError, match="Circuit breaker is open"):
             await client.health()
 
+    async def test_circuit_allows_half_open_probe_after_reset_timeout(self):
+        """petrosa-bot-ta-analysis#290: once the reset timeout has elapsed,
+        the breaker must let a single probe request through rather than
+        failing fast forever."""
+
+        def failing_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("down")
+
+        client = _client_with_transport(failing_handler)
+        client._circuit_breaker_reset_timeout = 0.05
+        for _ in range(client._circuit_breaker_threshold):
+            with pytest.raises(DMConnectionError):
+                await client.health()
+        assert client._circuit_breaker_open is True
+
+        # Immediately after opening, still fails fast (no time elapsed).
+        with pytest.raises(DMConnectionError, match="Circuit breaker is open"):
+            await client.health()
+
+        # After the reset timeout elapses, a real HTTP request is attempted
+        # again (the probe) instead of failing fast.
+        import asyncio
+
+        await asyncio.sleep(0.06)
+
+        def success_handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json={"ready": True, "components": {}})
+
+        client._client = httpx.AsyncClient(
+            transport=httpx.MockTransport(success_handler),
+            base_url="http://test-dm:80",
+        )
+        result = await client.health()
+        assert result == {"ready": True, "components": {}}
+        assert client._circuit_breaker_open is False
+        assert client._circuit_breaker_failures == 0
+
+    async def test_failed_half_open_probe_reopens_breaker(self):
+        """A probe that itself fails must re-open the breaker for another
+        full window rather than probing again on the very next call."""
+
+        def failing_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("still down")
+
+        client = _client_with_transport(failing_handler)
+        client._circuit_breaker_reset_timeout = 0.05
+        for _ in range(client._circuit_breaker_threshold):
+            with pytest.raises(DMConnectionError):
+                await client.health()
+        assert client._circuit_breaker_open is True
+
+        import asyncio
+
+        await asyncio.sleep(0.06)
+
+        # The half-open probe itself fails.
+        with pytest.raises(DMConnectionError):
+            await client.health()
+        assert client._circuit_breaker_open is True
+
+        # Immediately after the failed probe, breaker fails fast again
+        # (timer was refreshed, not left expired).
+        with pytest.raises(DMConnectionError, match="Circuit breaker is open"):
+            await client.health()
+
     async def test_circuit_closes_after_success_following_failures(self):
         state = {"calls": 0}
 
