@@ -17,7 +17,7 @@ try:
         initialize_telemetry_standard,
         setup_signal_handlers,
     )
-except ImportError:
+except ImportError:  # pragma: no cover — petrosa_otel is always installed in CI/prod
     initialize_telemetry_standard = None
     attach_logging_handler = None
     setup_signal_handlers = None
@@ -29,6 +29,7 @@ from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.health import set_rate_limiter, start_health_server
 from ta_bot.services.app_config_manager import AppConfigManager
+from ta_bot.services.config_manager import StrategyConfigManager
 from ta_bot.services.nats_listener import NATSListener
 from ta_bot.services.publisher import SignalPublisher
 from ta_bot.utils.logger import setup_logging
@@ -142,6 +143,22 @@ async def main():
         # Register configuration manager with API routes
         config_routes.set_app_config_manager(app_config_manager)
         logger.info("Configuration manager registered with API routes")
+
+        # Initialize Strategy Configuration Manager
+        # Fixes petrosa-bot-ta-analysis#271: previously never instantiated,
+        # leaving every /api/v1/strategies/*/config and /api/v1/config/validate
+        # endpoint permanently 503ing with "Strategy configuration manager not
+        # initialized" because config_routes._config_manager stayed None.
+        strategy_config_manager = StrategyConfigManager(
+            mongodb_client=mongodb_client,
+            cache_ttl_seconds=60,
+        )
+        await strategy_config_manager.start()
+        logger.info("Strategy configuration manager initialized")
+
+        # Register strategy configuration manager with API routes
+        config_routes.set_config_manager(strategy_config_manager)
+        logger.info("Strategy configuration manager registered with API routes")
 
         # Try to load runtime configuration, fallback to startup config
         runtime_config = await app_config_manager.get_config()
