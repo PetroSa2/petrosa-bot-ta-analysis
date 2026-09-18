@@ -68,6 +68,8 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         golden_cross = current_ema21 > current_ema50
 
         # Check for pullback to EMA21 (price near EMA21)
+        if current_ema21 == 0:
+            return None
         pullback_distance = abs(close - current_ema21) / current_ema21
         pullback_to_ema21 = pullback_distance <= 0.02  # Within 2%
 

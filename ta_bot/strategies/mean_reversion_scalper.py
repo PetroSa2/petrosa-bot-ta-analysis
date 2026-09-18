@@ -48,6 +48,8 @@ class MeanReversionScalperStrategy(BaseStrategy):
         # Calculate deviation from EMA21
         ema21 = current["ema21"]
         close = current["close"]
+        if ema21 == 0:
+            return None
         deviation = abs(close - ema21) / ema21
 
         # Check if price deviates >2% from EMA21
