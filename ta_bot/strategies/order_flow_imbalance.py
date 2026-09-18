@@ -85,7 +85,9 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
         # Calculate stop loss and take profit (accumulation/distribution strategy)
         if action == "buy":
             # For accumulation - SL below recent support
-            support_level = df["low"].iloc[-20:-10].min()
+            support_level = self._safe_level(df["low"].iloc[-20:-10], "min")
+            if support_level is None:
+                return None
             stop_loss = support_level * 0.99  # 1% below support
             risk = abs(current["close"] - stop_loss)
             take_profit = current["close"] + (
@@ -93,12 +95,18 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             )  # 2.5:1 R:R for institutional moves
         else:
             # For distribution - SL above recent resistance
-            resistance_level = df["high"].iloc[-20:-10].max()
+            resistance_level = self._safe_level(df["high"].iloc[-20:-10], "max")
+            if resistance_level is None:
+                return None
             stop_loss = resistance_level * 1.01  # 1% above resistance
             risk = abs(current["close"] - stop_loss)
             take_profit = current["close"] - (
                 risk * 2.5
             )  # 2.5:1 R:R for institutional moves
+
+        # Defensive final guard: never emit a non-positive stop_loss
+        if stop_loss is None or pd.isna(stop_loss) or stop_loss <= 0:
+            return None
 
         signal_metadata = {
             "rsi": current["rsi"],
@@ -125,6 +133,30 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             take_profit=take_profit,
             metadata=signal_metadata,
         )
+
+    @staticmethod
+    def _safe_level(price_slice: pd.Series, mode: str) -> float | None:
+        """
+        Safely compute a support/resistance level from a price slice.
+
+        Filters out non-positive and NaN values before taking min/max so a
+        zero-price data point or an empty/short-window slice never produces
+        a stop_loss of 0.0 downstream (see #296). Returns None when no valid
+        (positive, finite) price remains, signalling the caller to skip
+        signal generation rather than emit an invalid risk parameter.
+        """
+        if price_slice is None or len(price_slice) == 0:
+            return None
+
+        valid_prices = price_slice[price_slice > 0].dropna()
+        if valid_prices.empty:
+            return None
+
+        level = valid_prices.min() if mode == "min" else valid_prices.max()
+        if pd.isna(level) or level <= 0:
+            return None
+
+        return float(level)
 
     def _detect_accumulation(self, df: pd.DataFrame) -> bool:
         """Detect institutional accumulation pattern."""
