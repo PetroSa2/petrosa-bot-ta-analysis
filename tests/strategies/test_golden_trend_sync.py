@@ -193,3 +193,34 @@ class TestGoldenTrendSyncStrategy:
         assert baseline_signal is not None
         assert baseline_signal.confidence == 0.70
         assert override_signal is None
+
+    def test_analyze_ema21_zero_returns_none(self):
+        """Issue #295: EMA21 == 0 must return None instead of raising
+        ZeroDivisionError on
+        `pullback_distance = abs(close - current_ema21) / current_ema21`."""
+        strategy = GoldenTrendSyncStrategy()
+        n = 55
+        closes = [100 + i * 0.1 for i in range(n)]
+        opens = [c - 0.5 for c in closes]
+        highs = [c + 0.2 for c in closes]
+        lows = [c - 1.2 for c in closes]
+        volumes = [1000] * n
+        df = pd.DataFrame(
+            {
+                "open": opens,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": volumes,
+            }
+        )
+        current_ema50 = closes[-1] * 0.98
+        metadata = {
+            "symbol": "BTCUSDT",
+            "timeframe": "15m",
+            "ema21": pd.Series([0] * n),
+            "ema50": pd.Series([current_ema50] * n),
+        }
+
+        signal = strategy.analyze(df, metadata)
+        assert signal is None

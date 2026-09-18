@@ -64,6 +64,11 @@ class GoldenTrendSyncStrategy(BaseStrategy):
         current_ema21 = current_values["ema21"]
         current_ema50 = current_values["ema50"]
 
+        # Guard against division by zero (EMA21 can be 0 during indicator
+        # initialization, insufficient data points, or all-zero price data).
+        if current_ema21 == 0:
+            return None
+
         # Check for golden cross (EMA21 > EMA50)
         golden_cross = current_ema21 > current_ema50
 
