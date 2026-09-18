@@ -107,3 +107,31 @@ class TestMeanReversionScalperStrategy:
 
         signal = strategy.analyze(df, metadata)
         assert signal is None
+
+    def test_analyze_zero_ema21_returns_none(self):
+        """Issue #297: ema21 == 0 must not raise ZeroDivisionError in the
+        deviation calculation (abs(close - ema21) / ema21) -- the strategy
+        should skip signal generation instead."""
+        strategy = MeanReversionScalperStrategy()
+        n = 25
+        df = pd.DataFrame(
+            {
+                "open": [100] * n,
+                "high": [105] * n,
+                "low": [95] * n,
+                "close": [102] * n,
+                "volume": [1000] * n,
+            }
+        )
+        indicators = {
+            "ema21": pd.Series([0] * n),
+            "rsi": pd.Series([20] * n),
+            "close": pd.Series([102] * n),
+            "bb_lower": pd.Series([90] * n),
+            "bb_upper": pd.Series([110] * n),
+        }
+        metadata = {"symbol": "BTCUSDT", "timeframe": "15m", **indicators}
+
+        signal = strategy.analyze(df, metadata)
+
+        assert signal is None
