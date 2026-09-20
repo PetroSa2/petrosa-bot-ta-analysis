@@ -18,6 +18,17 @@ The manual deployment workflow allows you to:
 - Kubernetes credentials configured in repository secrets
 - Understanding of semantic versioning
 
+## MCP-capable agent runtime
+
+Use the official `github` MCP Actions operation to dispatch this workflow and the
+matching `github` Actions read operations to inspect runs and logs. Use
+`github-projects` MCP for any Projects v2 update.
+
+The UI and `gh` sections below remain available for human operators, non-MCP
+clients, deterministic scripts, GitHub Actions runners, and unsupported operations.
+Use the runtime's configured file-backed token or environment; never put credentials
+in this guide and never bypass branch protection with `--admin`.
+
 ## Usage
 
 ### Option 1: GitHub UI (Recommended)
