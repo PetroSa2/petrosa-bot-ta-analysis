@@ -134,10 +134,13 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
             # Check if price approached support level
             approached_support = candle["low"] <= support_level * 1.005
 
-            # Check for wick formation (long lower shadow)
-            wick_ratio = (candle["close"] - candle["low"]) / (
-                candle["high"] - candle["low"]
-            )
+            # Check for wick formation (long lower shadow). A flat bar
+            # (high == low) has no meaningful wick ratio -- skip it rather
+            # than dividing by zero (see #302).
+            candle_span = candle["high"] - candle["low"]
+            if candle_span <= 0:
+                continue
+            wick_ratio = (candle["close"] - candle["low"]) / candle_span
             has_wick = wick_ratio > 0.3 and candle["close"] > candle["open"]
 
             # Check if price returned above support
@@ -174,10 +177,13 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
             # Check if price approached resistance level
             approached_resistance = candle["high"] >= resistance_level * 0.995
 
-            # Check for wick formation (long upper shadow)
-            wick_ratio = (candle["high"] - candle["close"]) / (
-                candle["high"] - candle["low"]
-            )
+            # Check for wick formation (long upper shadow). A flat bar
+            # (high == low) has no meaningful wick ratio -- skip it rather
+            # than dividing by zero (see #302).
+            candle_span = candle["high"] - candle["low"]
+            if candle_span <= 0:
+                continue
+            wick_ratio = (candle["high"] - candle["close"]) / candle_span
             has_wick = wick_ratio > 0.3 and candle["close"] < candle["open"]
 
             # Check if price returned below resistance

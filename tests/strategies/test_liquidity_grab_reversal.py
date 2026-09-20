@@ -81,6 +81,46 @@ class TestLiquidityGrabReversalStrategy:
         signal = strategy.analyze(sample_data, metadata)
         assert signal is None
 
+    def test_detect_liquidity_grab_up_flat_bar_does_not_raise(self):
+        """Issue #302: a flat candle (high == low) inside the detection
+        window must not raise a divide-by-zero RuntimeWarning/error in the
+        wick_ratio calculation; the flat candle is simply skipped."""
+        strategy = LiquidityGrabReversalStrategy()
+        n = 25
+        highs = [105.0] * (n - 5) + [100.0, 106, 107, 108, 109]
+        lows = [95.0] * (n - 5) + [100.0, 96, 97, 98, 99]
+        df = pd.DataFrame(
+            {
+                "open": [100.0] * n,
+                "high": highs,
+                "low": lows,
+                "close": [102.0] * n,
+                "volume": [1000.0] * n,
+            }
+        )
+
+        result = strategy._detect_liquidity_grab_up(df)
+        assert result is False
+
+    def test_detect_liquidity_grab_down_flat_bar_does_not_raise(self):
+        """Issue #302: same flat-bar guard for the bearish detector."""
+        strategy = LiquidityGrabReversalStrategy()
+        n = 25
+        highs = [105.0] * (n - 5) + [100.0, 106, 107, 108, 109]
+        lows = [95.0] * (n - 5) + [100.0, 96, 97, 98, 99]
+        df = pd.DataFrame(
+            {
+                "open": [100.0] * n,
+                "high": highs,
+                "low": lows,
+                "close": [102.0] * n,
+                "volume": [1000.0] * n,
+            }
+        )
+
+        result = strategy._detect_liquidity_grab_down(df)
+        assert result is False
+
     def test_analyze_no_liquidity_grab_pattern(self, sample_data):
         """Test strategy when no liquidity grab pattern is detected."""
         strategy = LiquidityGrabReversalStrategy()

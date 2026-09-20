@@ -175,7 +175,11 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             avg_volume = df["volume"].iloc[-20:-10].mean()
             volume_spike = candle["volume"] > avg_volume * 2
 
-            # Small price movement (absorption)
+            # Small price movement (absorption). A zero/negative low means
+            # the candle range fraction is undefined -- skip it instead of
+            # dividing by zero (see #302).
+            if candle["low"] <= 0:
+                continue
             price_range = (candle["high"] - candle["low"]) / candle["low"]
             small_move = price_range < 0.02  # Less than 2% range
 
@@ -212,7 +216,11 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             avg_volume = df["volume"].iloc[-20:-10].mean()
             volume_spike = candle["volume"] > avg_volume * 2
 
-            # Small price movement (distribution)
+            # Small price movement (distribution). A zero/negative low means
+            # the candle range fraction is undefined -- skip it instead of
+            # dividing by zero (see #302).
+            if candle["low"] <= 0:
+                continue
             price_range = (candle["high"] - candle["low"]) / candle["low"]
             small_move = price_range < 0.02  # Less than 2% range
 
@@ -262,7 +270,13 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             return False
 
         recent_prices = df["close"].iloc[-10:]
-        price_range = (recent_prices.max() - recent_prices.min()) / recent_prices.mean()
+        mean_price = recent_prices.mean()
+        # An all-zero (or non-positive) rolling window has no meaningful
+        # price-range fraction -- treat it as "not consolidating" instead
+        # of dividing by zero (see #302).
+        if mean_price <= 0:
+            return False
+        price_range = (recent_prices.max() - recent_prices.min()) / mean_price
 
         # Consolidation: price range less than 3%
         return price_range < 0.03

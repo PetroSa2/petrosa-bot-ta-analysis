@@ -96,6 +96,33 @@ class TestRangeBreakPopStrategy:
         signal = strategy.analyze(df, metadata)
         assert signal is None
 
+    def test_analyze_zero_recent_low_returns_none(self):
+        """Issue #302: recent_low == 0 in the tight-range window must not
+        raise ZeroDivisionError / emit a RuntimeWarning in the
+        range_spread = (high - low) / low calculation -- analyze() skips
+        signal generation instead."""
+        strategy = RangeBreakPopStrategy()
+        n = 21
+        closes = [100.0] * (n - 1) + [110.0]
+        df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": [c + 1 for c in closes],
+                "low": [0.0] * n,
+                "close": closes,
+                "volume": [1000.0] * n,
+            }
+        )
+        metadata = {
+            "symbol": "BTCUSDT",
+            "timeframe": "15m",
+            "atr": pd.Series([10] * (n - 1) + [8]),
+            "rsi": pd.Series([50] * n),
+        }
+
+        signal = strategy.analyze(df, metadata)
+        assert signal is None
+
     def test_analyze_no_breakout(self, sample_data, sample_indicators):
         """Test strategy when price does not break above the recent range."""
         strategy = RangeBreakPopStrategy()
