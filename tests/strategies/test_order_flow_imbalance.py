@@ -79,6 +79,62 @@ class TestOrderFlowImbalanceStrategy:
         assert signal is None
 
 
+class TestDegenerateCandleGuards:
+    """Issue #302: three additional unguarded divisions distinct from #296's
+    _safe_level fix -- _detect_accumulation/_detect_distribution's
+    price_range = (high - low) / low, and _check_price_consolidation's
+    price_range = (max - min) / mean. All must skip cleanly on a zero
+    denominator instead of raising/warning."""
+
+    def test_detect_accumulation_zero_low_does_not_raise(self):
+        strategy = OrderFlowImbalanceStrategy()
+        n = 15
+        df = pd.DataFrame(
+            {
+                "open": [100.0] * n,
+                "high": [105.0] * n,
+                "low": [0.0] * n,
+                "close": [102.0] * n,
+                "volume": [1000.0] * n,
+            }
+        )
+
+        result = strategy._detect_accumulation(df)
+        assert result is False
+
+    def test_detect_distribution_zero_low_does_not_raise(self):
+        strategy = OrderFlowImbalanceStrategy()
+        n = 15
+        df = pd.DataFrame(
+            {
+                "open": [100.0] * n,
+                "high": [105.0] * n,
+                "low": [0.0] * n,
+                "close": [102.0] * n,
+                "volume": [1000.0] * n,
+            }
+        )
+
+        result = strategy._detect_distribution(df)
+        assert result is False
+
+    def test_check_price_consolidation_zero_mean_returns_false(self):
+        strategy = OrderFlowImbalanceStrategy()
+        n = 15
+        df = pd.DataFrame(
+            {
+                "open": [0.0] * n,
+                "high": [0.0] * n,
+                "low": [0.0] * n,
+                "close": [0.0] * n,
+                "volume": [1000.0] * n,
+            }
+        )
+
+        result = strategy._check_price_consolidation(df)
+        assert result is False
+
+
 class TestSafeLevelHelper:
     """Direct unit tests for the _safe_level guard introduced for #296."""
 

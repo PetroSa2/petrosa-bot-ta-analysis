@@ -85,6 +85,11 @@ class RangeBreakPopStrategy(BaseStrategy):
         # precondition entirely); made configurable per #283.
         recent_high = df["high"].iloc[-(range_period + 1) : -1].max()
         recent_low = df["low"].iloc[-(range_period + 1) : -1].min()
+
+        # A zero/negative low makes the spread percentage undefined -- skip
+        # signal generation instead of dividing by zero (see #302).
+        if recent_low <= 0:
+            return None
         range_spread = (recent_high - recent_low) / recent_low * 100
 
         if range_spread >= breakout_threshold_pct:

@@ -77,6 +77,12 @@ class EMAAlignmentBearishStrategy(BaseStrategy):
             current_close = float(data["close"].iloc[-1])
             current_high = float(data["high"].iloc[-1])
 
+            # A zero (or negative) close makes every distance-from-close
+            # ratio below undefined -- skip signal generation instead of
+            # raising ZeroDivisionError (see #302).
+            if current_close <= 0:
+                return None
+
             current_ema8 = float(ema8.iloc[-1])
             current_ema80 = float(ema80.iloc[-1])
 
