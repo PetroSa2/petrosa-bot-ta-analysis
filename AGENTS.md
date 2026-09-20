@@ -4,9 +4,14 @@ This document provides critical operational guidelines for LLM agents and develo
 
 ## 1. Tool Preferences (MANDATORY)
 
-To maximize efficiency and avoid unnecessary browser-based interactions, all agents MUST prioritize CLI tools:
+To maximize efficiency and avoid unnecessary browser-based interactions, all agents MUST prefer the matching MCP tool:
 
-- **GitHub Operations**: Use `gh` CLI for issues, PRs, and project management.
+- **GitHub Operations**: Use the official `github` MCP server for repository,
+  issue, pull request, review, release, and GitHub Actions operations when exposed.
+  Use `github-projects` MCP for Projects v2 operations.
+- **GitHub CLI fallback**: Use `gh` for non-MCP clients, deterministic scripts,
+  GitHub Actions runners, unsupported operations, or unavailable MCP tools.
+  Use only the configured file-backed token or environment; never document credentials.
 - **Kubernetes Operations**: Use `kubectl` with the provided kubeconfig. Due to TLS certificate issues, always add `--insecure-skip-tls-verify=true`.
 - **Code Quality**: Use `make` targets which wrap `ruff`, `pytest`, etc.
 
@@ -33,4 +38,5 @@ This project uses the BMAD (Business-Model-Agent-Development) framework located 
 
 - **Branching**: `{type}/{issue-number}-{description}`.
 - **Messages**: Conventional Commits style.
-- **PRs**: Use `gh pr create` with a clear description, linking to the relevant issue.
+- **PRs**: Use the `github` MCP pull-request operation when available; otherwise use
+  `gh pr create` with a clear description linking to the relevant issue.

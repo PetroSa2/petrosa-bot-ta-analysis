@@ -2,6 +2,11 @@
 
 This runbook provides step-by-step procedures for common operational tasks and troubleshooting scenarios.
 
+For live GitHub status, MCP-capable agents should use the official `github` MCP
+Actions operations to inspect workflow runs and logs. The `gh` command below is the
+fallback for non-MCP clients, deterministic scripts, runners, or unavailable MCP
+operations. Use only configured file-backed authentication or environment variables.
+
 ## Table of Contents
 
 - [Metrics Verification](#metrics-verification)
@@ -47,7 +52,8 @@ kubectl --kubeconfig=k8s/kubeconfig.yaml get deployment petrosa-ta-bot -n petros
 **If version < v1.0.68**:
 - Metrics code is merged but not yet deployed
 - Wait for CI/CD to build and deploy new image (5-15 minutes)
-- Monitor deployment: `gh run list --repo PetroSa2/petrosa-bot-ta-analysis`
+- Monitor deployment with the `github` MCP Actions tools; use
+  `gh run list --repo PetroSa2/petrosa-bot-ta-analysis` only as the CLI fallback.
 - Watch rollout: `kubectl rollout status deployment/petrosa-ta-bot -n petrosa-apps -w`
 
 **Prerequisites**:
