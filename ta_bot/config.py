@@ -50,6 +50,11 @@ class Config:
     nats_subject_prefix_production: str = os.getenv(
         "NATS_SUBJECT_PREFIX_PRODUCTION", "binance.extraction.production"
     )
+    # Queue group name shared by every replica (#304). NATS delivers a
+    # queue-grouped message to exactly one subscriber in the group, so with
+    # `replicas: 2` this is what prevents both pods from running a full
+    # analysis cycle for the same message.
+    nats_queue_group: str = os.getenv("NATS_QUEUE_GROUP", "ta-bot-analysis")
     nats_publisher_topic: str = os.getenv(
         "NATS_TOPIC_INTENTS",
         os.getenv("NATS_PUBLISHER_TOPIC", "cio.intent.trading"),

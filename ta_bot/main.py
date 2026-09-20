@@ -235,6 +235,7 @@ async def main():
             publisher=publisher,
             nats_subject_prefix=config.nats_subject_prefix,
             nats_subject_prefix_production=config.nats_subject_prefix_production,
+            nats_queue_group=config.nats_queue_group,
             supported_symbols=supported_symbols,
             supported_timeframes=supported_timeframes,
             app_config_manager=app_config_manager,  # Pass runtime config manager
