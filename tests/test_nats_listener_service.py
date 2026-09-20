@@ -75,12 +75,108 @@ class TestNATSListener:
                     nats_listener.publisher.start.assert_called_once()
 
     async def test_subscribe_to_candle_data(self, nats_listener, mock_nats_client):
-        """Test subscribing to candle data subjects."""
+        """Test subscribing to candle data subjects.
+
+        #304: the default prefixes ("binance.extraction" and
+        "binance.extraction.production") are ancestor/descendant, so only
+        the more specific (production) subject is subscribed — subscribing
+        to both would double-deliver every production message.
+        """
         nats_listener.nc = mock_nats_client
 
         await nats_listener._subscribe_to_candle_data()
 
+        assert mock_nats_client.subscribe.call_count == 1
+        _, kwargs = mock_nats_client.subscribe.call_args
+        assert kwargs["queue"] == nats_listener.nats_queue_group
+        assert mock_nats_client.subscribe.call_args.args[0] == (
+            "binance.extraction.production.>"
+        )
+
+    async def test_subscribe_to_candle_data_keeps_disjoint_prefixes(
+        self, mock_signal_engine, mock_publisher, mock_nats_client
+    ):
+        """Genuinely disjoint prefixes are both subscribed — neither is an
+        ancestor of the other, so neither wildcard subscription would
+        double-match the other's messages (#304)."""
+        listener = NATSListener(
+            nats_url="nats://test:4222",
+            signal_engine=mock_signal_engine,
+            publisher=mock_publisher,
+            nats_subject_prefix="foo.bar",
+            nats_subject_prefix_production="baz.qux",
+        )
+        listener.nc = mock_nats_client
+
+        await listener._subscribe_to_candle_data()
+
         assert mock_nats_client.subscribe.call_count == 2
+        subjects = {call.args[0] for call in mock_nats_client.subscribe.call_args_list}
+        assert subjects == {"foo.bar.>", "baz.qux.>"}
+        for call in mock_nats_client.subscribe.call_args_list:
+            assert call.kwargs["queue"] == listener.nats_queue_group
+
+    async def test_subscribe_to_candle_data_dedupes_identical_prefixes(
+        self, mock_signal_engine, mock_publisher, mock_nats_client
+    ):
+        """Identical prefixes (e.g. misconfiguration) subscribe exactly
+        once, never twice."""
+        listener = NATSListener(
+            nats_url="nats://test:4222",
+            signal_engine=mock_signal_engine,
+            publisher=mock_publisher,
+            nats_subject_prefix="binance.extraction.production",
+            nats_subject_prefix_production="binance.extraction.production",
+        )
+        listener.nc = mock_nats_client
+
+        await listener._subscribe_to_candle_data()
+
+        assert mock_nats_client.subscribe.call_count == 1
+
+    async def test_single_production_message_triggers_one_analysis_cycle(
+        self, nats_listener, mock_nats_client, mock_signal_engine
+    ):
+        """A single production extraction message triggers exactly one
+        analysis cycle (#304 AC): exactly one queue-grouped subscription is
+        registered for the (deduped) production subject, so NATS invokes
+        `_handle_candle_message` once per message per queue group — never
+        once per overlapping subscription and never once per replica."""
+        nats_listener.nc = mock_nats_client
+
+        await nats_listener._subscribe_to_candle_data()
+
+        assert mock_nats_client.subscribe.call_count == 1
+        _, kwargs = mock_nats_client.subscribe.call_args
+        assert kwargs["cb"] == nats_listener._handle_candle_message
+        assert kwargs["queue"] == "ta-bot-analysis"
+
+        mock_df = pd.DataFrame(
+            {
+                "timestamp": ["2025-10-24T00:00:00Z"],
+                "open": [50000.0],
+                "high": [51000.0],
+                "low": [49000.0],
+                "close": [50500.0],
+                "volume": [100.5],
+            }
+        )
+        with patch.object(
+            nats_listener.mysql_client, "fetch_candles", return_value=mock_df
+        ):
+            with patch.object(
+                nats_listener.mysql_client, "persist_signals_batch", return_value=True
+            ):
+                mock_msg = MagicMock()
+                mock_msg.subject = "binance.extraction.production.klines.BTCUSDT.15m"
+                mock_msg.data = b'{"symbol": "BTCUSDT", "period": "15m"}'
+
+                # Simulate NATS invoking the registered callback exactly
+                # once, as it does for one message delivered to one
+                # queue-group member.
+                await kwargs["cb"](mock_msg)
+
+        mock_signal_engine.analyze_candles.assert_called_once()
 
     async def test_handle_candle_message_not_leader(self, nats_listener):
         """Test handling message when not the leader."""

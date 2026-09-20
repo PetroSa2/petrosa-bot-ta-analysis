@@ -30,6 +30,7 @@ class NATSListener:
         publisher: SignalPublisher,
         nats_subject_prefix: str = "binance.extraction",
         nats_subject_prefix_production: str = "binance.extraction.production",
+        nats_queue_group: str = "ta-bot-analysis",
         supported_symbols: list[str] | None = None,
         supported_timeframes: list[str] | None = None,
         app_config_manager: AppConfigManager | None = None,
@@ -44,6 +45,11 @@ class NATSListener:
             publisher: SignalPublisher for publishing signals
             nats_subject_prefix: NATS subject prefix
             nats_subject_prefix_production: NATS subject prefix for production
+            nats_queue_group: NATS queue group shared by every replica (#304).
+                NATS delivers a queue-grouped message to exactly one member
+                of the group, so with `replicas: 2` this — not the removed
+                `leader_election` placeholder — is what guarantees a single
+                analysis cycle per message.
             supported_symbols: Default symbols (fallback if no runtime config)
             supported_timeframes: Default timeframes (fallback if no runtime config)
             app_config_manager: Optional AppConfigManager for runtime configuration
@@ -59,13 +65,13 @@ class NATSListener:
         self.publisher = publisher
         self.nats_subject_prefix = nats_subject_prefix
         self.nats_subject_prefix_production = nats_subject_prefix_production
+        self.nats_queue_group = nats_queue_group
         self.supported_symbols = supported_symbols or ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
         self.supported_timeframes = supported_timeframes or ["15m", "1h"]
         self.app_config_manager = app_config_manager
         self.strategy_config_manager = strategy_config_manager
         self.nc = NATS()
         self.subscriptions: list[Any] = []
-        self.leader_election = None
         self.mysql_client = MySQLClient()
 
         # Health signals consumed by BotTaAnalysisHealthEvaluator (P2.7 #248).
@@ -104,21 +110,64 @@ class NATSListener:
             logger.error(f"Error starting NATS listener: {e}")
             raise
 
+    def _resolve_subscription_prefixes(self) -> list[str]:
+        """
+        Resolve the minimal set of subject prefixes to subscribe to (#304).
+
+        NATS delivers a message once per *matching* subscription. The
+        configured production prefix is a dot-delimited descendant of the
+        base prefix (e.g. `binance.extraction.production` under
+        `binance.extraction`), so a `>` wildcard subscription on the base
+        prefix also matches every message published under the production
+        prefix. Subscribing to both therefore delivers each production
+        message twice, independent of the queue-group fix for replica
+        fan-out.
+
+        This keeps only the most specific prefix whenever one configured
+        prefix is an ancestor of another, and de-duplicates identical
+        values. Genuinely disjoint prefixes (no ancestor relationship) are
+        both kept, since neither subscription would double-match the
+        other's messages.
+        """
+        prefixes = list(
+            dict.fromkeys(
+                p
+                for p in (
+                    self.nats_subject_prefix,
+                    self.nats_subject_prefix_production,
+                )
+                if p
+            )
+        )
+
+        def _is_ancestor_of_another(candidate: str) -> bool:
+            return any(
+                other != candidate and other.startswith(f"{candidate}.")
+                for other in prefixes
+            )
+
+        return [p for p in prefixes if not _is_ancestor_of_another(p)]
+
     async def _subscribe_to_candle_data(self):
         """Subscribe to candle data subjects."""
-        # Subscribe to both development and production subjects
-        # Updated to match the actual subjects published by the data extractor
+        # De-duplicated prefixes (#304) — see _resolve_subscription_prefixes.
         # Using '>' multi-token wildcard to capture all sub-tokens (e.g. symbol and period)
-        subjects = [
-            f"{self.nats_subject_prefix}.>",  # binance.extraction.>
-            f"{self.nats_subject_prefix_production}.>",  # binance.extraction.production.>
-        ]
+        subjects = [f"{prefix}.>" for prefix in self._resolve_subscription_prefixes()]
 
         for subject in subjects:
             try:
-                logger.info(f"Attempting to subscribe to: {subject}")
+                logger.info(
+                    f"Attempting to subscribe to: {subject} "
+                    f"(queue group: {self.nats_queue_group})"
+                )
+                # queue=self.nats_queue_group (#304): with `replicas: 2` and no
+                # queue group, NATS fans this subscription out to every
+                # replica, so both pods ran a full analysis cycle per
+                # message. A shared queue group makes NATS deliver each
+                # message to exactly one member of the group.
                 subscription = await self.nc.subscribe(
                     subject,
+                    queue=self.nats_queue_group,
                     cb=self._handle_candle_message,
                 )
                 self.subscriptions.append(subscription)
