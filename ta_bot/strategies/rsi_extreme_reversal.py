@@ -115,6 +115,15 @@ class RSIExtremeReversalStrategy(BaseStrategy):
         rsi_value = current["rsi_2"]
         close = current["close"]
 
+        # Guard against corrupted/incomplete candles (#307): a zero or
+        # negative close makes every downstream stop_loss/take_profit
+        # calculation collapse to 0.0, which the signal engine then
+        # rejects with "risk parameters must be positive" -- silently
+        # dropping every rsi_extreme_reversal signal. Bail out cleanly
+        # instead of emitting a signal with SL/TP=0.0.
+        if close <= 0:
+            return None
+
         # Quantzed conditions (now using config parameters)
         extremely_oversold = rsi_value < extreme_threshold  # Screening 08: RSI(2) < 2
         oversold = rsi_value < oversold_threshold  # Screening 09: RSI(2) < 25
@@ -167,7 +176,11 @@ class RSIExtremeReversalStrategy(BaseStrategy):
         if pd.isna(recent_support) or recent_support <= 0:
             recent_support = close * 0.99
         stop_loss = min(recent_support, close * 0.99)
-        risk_amount = max(close - stop_loss, close * 0.005)
+        # Floor risk_amount so a degenerate stop_loss (e.g. equal to close,
+        # or a recent_support that collapses the delta to ~0) can never
+        # produce a zero-width take_profit -- defense in depth alongside
+        # the close <= 0 guard above.
+        risk_amount = max(close - stop_loss, close * 0.005, 0.01)
         take_profit = close + (risk_amount * 2.0)
 
         signal_metadata = {
