@@ -99,3 +99,100 @@ class TestRSIExtremeReversalConfigBranch:
         no_key_metadata = {"symbol": "BTCUSDT", "timeframe": "15m"}
         signal_no_key = strategy.analyze(df, no_key_metadata)
         assert (signal is None) == (signal_no_key is None)
+
+
+def _oversold_df(n: int = 80, scale: float = 1.0) -> pd.DataFrame:
+    """A steadily declining series that drives RSI(2) into the oversold
+    zone (< 25) reliably, so `analyze()` reaches the stop_loss/take_profit
+    calculation instead of returning None earlier for lack of a signal.
+
+    `scale` uniformly rescales the whole series (closes, wick margins).
+    RSI(2) is computed from ratios of successive close deltas, so it is
+    scale-invariant -- the same RSI trajectory (and therefore the same
+    buy/no-signal outcome) is reproduced at any scale, only the absolute
+    price level changes. This lets low-price-level tests (e.g. the risk
+    floor below) reuse the exact same proven-oversold shape.
+    """
+    closes = [(200.0 - i * 1.5) * scale for i in range(n)]
+    highs = [c + 0.5 * scale for c in closes]
+    lows = [c - 0.5 * scale for c in closes]
+    volumes = [1000.0] * n
+    return pd.DataFrame(
+        {
+            "open": closes,
+            "high": highs,
+            "low": lows,
+            "close": closes,
+            "volume": volumes,
+        }
+    )
+
+
+class TestRSIExtremeReversalZeroPriceGuard:
+    """Issue #307: `close <= 0` on a corrupted/incomplete candle previously
+    reached the stop_loss/take_profit calculation unguarded, producing
+    stop_loss=0.0 and take_profit=0.0. SignalEngine's positive-risk-params
+    validation then rejected every such signal with "risk parameters must
+    be positive", silently dropping all rsi_extreme_reversal signals for
+    that candle."""
+
+    def test_zero_close_returns_none(self):
+        strategy = RSIExtremeReversalStrategy()
+        df = _oversold_df()
+        df.loc[df.index[-1], "close"] = 0.0
+        metadata = {"symbol": "BTCUSDT", "timeframe": "15m"}
+
+        signal = strategy.analyze(df, metadata)
+
+        assert signal is None
+
+    def test_negative_close_returns_none(self):
+        strategy = RSIExtremeReversalStrategy()
+        df = _oversold_df()
+        df.loc[df.index[-1], "close"] = -5.0
+        metadata = {"symbol": "BTCUSDT", "timeframe": "15m"}
+
+        signal = strategy.analyze(df, metadata)
+
+        assert signal is None
+
+    def test_oversold_signal_never_has_zero_or_negative_risk_params(self):
+        """Sanity check: a genuine oversold signal on healthy candles still
+        fires, and its stop_loss/take_profit are strictly positive (no
+        regression from the close <= 0 guard or the risk_amount floor)."""
+        strategy = RSIExtremeReversalStrategy()
+        df = _oversold_df()
+        metadata = {"symbol": "BTCUSDT", "timeframe": "15m"}
+
+        signal = strategy.analyze(df, metadata)
+
+        assert signal is not None
+        assert signal.action == "buy"
+        assert signal.stop_loss is not None
+        assert signal.take_profit is not None
+        assert signal.stop_loss > 0
+        assert signal.take_profit > 0
+        assert signal.take_profit > signal.current_price > signal.stop_loss
+
+    def test_small_price_signal_selects_the_0_01_risk_floor(self):
+        """Exercise the explicit `max(..., 0.01)` risk_amount floor itself,
+        not just the close <= 0 guard: at a small-enough price level, both
+        `close - stop_loss` and `close * 0.005` fall below 0.01, so 0.01
+        must be the value actually selected and propagated into
+        take_profit. Raised by Copilot review on PR #309."""
+        strategy = RSIExtremeReversalStrategy()
+        df = _oversold_df(scale=0.006)
+        metadata = {"symbol": "BTCUSDT", "timeframe": "15m"}
+
+        signal = strategy.analyze(df, metadata)
+
+        assert signal is not None
+        assert signal.stop_loss is not None
+        assert signal.take_profit is not None
+        close = signal.current_price
+        # Precondition: neither non-floor candidate would reach 0.01 on
+        # its own -- otherwise this test would not actually exercise the
+        # floor branch.
+        assert (close - signal.stop_loss) < 0.01
+        assert (close * 0.005) < 0.01
+        assert signal.take_profit == pytest.approx(close + 0.01 * 2.0)
