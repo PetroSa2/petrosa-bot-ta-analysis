@@ -18,6 +18,7 @@ This is a comprehensive trend-following strategy that identifies assets
 with institutional-quality momentum characteristics.
 """
 
+import logging
 from datetime import datetime, timezone
 
 try:
@@ -29,8 +30,11 @@ from typing import Optional
 
 import pandas as pd
 
-from ta_bot.models.signal import Signal, SignalStrength, SignalType
+from ta_bot.core.indicators import Indicators
+from ta_bot.models.signal import Signal, SignalStrength
 from ta_bot.strategies.base_strategy import BaseStrategy
+
+logger = logging.getLogger(__name__)
 
 
 class MinerviniTrendTemplateStrategy(BaseStrategy):
@@ -47,7 +51,9 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
         self.description = (
             "Comprehensive trend following using Minervini's 7-point trend template"
         )
-        self.min_periods = 265  # Need 260+ periods for 52-week calculations
+        self.indicators = Indicators()
+        self.logger = logger
+        self.min_periods = 265  # Need 260+ daily bars for 52-week calculations
 
     def analyze(self, data: pd.DataFrame, metadata: dict) -> Signal | None:
         """
@@ -60,6 +66,15 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
         Returns:
             Signal object if conditions are met, None otherwise
         """
+        timeframe = metadata.get("timeframe")
+        if timeframe != "1d":
+            logger.info(
+                "Skipping %s for timeframe %s; its 260/252-bar windows require 1d candles",
+                self.name,
+                timeframe or "unknown",
+            )
+            return None
+
         if len(data) < self.min_periods:
             return None
 
@@ -175,10 +190,14 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
                 )
 
                 return Signal(
+                    strategy_id="minervini_trend_template",
                     symbol=symbol,
+                    action="buy",
+                    current_price=current_close,
+                    price=entry_price,
+                    timeframe=timeframe,
                     strategy=self.name,
-                    signal_type=SignalType.BUY,
-                    strength=SignalStrength.HIGH,  # Comprehensive institutional-grade setup
+                    strength=SignalStrength.STRONG,
                     confidence=confidence,
                     entry_price=entry_price,
                     stop_loss=stop_loss,
