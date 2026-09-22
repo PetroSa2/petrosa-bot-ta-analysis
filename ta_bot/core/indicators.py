@@ -12,6 +12,17 @@ pd.DataFrame.ta = ta
 # Get tracer for manual spans
 tracer = get_tracer("ta_bot.core.indicators")
 
+EMA_ADJUST = False
+
+
+def calculate_ema(close: pd.Series, period: int) -> pd.Series:
+    """Calculate a production EMA with the repository-wide warm-up policy."""
+    return close.ewm(
+        span=period,
+        min_periods=period - 1,
+        adjust=EMA_ADJUST,
+    ).mean()
+
 
 class Indicators:
     """Wrapper for technical indicators using pandas-ta."""
@@ -167,9 +178,8 @@ class Indicators:
 
     @staticmethod
     def ema(df: pd.DataFrame, period: int) -> pd.Series:
-        """Calculate EMA indicator."""
-        result = df.ta.ema(close=df["close"], length=period)
-        return result if result is not None else pd.Series(dtype=float)
+        """Calculate EMA indicator using the shared warm-up policy."""
+        return calculate_ema(df["close"], period)
 
     @staticmethod
     def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:

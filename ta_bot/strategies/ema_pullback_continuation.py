@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
+from ta_bot.core.indicators import calculate_ema
 from ta_bot.models.signal import Signal
 from ta_bot.strategies.base_strategy import BaseStrategy
 
@@ -55,17 +56,11 @@ class EMAPullbackContinuationStrategy(BaseStrategy):
 
         # Calculate EMAs if not provided
         if "ema9" not in indicators:
-            indicators["ema9"] = (
-                df["close"].ewm(span=9, min_periods=8, adjust=True).mean()
-            )
+            indicators["ema9"] = calculate_ema(df["close"], 9)
         if "ema20" not in indicators:
-            indicators["ema20"] = (
-                df["close"].ewm(span=20, min_periods=19, adjust=True).mean()
-            )
+            indicators["ema20"] = calculate_ema(df["close"], 20)
         if "ema30" not in indicators:
-            indicators["ema30"] = (
-                df["close"].ewm(span=30, min_periods=29, adjust=True).mean()
-            )
+            indicators["ema30"] = calculate_ema(df["close"], 30)
 
         current = self._get_current_values(indicators, df)
 
