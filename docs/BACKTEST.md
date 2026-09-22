@@ -38,6 +38,23 @@ Flags:
 | `--output` | no | stdout | Where to write the artifact JSON |
 | `--log-level` | no | `INFO` | `DEBUG\|INFO\|WARNING\|ERROR` |
 
+## EMA warm-up policy (#311)
+
+Production EMA calculations use pandas' recursive `adjust=False` semantics
+through the shared `ta_bot.core.indicators.calculate_ema` helper. Every
+strategy-level EMA fallback and the indicator wrapper use that helper, with
+`min_periods=period-1`, so the warm-up rule cannot silently diverge between
+strategies.
+
+The live candle gateway currently defaults to 250 candles (`#209`), while
+`[petrosa-bot-ta-analysis#303](https://github.com/PetroSa2/petrosa-bot-ta-analysis/issues/303)`
+will raise the fetch window to 400. This ticket deliberately migrates from the
+previous `adjust=True` behavior before that increase: the migration is a
+strategy-behavior change, and historical signal/backtest parity across the
+250-to-400 rollout is not assumed. The deterministic 250- and 400-candle
+fixtures in `tests/test_ema_warmup_policy.py` record the expected EMA8, EMA21,
+and EMA80 values.
+
 ## HTTP API trigger (P3.1-FU, #239)
 
 Beyond the CLI, backtests can be launched over HTTP — for schedulers, operators,

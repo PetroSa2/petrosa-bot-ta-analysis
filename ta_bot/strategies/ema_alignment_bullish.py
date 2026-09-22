@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
+from ta_bot.core.indicators import calculate_ema
 from ta_bot.models.signal import Signal
 from ta_bot.strategies.base_strategy import BaseStrategy
 
@@ -45,13 +46,9 @@ class EMAAlignmentBullishStrategy(BaseStrategy):
 
         # Calculate EMAs if not provided
         if "ema8" not in indicators:
-            indicators["ema8"] = (
-                df["close"].ewm(span=8, min_periods=7, adjust=True).mean()
-            )
+            indicators["ema8"] = calculate_ema(df["close"], 8)
         if "ema80" not in indicators:
-            indicators["ema80"] = (
-                df["close"].ewm(span=80, min_periods=79, adjust=True).mean()
-            )
+            indicators["ema80"] = calculate_ema(df["close"], 80)
 
         current = self._get_current_values(indicators, df)
         previous = self._get_previous_values(indicators, df)

@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
+from ta_bot.core.indicators import calculate_ema
 from ta_bot.models.signal import Signal
 from ta_bot.strategies.base_strategy import BaseStrategy
 
@@ -61,9 +62,7 @@ class EMAMomentumReversalStrategy(BaseStrategy):
 
         # Calculate EMA9 if not provided
         if "ema9" not in indicators:
-            indicators["ema9"] = (
-                df["close"].ewm(span=9, min_periods=8, adjust=True).mean()
-            )
+            indicators["ema9"] = calculate_ema(df["close"], 9)
 
         # Need sufficient historical data for pattern analysis
         if len(df) < 10:

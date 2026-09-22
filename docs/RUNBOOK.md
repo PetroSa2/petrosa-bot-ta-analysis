@@ -18,6 +18,24 @@ operations. Use only configured file-backed authentication or environment variab
 
 ---
 
+## EMA policy rollout and monitoring (#311)
+
+The EMA warm-up migration to recursive `adjust=False` is a strategy-behavior
+change that must be deployed before the candle fetch increase in
+`petrosa-bot-ta-analysis#303`. Do not compare post-rollout signal counts or
+backtest values directly with the old `adjust=True` baseline without labeling
+the 250-to-400 candle-window transition.
+
+For the first 24 hours after rollout, annotate the deployment in dashboards
+and compare `ta_bot_signals_generated_total` and
+`ta_bot_strategy_executions_total` by strategy against the pre-rollout window.
+Investigate unexpected changes in signal rate, strategy mix, or processing
+latency before enabling the larger fetch limit. The fixed-value 250/400
+fixtures in `tests/test_ema_warmup_policy.py` are the release gate for the
+calculation itself; production metrics validate downstream strategy behavior.
+
+---
+
 ## Metrics Verification
 
 ### Quick Verification
