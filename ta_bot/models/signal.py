@@ -207,13 +207,23 @@ class Signal(BaseModel):
         Validate signal data.
         Note: validate() is provided as an alias for legacy callers.
         """
-        if self.current_price <= 0 or self.price <= 0:
+        if not (
+            math.isfinite(self.current_price)
+            and math.isfinite(self.price)
+            and self.current_price > 0
+            and self.price > 0
+        ):
             return False
 
         if strict_risk and self.action in ["buy", "sell"]:
             if self.stop_loss is None or self.take_profit is None:
                 return False
-            if not (self.stop_loss > 0 and self.take_profit > 0):
+            if not (
+                math.isfinite(self.stop_loss)
+                and math.isfinite(self.take_profit)
+                and self.stop_loss > 0
+                and self.take_profit > 0
+            ):
                 return False
 
         return True

@@ -69,6 +69,26 @@ class TestEMAAlignmentBearishStrategy:
         signal = strategy.analyze(df, metadata)
         assert signal is None
 
+    def test_analyze_non_finite_current_close_returns_none(self, bearish_df):
+        strategy = EMAAlignmentBearishStrategy()
+        df = bearish_df.copy()
+        df.loc[df.index[-1], "close"] = float("nan")
+
+        signal = strategy.analyze(df, {"symbol": "BTCUSDT", "timeframe": "15m"})
+
+        assert signal is None
+
+    def test_analyze_non_finite_ema_returns_none(self, bearish_df, monkeypatch):
+        strategy = EMAAlignmentBearishStrategy()
+
+        def invalid_ema(*args, **kwargs):
+            return pd.Series([100.0, 99.0, float("nan")])
+
+        monkeypatch.setattr(strategy.indicators, "ema", invalid_ema)
+        signal = strategy.analyze(bearish_df, {"symbol": "BTCUSDT", "timeframe": "15m"})
+
+        assert signal is None
+
     def test_analyze_no_bearish_alignment_returns_none(self):
         """Flat/uptrending data has no bearish EMA alignment -> None."""
         strategy = EMAAlignmentBearishStrategy()

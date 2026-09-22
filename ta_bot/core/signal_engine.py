@@ -3,6 +3,7 @@ Signal engine that coordinates all trading strategies.
 """
 
 import logging
+import math
 import time
 from typing import Any, Optional
 
@@ -520,7 +521,12 @@ class SignalEngine:
             return False
 
         # Ensure values are positive
-        if signal.stop_loss <= 0 or signal.take_profit <= 0:
+        if not (
+            math.isfinite(signal.stop_loss)
+            and math.isfinite(signal.take_profit)
+            and signal.stop_loss > 0
+            and signal.take_profit > 0
+        ):
             logger.error(
                 f"Validation failed for {signal.strategy_id}: risk parameters must be positive. "
                 f"SL: {signal.stop_loss}, TP: {signal.take_profit}"
@@ -544,16 +550,23 @@ class SignalEngine:
         self, current_price: float, indicators: dict[str, Any], signal_type: SignalType
     ) -> tuple[float | None, float | None]:
         """Calculate stop loss and take profit levels."""
+        if not math.isfinite(current_price) or current_price <= 0:
+            return None, None
+
         atr = indicators.get("atr", 0)
+        atr_value: float = 0.0
 
         # Handle case where ATR might be a pandas Series
         if isinstance(atr, pd.Series):
             if atr.empty or len(atr) == 0:
-                atr_value = 0
+                atr_value = 0.0
             else:
-                atr_value = float(atr.iloc[-1]) if not pd.isna(atr.iloc[-1]) else 0
+                atr_value = float(atr.iloc[-1]) if not pd.isna(atr.iloc[-1]) else 0.0
         else:
-            atr_value = float(atr) if atr is not None else 0
+            atr_value = float(atr) if atr is not None else 0.0
+
+        if not math.isfinite(atr_value):
+            atr_value = 0.0
 
         if atr_value <= 0:
             # Default percentages if ATR is not available

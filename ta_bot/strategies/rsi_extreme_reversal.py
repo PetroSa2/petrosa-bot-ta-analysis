@@ -6,6 +6,7 @@ Detects extreme RSI conditions that suggest potential mean reversion
 opportunities in oversold/overbought markets.
 """
 
+import math
 from typing import Any, Optional
 
 import pandas as pd
@@ -121,7 +122,10 @@ class RSIExtremeReversalStrategy(BaseStrategy):
         # rejects with "risk parameters must be positive" -- silently
         # dropping every rsi_extreme_reversal signal. Bail out cleanly
         # instead of emitting a signal with SL/TP=0.0.
-        if close <= 0:
+        if not math.isfinite(close) or close <= 0:
+            return None
+
+        if not math.isfinite(rsi_value):
             return None
 
         # Quantzed conditions (now using config parameters)
