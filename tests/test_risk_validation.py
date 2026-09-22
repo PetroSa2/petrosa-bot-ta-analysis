@@ -90,6 +90,30 @@ def test_signal_engine_validation():
     )
     assert engine.validate_risk_parameters(signal) is False
 
+    signal = Signal(
+        strategy_id="test",
+        symbol="BTCUSDT",
+        action="buy",
+        confidence=0.8,
+        current_price=50000.0,
+        price=50000.0,
+        stop_loss=float("nan"),
+        take_profit=51000.0,
+    )
+    assert engine.validate_risk_parameters(signal) is False
+
+    signal = Signal(
+        strategy_id="test",
+        symbol="BTCUSDT",
+        action="buy",
+        confidence=0.8,
+        current_price=50000.0,
+        price=50000.0,
+        stop_loss=49000.0,
+        take_profit=float("inf"),
+    )
+    assert engine.validate_risk_parameters(signal) is False
+
     # Invalid SELL signal (negative parameters)
     signal = Signal(
         strategy_id="test",

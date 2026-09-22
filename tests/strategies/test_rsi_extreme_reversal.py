@@ -156,6 +156,28 @@ class TestRSIExtremeReversalZeroPriceGuard:
 
         assert signal is None
 
+    def test_non_finite_close_returns_none(self):
+        strategy = RSIExtremeReversalStrategy()
+        df = _oversold_df()
+        df.loc[df.index[-1], "close"] = float("nan")
+
+        signal = strategy.analyze(df, {"symbol": "BTCUSDT", "timeframe": "15m"})
+
+        assert signal is None
+
+    def test_zero_support_falls_back_to_positive_stop_loss(self):
+        strategy = RSIExtremeReversalStrategy()
+        df = _oversold_df()
+        df.loc[df.index[-5:], "low"] = 0.0
+
+        signal = strategy.analyze(df, {"symbol": "BTCUSDT", "timeframe": "15m"})
+
+        assert signal is not None
+        assert signal.stop_loss is not None
+        assert signal.take_profit is not None
+        assert signal.stop_loss > 0
+        assert signal.take_profit > 0
+
     def test_oversold_signal_never_has_zero_or_negative_risk_params(self):
         """Sanity check: a genuine oversold signal on healthy candles still
         fires, and its stop_loss/take_profit are strictly positive (no
