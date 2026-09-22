@@ -85,9 +85,7 @@ class TestEMAAlignmentBearishStrategy:
             return pd.Series([100.0, 99.0, float("nan")])
 
         monkeypatch.setattr(strategy.indicators, "ema", invalid_ema)
-        signal = strategy.analyze(
-            bearish_df, {"symbol": "BTCUSDT", "timeframe": "15m"}
-        )
+        signal = strategy.analyze(bearish_df, {"symbol": "BTCUSDT", "timeframe": "15m"})
 
         assert signal is None
 

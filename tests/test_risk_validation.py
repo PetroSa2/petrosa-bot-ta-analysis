@@ -95,12 +95,7 @@ def test_signal_engine_validation():
 def test_signal_engine_risk_calculation_rejects_invalid_price_and_atr():
     engine = SignalEngine()
 
-    assert (
-        engine._calculate_risk_management(
-            0.0, {}, SignalType.BUY
-        )
-        == (None, None)
-    )
+    assert engine._calculate_risk_management(0.0, {}, SignalType.BUY) == (None, None)
     stop_loss, take_profit = engine._calculate_risk_management(
         100.0, {"atr": pd.Series([float("nan")])}, SignalType.BUY
     )
