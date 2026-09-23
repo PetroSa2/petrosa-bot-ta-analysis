@@ -14,6 +14,7 @@ from nats.aio.client import Client as NATS
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
+from ta_bot.services.data_manager_client import MIN_WARMUP_CANDLES
 from ta_bot.services.mysql_client import MySQLClient
 from ta_bot.services.publisher import SignalPublisher
 
@@ -348,9 +349,12 @@ class NATSListener:
 
             logger.info(f"Processing extraction completion for {symbol} {period}")
 
-            # Fetch candle data from MySQL (250 candles needed for EMA200)
+            # Fetch candle data from MySQL (see MIN_WARMUP_CANDLES: sized for the
+            # hungriest strategy, not just EMA200)
             try:
-                df = await self.mysql_client.fetch_candles(symbol, period, limit=250)
+                df = await self.mysql_client.fetch_candles(
+                    symbol, period, limit=MIN_WARMUP_CANDLES
+                )
                 self._mysql_healthy = True
             except Exception as fetch_exc:
                 self._mysql_healthy = False
