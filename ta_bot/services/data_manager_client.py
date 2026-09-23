@@ -17,6 +17,19 @@ import pandas as pd
 from ta_bot.services.dm_sdk import DataManagerClient as BaseDataManagerClient
 from ta_bot.services.dm_sdk.exceptions import APIError, ConnectionError, TimeoutError
 
+
+# Minimum warm-up candles fetched for every analysis cycle.
+#
+# The hungriest registered strategy is ``minervini_trend_template`` at
+# ``min_periods = 265`` (its 260/252-bar "52-week" windows). 400 applies the
+# 1.5x safety margin from the data-manager candle retention contract
+# (petrosa-bot-ta-analysis#303).
+#
+# This is the single source of truth for the fetch size -- do not re-declare
+# the limit at call sites. ``tests/test_candle_warmup_limit.py`` fails CI if a
+# strategy is registered whose ``min_periods`` exceeds it.
+MIN_WARMUP_CANDLES = 400
+
 logger = None
 
 
@@ -159,7 +172,7 @@ class DataManagerClient:
             self._logger.warning(f"Error disconnecting from Data Manager: {e}")
 
     async def fetch_candles(
-        self, symbol: str, period: str, limit: int = 250
+        self, symbol: str, period: str, limit: int = MIN_WARMUP_CANDLES
     ) -> pd.DataFrame:
         """
         Fetch candle data from Data Manager.

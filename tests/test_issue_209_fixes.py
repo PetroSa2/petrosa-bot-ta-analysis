@@ -266,16 +266,28 @@ class TestDefaultLimitMySQLClient:
 
 
 class TestDefaultLimitDataManagerClient:
-    """Verify DataManagerClient.fetch_candles defaults to limit=250."""
+    """Verify DataManagerClient.fetch_candles defaults to MIN_WARMUP_CANDLES."""
 
-    def test_fetch_candles_default_limit_is_250(self):
+    def test_fetch_candles_default_limit_is_min_warmup_candles(self):
         import inspect
 
         # petrosa-bot-ta-analysis#267: no mocking needed here at all — this
         # only introspects the method signature, and the vendored SDK
         # (ta_bot.services.dm_sdk) is a real, always-importable local module.
-        from ta_bot.services.data_manager_client import DataManagerClient
+        #
+        # petrosa-bot-ta-analysis#303 superseded the hardcoded 250 asserted
+        # here originally: 250 sat below minervini_trend_template's
+        # min_periods=265, so that strategy could never fire. The default is
+        # now the shared MIN_WARMUP_CANDLES constant rather than a literal, so
+        # this asserts the binding instead of a magic number.
+        from ta_bot.services.data_manager_client import (
+            MIN_WARMUP_CANDLES,
+            DataManagerClient,
+        )
 
         sig = inspect.signature(DataManagerClient.fetch_candles)
         default = sig.parameters["limit"].default
-        assert default == 250, f"Expected default limit=250, got {default}"
+        assert default == MIN_WARMUP_CANDLES, (
+            f"Expected default limit=MIN_WARMUP_CANDLES "
+            f"({MIN_WARMUP_CANDLES}), got {default}"
+        )

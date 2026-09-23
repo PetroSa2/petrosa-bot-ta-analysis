@@ -76,7 +76,18 @@ class MinerviniTrendTemplateStrategy(BaseStrategy):
             )
             return None
 
-        if len(data) < self.min_periods:
+        # Gate on DISTINCT timestamps, not row count. Duplicate rows for the
+        # same bar would otherwise satisfy ``len(data)`` while the 260/252-bar
+        # windows below silently span far less calendar time than their
+        # "52-week"/"twelve month" labels claim (petrosa-bot-ta-analysis#303).
+        distinct_bars = int(data.index.nunique())
+        if distinct_bars < self.min_periods:
+            logger.info(
+                "Skipping %s: %s distinct bars available, %s required",
+                self.name,
+                distinct_bars,
+                self.min_periods,
+            )
             return None
 
         try:
