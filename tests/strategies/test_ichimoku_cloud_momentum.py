@@ -94,13 +94,9 @@ class TestIchimokuCloudMomentumStrategy:
                 "volume": [1000.0] * len(closes),
             }
         )
-        corrupt_df.loc[
-            corrupt_df.index[-26:], ["open", "high", "low", "close"]
-        ] = 0.0
+        corrupt_df.loc[corrupt_df.index[-26:], ["open", "high", "low", "close"]] = 0.0
 
-        signal = strategy.analyze(
-            corrupt_df, {"symbol": "BTCUSDT", "timeframe": "1h"}
-        )
+        signal = strategy.analyze(corrupt_df, {"symbol": "BTCUSDT", "timeframe": "1h"})
 
         assert signal is None
 
