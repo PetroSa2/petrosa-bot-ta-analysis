@@ -41,6 +41,8 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
 
         current = self._get_current_values(indicators, df)
 
+        if "close" not in current:
+            return None
         if not math.isfinite(current["close"]) or current["close"] <= 0:
             return None
 
