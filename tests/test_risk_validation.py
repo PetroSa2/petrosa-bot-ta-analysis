@@ -152,7 +152,7 @@ def test_signal_engine_risk_calculation_rejects_invalid_price_and_atr():
 def test_corrupted_hourly_sweep_skips_affected_strategies_cleanly(caplog):
     """Regression coverage for the #316 production failure path."""
     closes = [200.0 - (index * 1.5) for index in range(130)]
-    frame = pd.DataFrame(
+    base_frame = pd.DataFrame(
         {
             "open": closes,
             "high": [close + 0.5 for close in closes],
@@ -161,16 +161,34 @@ def test_corrupted_hourly_sweep_skips_affected_strategies_cleanly(caplog):
             "volume": [1000.0] * len(closes),
         }
     )
-    frame.loc[frame.index[-1], "close"] = 0.0
 
     caplog.set_level(logging.ERROR)
+    frame = base_frame.copy()
+    frame.loc[frame.index[-26:], ["open", "high", "low", "close"]] = 0.0
     with warnings.catch_warnings():
         warnings.simplefilter("error", RuntimeWarning)
         signals = SignalEngine().analyze_candles(
             frame,
             "BTCUSDT",
             "1h",
-            enabled_strategies=["ema_alignment_bearish", "rsi_extreme_reversal"],
+            enabled_strategies=[
+                "ema_alignment_bearish",
+                "rsi_extreme_reversal",
+                "ichimoku_cloud_momentum",
+            ],
+        )
+
+    assert signals == []
+
+    frame = base_frame.copy()
+    frame.loc[frame.index[-5:], ["open", "high", "low", "close"]] = 0.0
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        signals = SignalEngine().analyze_candles(
+            frame,
+            "BTCUSDT",
+            "1h",
+            enabled_strategies=["ichimoku_cloud_momentum"],
         )
 
     assert signals == []

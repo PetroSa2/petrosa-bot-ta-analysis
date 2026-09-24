@@ -2,6 +2,8 @@
 Tests for the Ichimoku Cloud Momentum strategy.
 """
 
+from unittest.mock import patch
+
 import pandas as pd
 import pytest
 
@@ -80,6 +82,100 @@ class TestIchimokuCloudMomentumStrategy:
         metadata = {"symbol": "BTCUSDT", "timeframe": "15m", **incomplete_indicators}
 
         signal = strategy.analyze(sample_data, metadata)
+        assert signal is None
+
+    def test_analyze_skips_zero_price_candles(self):
+        strategy = IchimokuCloudMomentumStrategy()
+        closes = [200.0 - (index * 1.5) for index in range(130)]
+        corrupt_df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": [close + 0.5 for close in closes],
+                "low": [close - 0.5 for close in closes],
+                "close": closes,
+                "volume": [1000.0] * len(closes),
+            }
+        )
+        corrupt_df.loc[corrupt_df.index[-26:], ["open", "high", "low", "close"]] = 0.0
+
+        signal = strategy.analyze(corrupt_df, {"symbol": "BTCUSDT", "timeframe": "1h"})
+
+        assert signal is None
+
+    def test_analyze_skips_non_positive_stop_loss(self):
+        strategy = IchimokuCloudMomentumStrategy()
+        frame = pd.DataFrame(
+            {
+                "open": [90.0] * 52,
+                "high": [90.5] * 52,
+                "low": [89.5] * 52,
+                "close": [90.0] * 52,
+                "volume": [1000.0] * 52,
+            }
+        )
+        ichimoku = pd.DataFrame(
+            [
+                {
+                    "tenkan_sen": 1.0,
+                    "kijun_sen": 0.0,
+                    "senkou_span_a": 100.0,
+                    "senkou_span_b": 110.0,
+                    "chikou_span": 90.0,
+                }
+            ]
+            * 51
+            + [
+                {
+                    "tenkan_sen": -1.0,
+                    "kijun_sen": 0.0,
+                    "senkou_span_a": 100.0,
+                    "senkou_span_b": 110.0,
+                    "chikou_span": 90.0,
+                }
+            ]
+        )
+
+        with patch.object(strategy, "_calculate_ichimoku", return_value=ichimoku):
+            signal = strategy.analyze(frame, {"symbol": "BTCUSDT", "timeframe": "1h"})
+
+        assert signal is None
+
+    def test_analyze_skips_non_positive_take_profit(self):
+        strategy = IchimokuCloudMomentumStrategy()
+        frame = pd.DataFrame(
+            {
+                "open": [10.0] * 52,
+                "high": [10.5] * 52,
+                "low": [9.5] * 52,
+                "close": [10.0] * 52,
+                "volume": [1000.0] * 52,
+            }
+        )
+        ichimoku = pd.DataFrame(
+            [
+                {
+                    "tenkan_sen": 5.0,
+                    "kijun_sen": 4.0,
+                    "senkou_span_a": 100.0,
+                    "senkou_span_b": 110.0,
+                    "chikou_span": 10.0,
+                }
+            ]
+            * 51
+            + [
+                {
+                    "tenkan_sen": 1.0,
+                    "kijun_sen": 4.0,
+                    "senkou_span_a": 100.0,
+                    "senkou_span_b": 110.0,
+                    "chikou_span": 10.0,
+                }
+            ]
+        )
+
+        with patch.object(strategy, "_calculate_ichimoku", return_value=ichimoku):
+            signal = strategy.analyze(frame, {"symbol": "BTCUSDT", "timeframe": "1h"})
+
         assert signal is None
 
     def test_analyze_no_momentum_pattern(self, sample_data):
