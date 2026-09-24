@@ -82,6 +82,28 @@ class TestIchimokuCloudMomentumStrategy:
         signal = strategy.analyze(sample_data, metadata)
         assert signal is None
 
+    def test_analyze_skips_zero_price_candles(self):
+        strategy = IchimokuCloudMomentumStrategy()
+        closes = [200.0 - (index * 1.5) for index in range(130)]
+        corrupt_df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": [close + 0.5 for close in closes],
+                "low": [close - 0.5 for close in closes],
+                "close": closes,
+                "volume": [1000.0] * len(closes),
+            }
+        )
+        corrupt_df.loc[
+            corrupt_df.index[-26:], ["open", "high", "low", "close"]
+        ] = 0.0
+
+        signal = strategy.analyze(
+            corrupt_df, {"symbol": "BTCUSDT", "timeframe": "1h"}
+        )
+
+        assert signal is None
+
     def test_analyze_no_momentum_pattern(self, sample_data):
         """Test strategy when no momentum pattern is detected."""
         strategy = IchimokuCloudMomentumStrategy()

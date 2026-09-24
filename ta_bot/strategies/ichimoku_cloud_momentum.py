@@ -3,6 +3,7 @@ Ichimoku Cloud Momentum Strategy
 Uses Ichimoku Cloud for trend identification and momentum.
 """
 
+import math
 from typing import Any, Optional
 
 import pandas as pd
@@ -39,6 +40,9 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
         timeframe = metadata.get("timeframe", "15m")
 
         current = self._get_current_values(indicators, df)
+
+        if not math.isfinite(current["close"]) or current["close"] <= 0:
+            return None
 
         # Check if we have all required indicators
         required_indicators = ["close", "volume"]
@@ -94,6 +98,11 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
             stop_loss = current_ichimoku["kijun_sen"]
             risk = abs(current["close"] - stop_loss)
             take_profit = current["close"] - (risk * 2.0)
+
+        if not math.isfinite(stop_loss) or stop_loss <= 0:
+            return None
+        if not math.isfinite(take_profit) or take_profit <= 0:
+            return None
 
         # Prepare metadata for signal
         signal_metadata = {
