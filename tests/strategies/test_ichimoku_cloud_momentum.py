@@ -106,11 +106,11 @@ class TestIchimokuCloudMomentumStrategy:
         strategy = IchimokuCloudMomentumStrategy()
         frame = pd.DataFrame(
             {
-                "open": [90.0, 90.0],
-                "high": [90.5, 90.5],
-                "low": [89.5, 89.5],
-                "close": [90.0, 90.0],
-                "volume": [1000.0, 1000.0],
+                "open": [90.0] * 52,
+                "high": [90.5] * 52,
+                "low": [89.5] * 52,
+                "close": [90.0] * 52,
+                "volume": [1000.0] * 52,
             }
         )
         ichimoku = pd.DataFrame(
@@ -121,14 +121,17 @@ class TestIchimokuCloudMomentumStrategy:
                     "senkou_span_a": 100.0,
                     "senkou_span_b": 110.0,
                     "chikou_span": 90.0,
-                },
+                }
+            ]
+            * 51
+            + [
                 {
                     "tenkan_sen": -1.0,
                     "kijun_sen": 0.0,
                     "senkou_span_a": 100.0,
                     "senkou_span_b": 110.0,
                     "chikou_span": 90.0,
-                },
+                }
             ]
         )
 
@@ -141,11 +144,11 @@ class TestIchimokuCloudMomentumStrategy:
         strategy = IchimokuCloudMomentumStrategy()
         frame = pd.DataFrame(
             {
-                "open": [10.0, 10.0],
-                "high": [10.5, 10.5],
-                "low": [9.5, 9.5],
-                "close": [10.0, 10.0],
-                "volume": [1000.0, 1000.0],
+                "open": [10.0] * 52,
+                "high": [10.5] * 52,
+                "low": [9.5] * 52,
+                "close": [10.0] * 52,
+                "volume": [1000.0] * 52,
             }
         )
         ichimoku = pd.DataFrame(
@@ -156,14 +159,17 @@ class TestIchimokuCloudMomentumStrategy:
                     "senkou_span_a": 100.0,
                     "senkou_span_b": 110.0,
                     "chikou_span": 10.0,
-                },
+                }
+            ]
+            * 51
+            + [
                 {
                     "tenkan_sen": 1.0,
                     "kijun_sen": 4.0,
                     "senkou_span_a": 100.0,
                     "senkou_span_b": 110.0,
                     "chikou_span": 10.0,
-                },
+                }
             ]
         )
 
