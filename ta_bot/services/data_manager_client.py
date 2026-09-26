@@ -312,18 +312,27 @@ class DataManagerClient:
                 validate=True,
             )
 
-            inserted_count = result.get("inserted_count", 0)
+            inserted_count_present = "inserted_count" in result
+            inserted_count = result["inserted_count"] if inserted_count_present else None
             if inserted_count == len(signals):
                 self._logger.info(f"Successfully persisted all {len(signals)} signals")
                 return True
             else:
-                self._logger.warning(
-                    f"Only {inserted_count} of {len(signals)} signals were inserted"
+                self._logger.error(
+                    "Signal batch persistence incomplete: "
+                    f"inserted_count={inserted_count!r} "
+                    f"inserted_count_present={inserted_count_present} "
+                    f"expected_count={len(signals)} database=mongodb "
+                    f"collection=signals response={result!r}"
                 )
                 return False
 
         except Exception as e:
-            self._logger.error(f"Error persisting signal batch: {e}")
+            self._logger.exception(
+                "Error persisting signal batch: exception_type=%s error=%s",
+                type(e).__name__,
+                e,
+            )
             return False
 
     async def health_check(self) -> dict[str, Any]:

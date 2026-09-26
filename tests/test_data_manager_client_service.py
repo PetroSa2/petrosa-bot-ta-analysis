@@ -265,7 +265,7 @@ class TestDataManagerClient:
         assert result is True
 
     async def test_persist_signals_batch_partial_success(
-        self, data_manager_client, mock_base_client
+        self, data_manager_client, mock_base_client, caplog
     ):
         """Test persisting signal batch with partial success."""
         signals = [
@@ -277,6 +277,59 @@ class TestDataManagerClient:
         result = await data_manager_client.persist_signals_batch(signals)
 
         assert result is False
+        record = caplog.records[-1]
+        assert record.levelname == "ERROR"
+        assert "inserted_count=1" in record.message
+        assert "expected_count=2" in record.message
+        assert "response={'inserted_count': 1}" in record.message
+
+    async def test_persist_signals_batch_zero_insert_logs_response(
+        self, data_manager_client, mock_base_client, caplog
+    ):
+        signals = [{"symbol": "BTCUSDT"}, {"symbol": "ETHUSDT"}]
+        response = {
+            "inserted_count": 0,
+            "duplicates": 0,
+            "failed": 0,
+            "message": "no writes",
+        }
+        mock_base_client.insert.return_value = response
+
+        result = await data_manager_client.persist_signals_batch(signals)
+
+        assert result is False
+        record = caplog.records[-1]
+        assert record.levelname == "ERROR"
+        assert "inserted_count=0" in record.message
+        assert "expected_count=2" in record.message
+        assert repr(response) in record.message
+
+    async def test_persist_signals_batch_missing_inserted_count(
+        self, data_manager_client, mock_base_client, caplog
+    ):
+        mock_base_client.insert.return_value = {"message": "protocol mismatch"}
+
+        result = await data_manager_client.persist_signals_batch(
+            [{"symbol": "BTCUSDT"}, {"symbol": "ETHUSDT"}]
+        )
+
+        assert result is False
+        record = caplog.records[-1]
+        assert "inserted_count=None" in record.message
+        assert "inserted_count_present=False" in record.message
+
+    async def test_persist_signals_batch_exception_is_diagnosable(
+        self, data_manager_client, mock_base_client, caplog
+    ):
+        mock_base_client.insert.side_effect = APIError("boom")
+
+        result = await data_manager_client.persist_signals_batch([{"symbol": "BTCUSDT"}])
+
+        assert result is False
+        record = caplog.records[-1]
+        assert "APIError" in record.message
+        assert "boom" in record.message
+        assert record.exc_info is not None
 
     async def test_health_check_success(self, data_manager_client, mock_base_client):
         """Test successful health check."""

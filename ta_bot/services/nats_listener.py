@@ -78,6 +78,7 @@ class NATSListener:
         # Health signals consumed by BotTaAnalysisHealthEvaluator (P2.7 #248).
         self._recent_analysis_latencies: deque[float] = deque(maxlen=200)
         self.signals_emitted = 0
+        self.signal_persist_failures = 0
         self._mysql_healthy = True
 
         # Proof-of-life signals for #265: distinguish "listening, zero NATS
@@ -426,8 +427,10 @@ class NATSListener:
                         f"Successfully persisted {len(signals)} signals to MySQL"
                     )
                 else:
+                    self.signal_persist_failures += 1
                     logger.error(
-                        f"Failed to persist signals to MySQL for {symbol} {period}"
+                        f"Failed to persist {len(signals)} signals to MongoDB "
+                        f"collection signals for {symbol} {period}"
                     )
 
                 # Publish signals to Trade Engine regardless of DB persistence outcome
@@ -457,6 +460,7 @@ class NATSListener:
                 sum(latencies) / len(latencies) if latencies else 0.0
             ),
             "signals_emitted": self.signals_emitted,
+            "signal_persist_failures": self.signal_persist_failures,
             # Proof-of-life signals (#265): let the evaluator distinguish
             # "connected, zero candle-extraction messages ever received" from
             # "connected, receiving traffic, just no signal matches".
