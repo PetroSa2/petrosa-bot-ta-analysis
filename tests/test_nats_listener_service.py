@@ -369,7 +369,9 @@ class TestNATSListener:
                 # Even on persist failure, publishing should still be attempted
                 mock_publisher.publish_signals.assert_called_once()
                 assert nats_listener.signal_persist_failures == 1
-                assert nats_listener.get_health_metrics()["signal_persist_failures"] == 1
+                assert (
+                    nats_listener.get_health_metrics()["signal_persist_failures"] == 1
+                )
 
     async def test_stop(self, nats_listener, mock_nats_client):
         """Test stopping NATS listener."""

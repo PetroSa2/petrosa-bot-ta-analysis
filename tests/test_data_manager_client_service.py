@@ -323,7 +323,9 @@ class TestDataManagerClient:
     ):
         mock_base_client.insert.side_effect = APIError("boom")
 
-        result = await data_manager_client.persist_signals_batch([{"symbol": "BTCUSDT"}])
+        result = await data_manager_client.persist_signals_batch(
+            [{"symbol": "BTCUSDT"}]
+        )
 
         assert result is False
         record = caplog.records[-1]

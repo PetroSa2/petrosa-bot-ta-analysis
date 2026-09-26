@@ -313,7 +313,9 @@ class DataManagerClient:
             )
 
             inserted_count_present = "inserted_count" in result
-            inserted_count = result["inserted_count"] if inserted_count_present else None
+            inserted_count = (
+                result["inserted_count"] if inserted_count_present else None
+            )
             if inserted_count == len(signals):
                 self._logger.info(f"Successfully persisted all {len(signals)} signals")
                 return True
