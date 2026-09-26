@@ -27,9 +27,7 @@ def make_doji_data(final_close: float) -> pd.DataFrame:
     ("final_close", "action"),
     [(102.0, "sell"), (98.0, "buy")],
 )
-def test_analyze_constructs_signal_for_both_trend_branches(
-    final_close, action, caplog
-):
+def test_analyze_constructs_signal_for_both_trend_branches(final_close, action, caplog):
     """A valid doji returns a weak signal without logging an error."""
     caplog.set_level(logging.ERROR, logger="ta_bot.strategies.doji_reversal")
 
@@ -45,7 +43,9 @@ def test_analyze_constructs_signal_for_both_trend_branches(
     assert result.action == action
     assert result.symbol == "BTCUSDT"
     assert result.timeframe == "15m"
-    assert [record for record in caplog.records if record.levelno >= logging.ERROR] == []
+    assert [
+        record for record in caplog.records if record.levelno >= logging.ERROR
+    ] == []
 
 
 def test_signal_strength_enum_contract_has_no_low_member():
