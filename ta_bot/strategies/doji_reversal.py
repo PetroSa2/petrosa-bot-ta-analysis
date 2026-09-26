@@ -20,6 +20,7 @@ try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
+
     UTC = timezone.utc  # noqa: UP017
 from typing import Any, Optional
 
@@ -126,7 +127,7 @@ class DojiReversalStrategy(BaseStrategy):
                     current_price=current_close,
                     price=entry_price,
                     timeframe=metadata.get("timeframe", "15m"),
-                    strength=SignalStrength.LOW,  # Doji is more of a warning than strong signal
+                    strength=SignalStrength.WEAK,  # Doji is more of a warning than strong signal
                     stop_loss=stop_loss,
                     take_profit=take_profit,
                     timestamp=datetime.now(UTC).isoformat(),
