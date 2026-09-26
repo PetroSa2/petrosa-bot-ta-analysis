@@ -368,6 +368,10 @@ class TestNATSListener:
 
                 # Even on persist failure, publishing should still be attempted
                 mock_publisher.publish_signals.assert_called_once()
+                assert nats_listener.signal_persist_failures == 1
+                assert (
+                    nats_listener.get_health_metrics()["signal_persist_failures"] == 1
+                )
 
     async def test_stop(self, nats_listener, mock_nats_client):
         """Test stopping NATS listener."""
@@ -395,6 +399,7 @@ class TestNATSListener:
         assert metrics["nats_connected"] is True
         assert metrics["mysql_healthy"] is True
         assert metrics["signals_emitted"] == 7
+        assert metrics["signal_persist_failures"] == 0
         assert metrics["analysis_latency_s"] == 2.0
 
     async def test_get_health_metrics_no_nats(self, nats_listener):
@@ -480,6 +485,7 @@ class TestNATSListener:
 
         assert nats_listener._mysql_healthy is True
         assert nats_listener.signals_emitted == 1
+        assert nats_listener.signal_persist_failures == 0
         assert len(nats_listener._recent_analysis_latencies) == 1
 
 
