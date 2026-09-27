@@ -8,11 +8,17 @@ import aiohttp
 import nats  # Added to use nats.connect
 import nats.aio.client
 import structlog
+from prometheus_client import Counter
 
 from ta_bot.models.signal import Signal, _sanitize_value
 from ta_bot.utils.nats_trace_propagator import NATSTracePropagator
 
 logger = structlog.get_logger()
+NON_ACTIONABLE_SIGNALS = Counter(
+    "ta_bot_non_actionable_signals_total",
+    "Signals skipped because they are not valid trading actions",
+    ["strategy_id", "action"],
+)
 
 
 class SignalPublisher:
@@ -67,6 +73,7 @@ class SignalPublisher:
 
     async def publish_signals(self, signals: list[Signal]):
         """Publish signals to the Trade Engine."""
+        signals = self._filter_actionable_signals(signals)
         if not signals:
             logger.info("No signals to publish")
             return
@@ -220,6 +227,7 @@ class SignalPublisher:
 
     async def publish_batch(self, signals: list[Signal]):
         """Publish multiple signals in a batch."""
+        signals = self._filter_actionable_signals(signals)
         if not signals:
             logger.info("No signals to publish in batch")
             return
@@ -234,6 +242,26 @@ class SignalPublisher:
 
         # Publish via NATS
         await self._publish_batch_via_nats(signals)
+
+    @staticmethod
+    def _filter_actionable_signals(signals: list[Signal]) -> list[Signal]:
+        """Keep only actions valid on trading intent destinations."""
+        actionable = {"buy", "sell", "close"}
+        filtered = []
+        for signal in signals:
+            if signal.action in actionable:
+                filtered.append(signal)
+                continue
+
+            NON_ACTIONABLE_SIGNALS.labels(
+                strategy_id=signal.strategy_id, action=signal.action
+            ).inc()
+            logger.warning(
+                "Skipping non-actionable signal for trading intent stream",
+                strategy_id=signal.strategy_id,
+                action=signal.action,
+            )
+        return filtered
 
     async def _publish_batch_via_rest(self, signals: list[Signal]):
         """Publish signals batch via REST API."""
