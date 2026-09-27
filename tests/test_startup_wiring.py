@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from ta_bot.services.strategy_config_store import DataManagerStrategyConfigStore
+
 _PETROSA_OTEL_PREFIXES = ("petrosa_otel", "ta_bot.evaluators")
 
 
@@ -159,13 +161,15 @@ async def test_main_startup_wiring():
             with pytest.raises(SystemExit):
                 safe_handler(99999, None)
 
-            # petrosa-bot-ta-analysis#271: StrategyConfigManager must actually be
-            # instantiated (with the general MongoDB client and a cache TTL),
+            # petrosa-bot-ta-analysis#325: StrategyConfigManager must use the
+            # data-manager strategy store and a cache TTL,
             # started, and registered with the API routes module — otherwise every
             # /api/v1/config/* endpoint 503s forever with "not initialized".
-            mock_scm_cls.assert_called_once_with(
-                mongodb_client=mock_mongo, cache_ttl_seconds=60
-            )
+            mock_scm_cls.assert_called_once()
+            store = mock_scm_cls.call_args.kwargs["store"]
+            assert isinstance(store, DataManagerStrategyConfigStore)
+            assert store.client is mock_dm
+            assert mock_scm_cls.call_args.kwargs["cache_ttl_seconds"] == 60
             mock_scm.start.assert_called_once()
             assert config_routes.get_config_manager() is mock_scm
 
@@ -227,9 +231,11 @@ async def test_main_registers_strategy_config_manager_with_routes():
 
             await main()
 
-            mock_scm_cls.assert_called_once_with(
-                mongodb_client=mock_mongo, cache_ttl_seconds=60
-            )
+            mock_scm_cls.assert_called_once()
+            store = mock_scm_cls.call_args.kwargs["store"]
+            assert isinstance(store, DataManagerStrategyConfigStore)
+            assert store.client is mock_dm
+            assert mock_scm_cls.call_args.kwargs["cache_ttl_seconds"] == 60
             mock_scm.start.assert_awaited_once()
             assert config_routes.get_config_manager() is mock_scm
 

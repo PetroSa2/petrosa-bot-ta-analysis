@@ -14,11 +14,14 @@ config_routes.set_config_manager() (mirroring the wiring main.py now performs
 at startup), at least one config endpoint responds without a 503.
 """
 
+from unittest.mock import MagicMock
+
 from fastapi.testclient import TestClient
 
 from ta_bot.api import config_routes
 from ta_bot.health import app
 from ta_bot.services.config_manager import StrategyConfigManager
+from ta_bot.services.strategy_config_store import DataManagerStrategyConfigStore
 
 
 class TestConfigManagerRegistration271:
@@ -29,7 +32,9 @@ class TestConfigManagerRegistration271:
         # read paths degrade gracefully (no global/symbol overrides reported)
         # when no database is attached. The point of this test is DI wiring,
         # not persistence behavior.
-        self._manager = StrategyConfigManager(mongodb_client=None)
+        self._manager = StrategyConfigManager(
+            store=MagicMock(spec=DataManagerStrategyConfigStore)
+        )
         config_routes.set_config_manager(self._manager)
         self.client = TestClient(app)
 
