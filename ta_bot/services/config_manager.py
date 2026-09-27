@@ -18,6 +18,7 @@ try:
     from datetime import UTC
 except ImportError:
     from datetime import timezone
+
     UTC = timezone.utc  # noqa: UP017
 from typing import Any
 
@@ -141,9 +142,7 @@ class StrategyConfigManager:
 
         # Try data-manager symbol-specific
         if symbol and self.store.is_connected:
-            config_doc = await self.store.get_symbol_config(
-                strategy_id, symbol
-            )
+            config_doc = await self.store.get_symbol_config(strategy_id, symbol)
             if config_doc:
                 result = self._doc_to_config_result(config_doc, "mongodb", True)
                 self._set_cache(cache_key, result)
@@ -401,9 +400,7 @@ class StrategyConfigManager:
                         strategy_id, symbol
                     )
                 else:
-                    success_store = await self.store.delete_global_config(
-                        strategy_id
-                    )
+                    success_store = await self.store.delete_global_config(strategy_id)
             except Exception as e:
                 logger.error(f"Failed to delete config from MongoDB: {e}")
 
@@ -467,9 +464,7 @@ class StrategyConfigManager:
             return []
 
         try:
-            records = await self.store.get_audit_trail(
-                strategy_id, symbol, limit
-            )
+            records = await self.store.get_audit_trail(strategy_id, symbol, limit)
 
             # Convert to Pydantic models
             audit_records = []
@@ -518,9 +513,7 @@ class StrategyConfigManager:
             # Get symbol overrides
             symbol_overrides = []
             if self.store.is_connected:
-                symbol_overrides = await self.store.list_symbol_overrides(
-                    strategy_id
-                )
+                symbol_overrides = await self.store.list_symbol_overrides(strategy_id)
 
             result.append(
                 {
