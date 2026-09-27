@@ -39,6 +39,7 @@ class DataManagerLifecycleStore:
         """Create one lifecycle event and return its data-manager ID."""
         strategy_id = event_data.get("strategy_id")
         payload = {
+            "strategy_id": strategy_id,
             "from_state": event_data.get("from_state"),
             "to_state": event_data.get("to_state"),
             "transitioned_by": event_data.get("transitioned_by", ""),
@@ -70,7 +71,17 @@ class DataManagerLifecycleStore:
             if response.status_code == 404:
                 return []
             response.raise_for_status()
-            return response.json().get("events", [])
+            events = response.json().get("events", [])
+            return [
+                {
+                    **event,
+                    "id": event.get("id", event.get("event_id")),
+                    "reasoning_context": event.get(
+                        "reasoning_context", event.get("reason")
+                    ),
+                }
+                for event in events
+            ]
         except Exception as exc:
             logger.error("Error fetching lifecycle history for %s: %s", strategy_id, exc)
             return []
