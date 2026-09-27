@@ -82,7 +82,7 @@ try:
     _lifecycle_store: DataManagerLifecycleStore | None = None
 
     async def _init_lifecycle_manager() -> None:
-        nonlocal _lifecycle_store
+        global _lifecycle_store
         _lifecycle_store = DataManagerLifecycleStore(os.getenv("DATA_MANAGER_URL"))
         lm = StrategyLifecycleManager(
             store=_lifecycle_store,
