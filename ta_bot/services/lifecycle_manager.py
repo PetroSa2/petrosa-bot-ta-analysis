@@ -32,7 +32,9 @@ _DATA_MANAGER_JOIN_TIMEOUT = 3.0
 class LifecycleStore(Protocol):
     async def get_current_lifecycle_state(self, strategy_id: str) -> str | None: ...
 
-    async def create_lifecycle_event(self, event_data: dict[str, Any]) -> str | None: ...
+    async def create_lifecycle_event(
+        self, event_data: dict[str, Any]
+    ) -> str | None: ...
 
     async def get_lifecycle_history(
         self, strategy_id: str, limit: int = 500

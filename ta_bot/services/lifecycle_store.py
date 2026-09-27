@@ -32,7 +32,9 @@ class DataManagerLifecycleStore:
             response.raise_for_status()
             return response.json().get("state")
         except Exception as exc:
-            logger.error("Error fetching current lifecycle state for %s: %s", strategy_id, exc)
+            logger.error(
+                "Error fetching current lifecycle state for %s: %s", strategy_id, exc
+            )
             return None
 
     async def create_lifecycle_event(self, event_data: dict[str, Any]) -> str | None:
@@ -83,5 +85,7 @@ class DataManagerLifecycleStore:
                 for event in events
             ]
         except Exception as exc:
-            logger.error("Error fetching lifecycle history for %s: %s", strategy_id, exc)
+            logger.error(
+                "Error fetching lifecycle history for %s: %s", strategy_id, exc
+            )
             return []
