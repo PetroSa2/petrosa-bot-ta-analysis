@@ -113,11 +113,9 @@ class StrategyConfigManager:
 
         Implements priority resolution:
         1. Check cache
-        2. MongoDB symbol-specific (if symbol provided)
-        3. MySQL symbol-specific (if symbol provided)
-        4. MongoDB global
-        5. MySQL global
-        6. Hardcoded defaults (auto-persist to MongoDB)
+        2. Data Manager symbol-specific (if symbol provided)
+        3. Data Manager global
+        4. Hardcoded defaults (auto-persist through Data Manager)
 
         Args:
             strategy_id: Strategy identifier
@@ -144,7 +142,7 @@ class StrategyConfigManager:
         if symbol and self.store.is_connected:
             config_doc = await self.store.get_symbol_config(strategy_id, symbol)
             if config_doc:
-                result = self._doc_to_config_result(config_doc, "mongodb", True)
+                result = self._doc_to_config_result(config_doc, "data_manager", True)
                 self._set_cache(cache_key, result)
                 result["cache_hit"] = False
                 result["load_time_ms"] = (time.time() - start_time) * 1000
@@ -154,7 +152,7 @@ class StrategyConfigManager:
         if self.store.is_connected:
             config_doc = await self.store.get_global_config(strategy_id)
             if config_doc:
-                result = self._doc_to_config_result(config_doc, "mongodb", False)
+                result = self._doc_to_config_result(config_doc, "data_manager", False)
                 self._set_cache(cache_key, result)
                 result["cache_hit"] = False
                 result["load_time_ms"] = (time.time() - start_time) * 1000
@@ -402,7 +400,7 @@ class StrategyConfigManager:
                 else:
                     success_store = await self.store.delete_global_config(strategy_id)
             except Exception as e:
-                logger.error(f"Failed to delete config from MongoDB: {e}")
+                logger.error(f"Failed to delete config through data-manager: {e}")
 
         if not success_store:
             return False, ["Failed to delete configuration from any database"]

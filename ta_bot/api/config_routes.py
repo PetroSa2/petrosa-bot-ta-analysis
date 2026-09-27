@@ -350,7 +350,7 @@ async def get_strategy_defaults_endpoint(
     The response indicates:
     - Current parameter values
     - Configuration version (increments with each update)
-    - Source (mongodb, mysql, or default)
+    - Source (data_manager or default)
     - When it was created/updated
 
     **Example Request**: `GET /api/v1/strategies/rsi_extreme_reversal/config`
@@ -364,7 +364,7 @@ async def get_strategy_defaults_endpoint(
         "symbol": null,
         "parameters": {"rsi_period": 14, "oversold_threshold": 30},
         "version": 2,
-        "source": "mongodb",
+        "source": "data_manager",
         "is_override": false,
         "created_at": "2025-10-17T10:00:00Z",
         "updated_at": "2025-10-17T14:00:00Z"
@@ -438,7 +438,7 @@ async def get_global_config(
         "symbol": "BTCUSDT",
         "parameters": {"rsi_period": 2, "oversold_threshold": 20},
         "version": 1,
-        "source": "mongodb",
+        "source": "data_manager",
         "is_override": true,
         "created_at": "2025-10-17T12:00:00Z",
         "updated_at": "2025-10-17T12:00:00Z"
@@ -524,7 +524,7 @@ async def get_symbol_config(
         "symbol": null,
         "parameters": {...},
         "version": 3,
-        "source": "mongodb",
+        "source": "data_manager",
         "is_override": false,
         "created_at": "2025-10-17T10:00:00Z",
         "updated_at": "2025-10-17T15:00:00Z"
@@ -583,7 +583,7 @@ async def update_global_config(
             symbol=None,
             parameters=config.parameters,
             version=config.version,
-            source="mongodb",
+            source="data_manager",
             is_override=False,
             created_at=config.created_at.isoformat(),
             updated_at=config.updated_at.isoformat(),
@@ -680,7 +680,7 @@ async def update_symbol_config(
             symbol=symbol,
             parameters=config.parameters,
             version=config.version,
-            source="mongodb",
+            source="data_manager",
             is_override=True,
             created_at=config.created_at.isoformat(),
             updated_at=config.updated_at.isoformat(),
@@ -708,7 +708,7 @@ async def update_symbol_config(
     description="""
     **For LLM Agents**: Use this to remove a global configuration and revert to hardcoded defaults.
 
-    **Warning**: This will delete the configuration from both MongoDB and MySQL.
+    **Warning**: This deletes the configuration through data-manager.
     After deletion, the strategy will use hardcoded defaults until a new configuration is created.
 
     **Example Request**: `DELETE /api/v1/strategies/rsi_extreme_reversal/config?changed_by=llm_agent_v1&reason=Resetting to defaults`
@@ -1172,7 +1172,7 @@ async def validate_config(request: ConfigValidationRequest):
     The response indicates:
     - Current configuration values
     - Configuration version (increments with each update)
-    - Source (mongodb, mysql, or default)
+    - Source (data_manager or default)
     - When it was created/updated
 
     **Example Request**: `GET /api/v1/config/application`
@@ -1190,7 +1190,7 @@ async def validate_config(request: ConfigValidationRequest):
         "max_positions": 10,
         "position_sizes": [100, 200, 500, 1000],
         "version": 2,
-        "source": "mongodb",
+        "source": "data_manager",
         "created_at": "2025-10-17T10:00:00Z",
         "updated_at": "2025-10-21T14:00:00Z"
       },
@@ -1367,7 +1367,7 @@ async def update_application_config(request: AppConfigUpdateRequest):
             max_positions=config.max_positions,
             position_sizes=config.position_sizes,
             version=config.version,
-            source="mongodb",
+            source="data_manager",
             created_at=config.created_at.isoformat(),
             updated_at=config.updated_at.isoformat(),
         )

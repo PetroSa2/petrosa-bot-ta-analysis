@@ -7,13 +7,13 @@ For runtime configuration changes, use the Application Configuration API:
 - POST /api/v1/config/application - Update runtime config
 
 Runtime configuration changes take effect within 60 seconds (cache TTL) and
-apply on the next NATS message processed. Changes are persisted to MongoDB
+apply on the next NATS message processed. Changes are persisted through data-manager
 and tracked in the audit trail.
 
 Startup configuration (this file) is used when:
 1. No runtime configuration exists in the database
 2. Initializing the application for the first time
-3. As fallback if database is unavailable
+3. As fallback if data-manager is unavailable
 """
 
 import os

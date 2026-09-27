@@ -12,7 +12,7 @@ import signal as _signal
 # Optional OpenTelemetry imports
 try:
     from petrosa_otel import (
-        ConfigRateLimiter,
+        DataManagerConfigRateLimiter,
         attach_logging_handler,
         initialize_telemetry_standard,
         setup_signal_handlers,
@@ -21,12 +21,11 @@ except ImportError:  # pragma: no cover — petrosa_otel is always installed in 
     initialize_telemetry_standard = None
     attach_logging_handler = None
     setup_signal_handlers = None
-    ConfigRateLimiter = None
+    DataManagerConfigRateLimiter = None
 
 from ta_bot.api import config_routes
 from ta_bot.config import Config
 from ta_bot.core.signal_engine import SignalEngine
-from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.health import set_rate_limiter, start_health_server
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
@@ -48,7 +47,7 @@ async def main():
     # startup-failure cleanup below never touches an object mid-construction.
     # Fixes the aiohttp/httpx "Unclosed client session"/"Unclosed connector"
     # leak on startup failure (petrosa-bot-ta-analysis#269): previously, if
-    # e.g. mongodb_client.connect() failed after data_manager_client had
+    # e.g. a later startup step failed after data_manager_client had
     # already connected, data_manager_client's session was never closed
     # before the process exited.
     _opened_resources: list = []
@@ -62,8 +61,8 @@ async def main():
                 service_name=os.getenv("OTEL_SERVICE_NAME", "petrosa-bot-ta-analysis"),
                 service_type="fastapi",
                 enable_fastapi=True,
-                enable_mongodb=True,
-                enable_mysql=True,
+                enable_mongodb=False,
+                enable_mysql=False,
             )
 
         # 3. Attach OTel logging handler LAST (after logging is configured)
@@ -103,28 +102,10 @@ async def main():
         _opened_resources.append(data_manager_client)
         logger.info("Data Manager client initialized")
 
-        # Initialize MongoDB client for fallback configuration persistence
-        # This one uses Data Manager if available (the default behavior)
-        mongodb_client = MongoDBClient()
-        await mongodb_client.connect()
-        _opened_resources.append(mongodb_client)
-        logger.info("General MongoDB client initialized")
-
-        # Initialize dedicated direct MongoDB client for the Rate Limiter
-        # ConfigRateLimiter REQUIRES direct collection access
-        rate_limit_mongo_client = MongoDBClient(use_data_manager=False)
-        if not await rate_limit_mongo_client.connect():
-            logger.error(
-                "Failed to connect to direct MongoDB for rate limiter; aborting startup"
-            )
-            raise RuntimeError("Direct MongoDB connection for rate limiter failed")
-        _opened_resources.append(rate_limit_mongo_client)
-        logger.info("Rate limiter MongoDB client (direct) initialized")
-
         # Initialize Rate Limiter
-        if ConfigRateLimiter:
-            rate_limiter = ConfigRateLimiter(
-                mongodb_client=rate_limit_mongo_client,
+        if DataManagerConfigRateLimiter:
+            rate_limiter = DataManagerConfigRateLimiter(
+                base_url=os.getenv("DATA_MANAGER_URL"),
                 service_name="ta-bot",
                 per_agent_limit=int(os.getenv("CONFIG_RATE_LIMIT_PER_AGENT", "10")),
                 cooldown_seconds=int(os.getenv("CONFIG_RATE_LIMIT_COOLDOWN", "300")),
@@ -134,8 +115,7 @@ async def main():
 
         # Initialize Application Configuration Manager
         app_config_manager = AppConfigManager(
-            mongodb_client=mongodb_client,  # Fallback
-            data_manager_client=data_manager_client,  # Preferred
+            data_manager_client=data_manager_client,
             cache_ttl_seconds=60,  # 60 second cache TTL
         )
         await app_config_manager.start()

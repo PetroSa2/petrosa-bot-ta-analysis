@@ -173,7 +173,9 @@ class BotTaAnalysisHealthEvaluator(Evaluator):
         signals = int(snapshot.get("signals_emitted", 0) or 0)
         latency_s = float(snapshot.get("analysis_latency_s", 0.0) or 0.0)
         nats_connected = bool(snapshot.get("nats_connected"))
-        mysql_healthy = bool(snapshot.get("mysql_healthy", True))
+        candles_source_healthy = bool(
+            snapshot.get("candles_source_healthy", snapshot.get("mysql_healthy", True))
+        )
         messages_received = int(snapshot.get("messages_received", 0) or 0)
         seconds_since_start = float(snapshot.get("seconds_since_start", 0.0) or 0.0)
 
@@ -195,10 +197,10 @@ class BotTaAnalysisHealthEvaluator(Evaluator):
             return "unhealthy", "NATS publisher disconnected; cannot emit signals"
 
         # 2) Candle-data / Data Manager connection health.
-        if not mysql_healthy:
+        if not candles_source_healthy:
             return "unhealthy", "candle-data source unreachable (data-manager API)"
 
-        # 2b) No-traffic stall (#265): connected to NATS/MySQL but zero
+        # 2b) No-traffic stall (#265): connected to NATS/Data Manager but zero
         # candle-extraction messages have ever arrived past the grace period.
         # Without this check the evaluator reports "healthy" indefinitely on
         # connectivity alone even if the listener never received a single

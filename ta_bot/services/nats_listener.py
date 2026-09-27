@@ -15,7 +15,7 @@ from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
 from ta_bot.services.data_manager_client import MIN_WARMUP_CANDLES
-from ta_bot.services.mysql_client import MySQLClient
+from ta_bot.services.data_manager_gateway import DataManagerGateway
 from ta_bot.services.publisher import SignalPublisher
 
 logger = logging.getLogger(__name__)
@@ -73,13 +73,13 @@ class NATSListener:
         self.strategy_config_manager = strategy_config_manager
         self.nc = NATS()
         self.subscriptions: list[Any] = []
-        self.mysql_client = MySQLClient()
+        self.data_manager_gateway = DataManagerGateway()
 
         # Health signals consumed by BotTaAnalysisHealthEvaluator (P2.7 #248).
         self._recent_analysis_latencies: deque[float] = deque(maxlen=200)
         self.signals_emitted = 0
         self.signal_persist_failures = 0
-        self._mysql_healthy = True
+        self._candles_source_healthy = True
 
         # Proof-of-life signals for #265: distinguish "listening, zero NATS
         # traffic ever arrived" from "listening, traffic arrived, no signals
@@ -97,8 +97,7 @@ class NATSListener:
             await self.nc.connect(self.nats_url)
             logger.info(f"Connected to NATS server: {self.nats_url}")
 
-            # Initialize MySQL client
-            await self.mysql_client.connect()
+            await self.data_manager_gateway.connect()
 
             # Initialize publisher
             await self.publisher.start()
@@ -350,15 +349,15 @@ class NATSListener:
 
             logger.info(f"Processing extraction completion for {symbol} {period}")
 
-            # Fetch candle data from MySQL (see MIN_WARMUP_CANDLES: sized for the
+            # Fetch candle data through Data Manager (see MIN_WARMUP_CANDLES: sized for the
             # hungriest strategy, not just EMA200)
             try:
-                df = await self.mysql_client.fetch_candles(
+                df = await self.data_manager_gateway.fetch_candles(
                     symbol, period, limit=MIN_WARMUP_CANDLES
                 )
-                self._mysql_healthy = True
+                self._candles_source_healthy = True
             except Exception as fetch_exc:
-                self._mysql_healthy = False
+                self._candles_source_healthy = False
                 logger.error(
                     f"Candle-data fetch failed for {symbol} {period}: {fetch_exc}"
                 )
@@ -412,24 +411,24 @@ class NATSListener:
             if signals:
                 logger.info(f"Generated {len(signals)} signals for {symbol} {period}")
 
-                # Persist signals to MySQL (using new format)
+                # Persist signals through Data Manager (using new format)
                 signal_data_list = []
                 for signal in signals:
                     signal_data = signal.to_dict()
                     signal_data_list.append(signal_data)
 
-                success = await self.mysql_client.persist_signals_batch(
+                success = await self.data_manager_gateway.persist_signals_batch(
                     signal_data_list
                 )
 
                 if success:
                     logger.info(
-                        f"Successfully persisted {len(signals)} signals to MySQL"
+                        f"Successfully persisted {len(signals)} signals through Data Manager"
                     )
                 else:
                     self.signal_persist_failures += 1
                     logger.error(
-                        f"Failed to persist {len(signals)} signals to MongoDB "
+                        f"Failed to persist {len(signals)} signals through Data Manager "
                         f"collection signals for {symbol} {period}"
                     )
 
@@ -455,7 +454,8 @@ class NATSListener:
         now = time.monotonic()
         return {
             "nats_connected": bool(pub_client and pub_client.is_connected),
-            "mysql_healthy": self._mysql_healthy,
+            "candles_source_healthy": self._candles_source_healthy,
+            "mysql_healthy": self._candles_source_healthy,
             "analysis_latency_s": (
                 sum(latencies) / len(latencies) if latencies else 0.0
             ),
@@ -488,8 +488,7 @@ class NATSListener:
             # Close NATS connection
             await self.nc.close()
 
-            # Close MySQL connection
-            await self.mysql_client.disconnect()
+            await self.data_manager_gateway.disconnect()
 
             logger.info("NATS listener cleaned up")
 

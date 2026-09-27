@@ -31,7 +31,7 @@ async def test_symbol_config_uses_gateway_then_global_fallback(client):
     result = await manager.get_config("momentum_pulse", "BTCUSDT")
 
     assert result["parameters"] == {"x": 1}
-    assert result["source"] == "mongodb"
+    assert result["source"] == "data_manager"
     assert client.get_strategy_config_record.await_args_list[0].args == (
         "momentum_pulse",
         "BTCUSDT",

@@ -3,7 +3,7 @@ Strategy default parameters registry.
 
 This module contains all default parameter values for each strategy.
 These defaults are used when no database configuration exists and are
-automatically persisted to MongoDB on first use.
+automatically persisted through data-manager on first use.
 """
 
 from typing import Any

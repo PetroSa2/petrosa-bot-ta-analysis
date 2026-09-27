@@ -49,7 +49,7 @@ class StrategyLifecycleManager:
     """
     Manages strategy lifecycle state transitions and history queries.
 
-    Persist transitions to `strategy_lifecycle_events` MongoDB collection.
+    Persist transitions through the data-manager gateway.
     Optionally enriches timeline events with CIO context from the
     data-manager LifecycleRepository (AC4, best-effort with timeout).
     """
