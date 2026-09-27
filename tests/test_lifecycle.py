@@ -36,8 +36,8 @@ from ta_bot.services.lifecycle_manager import (  # noqa: E402
 # ---------------------------------------------------------------------------
 
 
-def _make_mock_db(current_state: str | None = None, history: list | None = None):
-    """Return a MongoDBClient mock pre-wired for lifecycle tests."""
+def _make_mock_store(current_state: str | None = None, history: list | None = None):
+    """Return a lifecycle store mock."""
     db = MagicMock()
     db.get_current_lifecycle_state = AsyncMock(return_value=current_state)
     db.create_lifecycle_event = AsyncMock(return_value="mock_event_id_123")
@@ -97,8 +97,8 @@ class TestLifecycleStateMachine:
 class TestLifecycleManagerTransition:
     @pytest.mark.asyncio
     async def test_initial_registration_has_no_from_state(self):
-        db = _make_mock_db(current_state=None)
-        manager = StrategyLifecycleManager(mongodb_client=db)
+        db = _make_mock_store(current_state=None)
+        manager = StrategyLifecycleManager(store=db)
 
         event = await manager.transition(
             strategy_id="test_strategy",
@@ -113,8 +113,8 @@ class TestLifecycleManagerTransition:
 
     @pytest.mark.asyncio
     async def test_transition_persists_decision_id_and_context(self):
-        db = _make_mock_db(current_state="admitted")
-        manager = StrategyLifecycleManager(mongodb_client=db)
+        db = _make_mock_store(current_state="admitted")
+        manager = StrategyLifecycleManager(store=db)
 
         event = await manager.transition(
             strategy_id="test_strategy",
@@ -133,8 +133,8 @@ class TestLifecycleManagerTransition:
 
     @pytest.mark.asyncio
     async def test_invalid_state_raises_error(self):
-        db = _make_mock_db(current_state=None)
-        manager = StrategyLifecycleManager(mongodb_client=db)
+        db = _make_mock_store(current_state=None)
+        manager = StrategyLifecycleManager(store=db)
 
         with pytest.raises(LifecycleTransitionError, match="Unknown lifecycle state"):
             await manager.transition(
@@ -145,8 +145,8 @@ class TestLifecycleManagerTransition:
 
     @pytest.mark.asyncio
     async def test_invalid_transition_raises_error(self):
-        db = _make_mock_db(current_state="graduated")
-        manager = StrategyLifecycleManager(mongodb_client=db)
+        db = _make_mock_store(current_state="graduated")
+        manager = StrategyLifecycleManager(store=db)
 
         with pytest.raises(LifecycleTransitionError, match="Invalid transition"):
             await manager.transition(
@@ -169,7 +169,7 @@ class TestLifecycleAPI:
         from ta_bot.api import config_routes
         from ta_bot.health import app
 
-        self._db = _make_mock_db(
+        self._db = _make_mock_store(
             current_state="live_trial",
             history=[
                 {
@@ -184,7 +184,7 @@ class TestLifecycleAPI:
                 }
             ],
         )
-        lm = StrategyLifecycleManager(mongodb_client=self._db)
+        lm = StrategyLifecycleManager(store=self._db)
         config_routes.set_lifecycle_manager(lm)
         self.client = TestClient(app)
         yield
@@ -256,7 +256,7 @@ class TestLifecycleAPI:
 class TestCIOJoin:
     @pytest.mark.asyncio
     async def test_join_enriches_events_with_cio_context(self):
-        db = _make_mock_db(
+        db = _make_mock_store(
             history=[
                 {
                     "_id": "ev1",
@@ -271,7 +271,7 @@ class TestCIOJoin:
             ]
         )
         manager = StrategyLifecycleManager(
-            mongodb_client=db,
+            store=db,
             data_manager_url="http://data-manager-mock",
         )
 
@@ -298,7 +298,7 @@ class TestCIOJoin:
 
     @pytest.mark.asyncio
     async def test_join_unavailable_degrades_gracefully(self):
-        db = _make_mock_db(
+        db = _make_mock_store(
             history=[
                 {
                     "_id": "ev1",
@@ -313,7 +313,7 @@ class TestCIOJoin:
             ]
         )
         manager = StrategyLifecycleManager(
-            mongodb_client=db,
+            store=db,
             data_manager_url="http://data-manager-mock",
         )
 
