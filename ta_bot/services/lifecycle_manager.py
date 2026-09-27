@@ -7,7 +7,7 @@ and provides the operator-queryable lifecycle timeline.
 
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol
 
 try:
     from datetime import UTC
@@ -18,7 +18,6 @@ except ImportError:
 
 import httpx
 
-from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.strategy_config import (
     VALID_LIFECYCLE_TRANSITIONS,
     StrategyLifecycleEvent,
@@ -28,6 +27,16 @@ from ta_bot.models.strategy_config import (
 logger = logging.getLogger(__name__)
 
 _DATA_MANAGER_JOIN_TIMEOUT = 3.0
+
+
+class LifecycleStore(Protocol):
+    async def get_current_lifecycle_state(self, strategy_id: str) -> str | None: ...
+
+    async def create_lifecycle_event(self, event_data: dict[str, Any]) -> str | None: ...
+
+    async def get_lifecycle_history(
+        self, strategy_id: str, limit: int = 500
+    ) -> list[dict[str, Any]]: ...
 
 
 class LifecycleTransitionError(ValueError):
@@ -45,10 +54,10 @@ class StrategyLifecycleManager:
 
     def __init__(
         self,
-        mongodb_client: MongoDBClient,
+        store: LifecycleStore,
         data_manager_url: str | None = None,
     ) -> None:
-        self._db = mongodb_client
+        self._store = store
         self._data_manager_url = data_manager_url
 
     # ------------------------------------------------------------------
@@ -89,7 +98,7 @@ class StrategyLifecycleManager:
                 f"Unknown lifecycle state '{to_state}'. Valid states: {valid}"
             )
 
-        current_state_str = await self._db.get_current_lifecycle_state(strategy_id)
+        current_state_str = await self._store.get_current_lifecycle_state(strategy_id)
         if current_state_str is not None:
             try:
                 current_state_enum = StrategyLifecycleState(current_state_str)
@@ -121,7 +130,7 @@ class StrategyLifecycleManager:
         event_data = event.model_dump(mode="json")
         event_data.pop("id", None)
 
-        inserted_id = await self._db.create_lifecycle_event(event_data)
+        inserted_id = await self._store.create_lifecycle_event(event_data)
         event.id = inserted_id
         return event
 
@@ -141,7 +150,7 @@ class StrategyLifecycleManager:
         Returns:
             Dict with keys: current_state, events (list), cio_join_status
         """
-        raw_events = await self._db.get_lifecycle_history(strategy_id)
+        raw_events = await self._store.get_lifecycle_history(strategy_id)
 
         events = []
         for doc in raw_events:

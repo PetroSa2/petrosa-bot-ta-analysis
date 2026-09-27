@@ -75,24 +75,28 @@ except Exception as e:
 
 # Register lifecycle manager with API routes (FR9)
 try:
-    import os
-
     from ta_bot.api.config_routes import set_lifecycle_manager
-    from ta_bot.db.mongodb_client import MongoDBClient as _MongoDBClient
     from ta_bot.services.lifecycle_manager import StrategyLifecycleManager
+    from ta_bot.services.lifecycle_store import DataManagerLifecycleStore
 
-    _lifecycle_mongo = _MongoDBClient(use_data_manager=False)
+    _lifecycle_store: DataManagerLifecycleStore | None = None
 
     async def _init_lifecycle_manager() -> None:
-        await _lifecycle_mongo.connect()
+        nonlocal _lifecycle_store
+        _lifecycle_store = DataManagerLifecycleStore(os.getenv("DATA_MANAGER_URL"))
         lm = StrategyLifecycleManager(
-            mongodb_client=_lifecycle_mongo,
+            store=_lifecycle_store,
             data_manager_url=os.getenv("DATA_MANAGER_URL"),
         )
         set_lifecycle_manager(lm)
         logger.info("Lifecycle manager registered with API routes")
 
+    async def _close_lifecycle_store() -> None:
+        if _lifecycle_store is not None:
+            await _lifecycle_store.close()
+
     app.add_event_handler("startup", _init_lifecycle_manager)
+    app.add_event_handler("shutdown", _close_lifecycle_store)
 except Exception as e:
     logger.warning(f"Could not register lifecycle manager: {e}")
 
