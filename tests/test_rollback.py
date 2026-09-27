@@ -16,6 +16,7 @@ import pytest
 from ta_bot.models.app_config import AppConfig, AppConfigAudit
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
+from ta_bot.services.strategy_config_store import DataManagerStrategyConfigStore
 
 
 @pytest.fixture
@@ -31,9 +32,11 @@ def mock_mongodb_client():
 async def test_strategy_config_rollback(mock_mongodb_client):
     """Test strategy config rollback (Proxy to Data Manager)."""
     # Setup
-    mock_mongodb_client.data_manager_client.rollback_strategy_config.return_value = True
+    store = MagicMock(spec=DataManagerStrategyConfigStore)
+    store.is_connected = True
+    store.rollback_strategy_config = AsyncMock(return_value=True)
 
-    manager = StrategyConfigManager(mongodb_client=mock_mongodb_client)
+    manager = StrategyConfigManager(store=store)
     # Mock get_config to avoid actual DB call
     manager.get_config = AsyncMock(
         return_value={"parameters": {"rsi": 14}, "version": 2}
@@ -45,7 +48,7 @@ async def test_strategy_config_rollback(mock_mongodb_client):
     # Verify
     assert success is True
     assert config.strategy_id == "rsi_bot"
-    mock_mongodb_client.data_manager_client.rollback_strategy_config.assert_called_once()
+    store.rollback_strategy_config.assert_called_once()
 
 
 @pytest.mark.asyncio

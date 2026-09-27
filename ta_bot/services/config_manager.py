@@ -2,7 +2,7 @@
 Strategy Configuration Manager.
 
 Manages runtime configuration for trading strategies with:
-- Dual database persistence (MongoDB primary, MySQL fallback)
+ - Data-manager gateway persistence
 - Configuration inheritance (global + per-symbol overrides)
 - TTL-based caching for performance
 - Full audit trail
@@ -23,9 +23,8 @@ from typing import Any
 
 from petrosa_otel import get_meter
 
-from ta_bot.db.mongodb_client import MongoDBClient
 from ta_bot.models.strategy_config import StrategyConfig, StrategyConfigAudit
-from ta_bot.services.mysql_client import MySQLClient
+from ta_bot.services.strategy_config_store import DataManagerStrategyConfigStore
 from ta_bot.strategies.defaults import (
     get_strategy_defaults,
     get_strategy_metadata,
@@ -38,33 +37,28 @@ logger = logging.getLogger(__name__)
 
 class StrategyConfigManager:
     """
-    Strategy configuration manager with dual persistence and caching.
+    Strategy configuration manager with data-manager persistence and caching.
 
     Configuration Resolution Priority:
     1. Cache (if not expired)
-    2. MongoDB symbol-specific config
-    3. MySQL symbol-specific config
-    4. MongoDB global config
-    5. MySQL global config
-    6. Hardcoded defaults (auto-persisted to MongoDB)
+    2. Data-manager symbol-specific config
+    3. Data-manager global config
+    4. Hardcoded defaults (auto-persisted through data-manager)
     """
 
     def __init__(
         self,
-        mongodb_client: MongoDBClient | None = None,
-        mysql_client: MySQLClient | None = None,
+        store: DataManagerStrategyConfigStore,
         cache_ttl_seconds: int = 60,
     ):
         """
         Initialize configuration manager.
 
         Args:
-            mongodb_client: MongoDB client (will create if None)
-            mysql_client: MySQL client (will create if None)
+            store: Data-manager-backed strategy configuration store
             cache_ttl_seconds: Cache TTL in seconds (default: 60)
         """
-        self.mongodb_client = mongodb_client
-        self.mysql_client = mysql_client
+        self.store = store
         self.cache_ttl_seconds = cache_ttl_seconds
 
         # Cache: key = f"{strategy_id}:{symbol or 'global'}", value = (config, timestamp)
@@ -87,11 +81,7 @@ class StrategyConfigManager:
     async def start(self) -> None:
         """Start the configuration manager and background tasks."""
         # Initialize database connections
-        if self.mongodb_client:
-            await self.mongodb_client.connect()
-
-        if self.mysql_client:
-            await self.mysql_client.connect()
+        await self.store.connect()
 
         # Start cache refresh task
         self._running = True
@@ -110,11 +100,7 @@ class StrategyConfigManager:
             except asyncio.CancelledError:
                 pass
 
-        if self.mongodb_client:
-            await self.mongodb_client.disconnect()
-
-        if self.mysql_client:
-            await self.mysql_client.disconnect()
+        await self.store.disconnect()
 
         logger.info("Configuration manager stopped")
 
@@ -153,9 +139,9 @@ class StrategyConfigManager:
             cached["load_time_ms"] = (time.time() - start_time) * 1000
             return cached
 
-        # Try MongoDB symbol-specific
-        if symbol and self.mongodb_client and self.mongodb_client.is_connected:
-            config_doc = await self.mongodb_client.get_symbol_config(
+        # Try data-manager symbol-specific
+        if symbol and self.store.is_connected:
+            config_doc = await self.store.get_symbol_config(
                 strategy_id, symbol
             )
             if config_doc:
@@ -165,31 +151,11 @@ class StrategyConfigManager:
                 result["load_time_ms"] = (time.time() - start_time) * 1000
                 return result
 
-        # Try MySQL symbol-specific
-        if symbol and self.mysql_client:
-            config_doc = await self._get_mysql_symbol_config(strategy_id, symbol)
-            if config_doc:
-                result = self._doc_to_config_result(config_doc, "mysql", True)
-                self._set_cache(cache_key, result)
-                result["cache_hit"] = False
-                result["load_time_ms"] = (time.time() - start_time) * 1000
-                return result
-
-        # Try MongoDB global
-        if self.mongodb_client and self.mongodb_client.is_connected:
-            config_doc = await self.mongodb_client.get_global_config(strategy_id)
+        # Try data-manager global
+        if self.store.is_connected:
+            config_doc = await self.store.get_global_config(strategy_id)
             if config_doc:
                 result = self._doc_to_config_result(config_doc, "mongodb", False)
-                self._set_cache(cache_key, result)
-                result["cache_hit"] = False
-                result["load_time_ms"] = (time.time() - start_time) * 1000
-                return result
-
-        # Try MySQL global
-        if self.mysql_client:
-            config_doc = await self._get_mysql_global_config(strategy_id)
-            if config_doc:
-                result = self._doc_to_config_result(config_doc, "mysql", False)
                 self._set_cache(cache_key, result)
                 result["cache_hit"] = False
                 result["load_time_ms"] = (time.time() - start_time) * 1000
@@ -198,10 +164,10 @@ class StrategyConfigManager:
         # Fall back to hardcoded defaults and auto-persist
         defaults = get_strategy_defaults(strategy_id)
         if defaults:
-            # Auto-persist defaults to MongoDB (best effort, no error if fails)
-            if self.mongodb_client and self.mongodb_client.is_connected:
+            # Auto-persist defaults through data-manager (best effort)
+            if self.store.is_connected:
                 try:
-                    await self.mongodb_client.upsert_global_config(
+                    await self.store.upsert_global_config(
                         strategy_id,
                         defaults,
                         {
@@ -252,10 +218,7 @@ class StrategyConfigManager:
         """
         Create or update configuration.
 
-        Implements dual persistence:
-        1. Write to MongoDB (primary)
-        2. Write to MySQL (fallback)
-        3. Create audit record
+        Persist through data-manager and create its audit record.
         4. Invalidate cache
 
         Args:
@@ -288,39 +251,22 @@ class StrategyConfigManager:
         }
 
         config_id = None
-        success_mongo = False
-        success_mysql = False
-
-        # Write to MongoDB (primary)
-        if self.mongodb_client and self.mongodb_client.is_connected:
+        success_store = False
+        if self.store.is_connected:
             try:
                 if symbol:
-                    config_id = await self.mongodb_client.upsert_symbol_config(
+                    config_id = await self.store.upsert_symbol_config(
                         strategy_id, symbol, parameters, metadata
                     )
                 else:
-                    config_id = await self.mongodb_client.upsert_global_config(
+                    config_id = await self.store.upsert_global_config(
                         strategy_id, parameters, metadata
                     )
-                success_mongo = config_id is not None
+                success_store = config_id is not None
             except Exception as e:
-                logger.error(f"Failed to write config to MongoDB: {e}")
+                logger.error(f"Failed to write config through data-manager: {e}")
 
-        # Write to MySQL (fallback)
-        if self.mysql_client:
-            try:
-                if symbol:
-                    success_mysql = await self._upsert_mysql_symbol_config(
-                        strategy_id, symbol, parameters, metadata
-                    )
-                else:
-                    success_mysql = await self._upsert_mysql_global_config(
-                        strategy_id, parameters, metadata
-                    )
-            except Exception as e:
-                logger.error(f"Failed to write config to MySQL: {e}")
-
-        if not success_mongo and not success_mysql:
+        if not success_store:
             return False, None, ["Failed to persist configuration to any database"]
 
         # Create audit record
@@ -336,9 +282,9 @@ class StrategyConfigManager:
             "reason": reason,
         }
 
-        if self.mongodb_client and self.mongodb_client.is_connected:
+        if self.store.is_connected:
             try:
-                await self.mongodb_client.create_audit_record(audit_data)
+                await self.store.create_audit_record(audit_data)
             except Exception as e:
                 logger.warning(f"Failed to create audit record: {e}")
 
@@ -397,15 +343,10 @@ class StrategyConfigManager:
         Returns:
             Tuple of (success, config, errors)
         """
-        # If using direct MongoDB client with Data Manager proxy
-        if self.mongodb_client and self.mongodb_client.use_data_manager:
+        if self.store.is_connected:
             try:
-                success = await self.mongodb_client.data_manager_client.rollback_strategy_config(
-                    strategy_id=strategy_id,
-                    changed_by=changed_by,
-                    symbol=symbol,
-                    target_version=target_version,
-                    reason=reason,
+                success = await self.store.rollback_strategy_config(
+                    strategy_id, changed_by, symbol, target_version, reason
                 )
                 if success:
                     # Invalidate cache
@@ -427,8 +368,7 @@ class StrategyConfigManager:
                 logger.error(f"Failed to rollback via Data Manager: {e}")
                 return False, None, [str(e)]
 
-        # Direct database rollback not implemented (deprecated)
-        return False, None, ["Direct database rollback not implemented (deprecated)"]
+        return False, None, ["Data Manager service is not connected"]
 
     async def delete_config(
         self,
@@ -453,36 +393,21 @@ class StrategyConfigManager:
         existing = await self.get_config(strategy_id, symbol)
         old_parameters = existing.get("parameters", {})
 
-        success_mongo = False
-        success_mysql = False
-
-        # Delete from MongoDB
-        if self.mongodb_client and self.mongodb_client.is_connected:
+        success_store = False
+        if self.store.is_connected:
             try:
                 if symbol:
-                    success_mongo = await self.mongodb_client.delete_symbol_config(
+                    success_store = await self.store.delete_symbol_config(
                         strategy_id, symbol
                     )
                 else:
-                    success_mongo = await self.mongodb_client.delete_global_config(
+                    success_store = await self.store.delete_global_config(
                         strategy_id
                     )
             except Exception as e:
                 logger.error(f"Failed to delete config from MongoDB: {e}")
 
-        # Delete from MySQL
-        if self.mysql_client:
-            try:
-                if symbol:
-                    success_mysql = await self._delete_mysql_symbol_config(
-                        strategy_id, symbol
-                    )
-                else:
-                    success_mysql = await self._delete_mysql_global_config(strategy_id)
-            except Exception as e:
-                logger.error(f"Failed to delete config from MySQL: {e}")
-
-        if not success_mongo and not success_mysql:
+        if not success_store:
             return False, ["Failed to delete configuration from any database"]
 
         # Create audit record
@@ -496,9 +421,9 @@ class StrategyConfigManager:
             "reason": reason,
         }
 
-        if self.mongodb_client and self.mongodb_client.is_connected:
+        if self.store.is_connected:
             try:
-                await self.mongodb_client.create_audit_record(audit_data)
+                await self.store.create_audit_record(audit_data)
             except Exception as e:
                 logger.warning(f"Failed to create audit record: {e}")
 
@@ -538,11 +463,11 @@ class StrategyConfigManager:
         Returns:
             List of audit records
         """
-        if not self.mongodb_client or not self.mongodb_client.is_connected:
+        if not self.store.is_connected:
             return []
 
         try:
-            records = await self.mongodb_client.get_audit_trail(
+            records = await self.store.get_audit_trail(
                 strategy_id, symbol, limit
             )
 
@@ -586,14 +511,14 @@ class StrategyConfigManager:
 
             # Check if has global config
             has_global = False
-            if self.mongodb_client and self.mongodb_client.is_connected:
-                config = await self.mongodb_client.get_global_config(strategy_id)
+            if self.store.is_connected:
+                config = await self.store.get_global_config(strategy_id)
                 has_global = config is not None
 
             # Get symbol overrides
             symbol_overrides = []
-            if self.mongodb_client and self.mongodb_client.is_connected:
-                symbol_overrides = await self.mongodb_client.list_symbol_overrides(
+            if self.store.is_connected:
+                symbol_overrides = await self.store.list_symbol_overrides(
                     strategy_id
                 )
 
@@ -676,47 +601,3 @@ class StrategyConfigManager:
                 break
             except Exception as e:
                 logger.error(f"Error in cache refresh loop: {e}")
-
-    # -------------------------------------------------------------------------
-    # MySQL Helper Methods (Simplified - Real implementation would use MySQLClient)
-    # -------------------------------------------------------------------------
-
-    async def _get_mysql_global_config(self, strategy_id: str) -> dict[str, Any] | None:
-        """Get global config from MySQL."""
-        # TODO: Implement MySQL query
-        return None
-
-    async def _get_mysql_symbol_config(
-        self, strategy_id: str, symbol: str
-    ) -> dict[str, Any] | None:
-        """Get symbol config from MySQL."""
-        # TODO: Implement MySQL query
-        return None
-
-    async def _upsert_mysql_global_config(
-        self, strategy_id: str, parameters: dict[str, Any], metadata: dict[str, Any]
-    ) -> bool:
-        """Upsert global config to MySQL."""
-        # TODO: Implement MySQL upsert
-        return False
-
-    async def _upsert_mysql_symbol_config(
-        self,
-        strategy_id: str,
-        symbol: str,
-        parameters: dict[str, Any],
-        metadata: dict[str, Any],
-    ) -> bool:
-        """Upsert symbol config to MySQL."""
-        # TODO: Implement MySQL upsert
-        return False
-
-    async def _delete_mysql_global_config(self, strategy_id: str) -> bool:
-        """Delete global config from MySQL."""
-        # TODO: Implement MySQL delete
-        return False
-
-    async def _delete_mysql_symbol_config(self, strategy_id: str, symbol: str) -> bool:
-        """Delete symbol config from MySQL."""
-        # TODO: Implement MySQL delete
-        return False

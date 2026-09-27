@@ -207,6 +207,104 @@ class DataManagerConfigClient:
             logger.error(f"Error fetching strategy config for {strategy_id}: {e}")
             return self._get_default_strategy_config()
 
+    async def get_strategy_config_record(
+        self, strategy_id: str, symbol: str | None = None, side: str | None = None
+    ) -> dict[str, Any] | None:
+        """Fetch a strategy record, preserving a missing record as ``None``."""
+        if not self._session:
+            await self.connect()
+
+        url = f"{self.base_url}/api/v1/config/strategies/{strategy_id}"
+        query = []
+        if symbol:
+            query.append(f"symbol={symbol}")
+        if side:
+            query.append(f"side={side}")
+        if query:
+            url += "?" + "&".join(query)
+
+        try:
+            async with self._session.get(
+                url, timeout=aiohttp.ClientTimeout(total=self.timeout)
+            ) as response:
+                if response.status == 404:
+                    return None
+                if response.status != 200:
+                    return None
+                payload = await response.json()
+                return payload.get("data", payload)
+        except Exception as e:
+            logger.error(f"Error fetching strategy config record: {e}")
+            return None
+
+    async def list_strategy_symbols(self, strategy_id: str) -> list[str]:
+        """Fetch symbols with overrides for a strategy."""
+        if not self._session:
+            await self.connect()
+        try:
+            async with self._session.get(
+                f"{self.base_url}/api/v1/config/strategies/{strategy_id}/symbols",
+                timeout=aiohttp.ClientTimeout(total=self.timeout),
+            ) as response:
+                if response.status != 200:
+                    return []
+                payload = await response.json()
+                return payload.get("symbols", [])
+        except Exception as e:
+            logger.error(f"Error listing strategy symbols: {e}")
+            return []
+
+    async def get_strategy_audit_trail(
+        self, strategy_id: str, symbol: str | None = None, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        """Fetch strategy configuration audit records."""
+        if not self._session:
+            await self.connect()
+        url = f"{self.base_url}/api/v1/config/audit/strategies/{strategy_id}?limit={limit}"
+        if symbol:
+            url += f"&symbol={symbol}"
+        try:
+            async with self._session.get(
+                url, timeout=aiohttp.ClientTimeout(total=self.timeout)
+            ) as response:
+                return await response.json() if response.status == 200 else []
+        except Exception as e:
+            logger.error(f"Error fetching strategy audit trail: {e}")
+            return []
+
+    async def rollback_strategy_config(
+        self,
+        strategy_id: str,
+        changed_by: str,
+        symbol: str | None = None,
+        target_version: int | None = None,
+        reason: str | None = None,
+    ) -> bool:
+        """Rollback a strategy config through the data-manager gateway."""
+        if not self._session:
+            await self.connect()
+        url = f"{self.base_url}/api/v1/config/rollback/strategies/{strategy_id}"
+        query = []
+        if symbol:
+            query.append(f"symbol={symbol}")
+        if query:
+            url += "?" + "&".join(query)
+        payload = {
+            "changed_by": changed_by,
+            "target_version": target_version,
+            "reason": reason,
+        }
+        try:
+            async with self._session.post(
+                url,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=self.timeout),
+            ) as response:
+                return response.status == 200
+        except Exception as e:
+            logger.error(f"Error rolling back strategy config: {e}")
+            return False
+
     async def set_strategy_config(
         self,
         strategy_id: str,
