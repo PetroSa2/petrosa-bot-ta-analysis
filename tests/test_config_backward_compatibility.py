@@ -339,9 +339,9 @@ class TestPerformanceRegression:
         elapsed = time.time() - start
 
         # Should complete 10 iterations in under 1 second
-        assert (
-            elapsed < 1.0
-        ), f"Signal generation too slow: {elapsed:.2f}s for 10 iterations"
+        assert elapsed < 1.0, (
+            f"Signal generation too slow: {elapsed:.2f}s for 10 iterations"
+        )
 
     def test_config_loading_performance(self):
         """Test that config loading doesn't add significant overhead."""
