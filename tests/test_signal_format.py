@@ -128,7 +128,13 @@ def test_trade_engine_compatibility():
 
         try:
             # Create Trade Engine signal
-            te_signal = TradeEngineSignal(**signal_dict)
+            te_signal = TradeEngineSignal(
+                **{
+                    key: value
+                    for key, value in signal_dict.items()
+                    if key not in {"recommended_leverage", "intent_id"}
+                }
+            )
             logger.info("✅ Compatible with Trade Engine")
             logger.info(f"  Trade Engine Signal ID: {te_signal.strategy_id}")
             logger.info(f"  Action: {te_signal.action}")

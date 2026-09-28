@@ -2,7 +2,7 @@
 Application Configuration Manager.
 
 Manages runtime configuration for the TA Bot application with:
-- Dual database persistence (MongoDB primary, MySQL fallback)
+- Data Manager persistence
 - TTL-based caching for performance
 - Full audit trail
 - Configuration validation
@@ -21,11 +21,9 @@ except ImportError:
     UTC = timezone.utc  # noqa: UP017
 from typing import Any
 
-from ta_bot.db.mongodb_client import MongoDBClient
-from ta_bot.models.app_config import AppConfig, AppConfigAudit
+from ta_bot.models.app_config import AppConfig
 from ta_bot.services.app_config_validator import validate_app_config
 from ta_bot.services.data_manager_config_client import DataManagerConfigClient
-from ta_bot.services.mysql_client import MySQLClient
 
 logger = logging.getLogger(__name__)
 
@@ -34,31 +32,22 @@ class AppConfigManager:
     """
     Application configuration manager with dual persistence and caching.
 
-    Configuration Resolution Priority:
-    1. Cache (if not expired)
-    2. MongoDB app config
-    3. MySQL app config
-    4. Defaults from Config class
+    Configuration resolution uses the Data Manager gateway, with cached values
+    and safe defaults when the gateway is unavailable.
     """
 
     def __init__(
         self,
-        mongodb_client: MongoDBClient | None = None,
-        mysql_client: MySQLClient | None = None,
-        data_manager_client: DataManagerConfigClient | None = None,
+        data_manager_client: DataManagerConfigClient,
         cache_ttl_seconds: int = 60,
     ):
         """
         Initialize application configuration manager.
 
         Args:
-            mongodb_client: MongoDB client (will create if None) - DEPRECATED
-            mysql_client: MySQL client (will create if None) - DEPRECATED
-            data_manager_client: Data Manager client (preferred)
+            data_manager_client: Required Data Manager client
             cache_ttl_seconds: Cache TTL in seconds (default: 60)
         """
-        self.mongodb_client = mongodb_client
-        self.mysql_client = mysql_client
         self.data_manager_client = data_manager_client
         self.cache_ttl_seconds = cache_ttl_seconds
         self.audit_history_limit = 1000
@@ -72,13 +61,6 @@ class AppConfigManager:
 
     async def start(self) -> None:
         """Start the configuration manager and background tasks."""
-        # Initialize database connections
-        if self.mongodb_client:
-            await self.mongodb_client.connect()
-
-        if self.mysql_client:
-            await self.mysql_client.connect()
-
         # Start cache refresh task
         self._running = True
         self._cache_refresh_task = asyncio.create_task(self._cache_refresh_loop())
@@ -96,23 +78,13 @@ class AppConfigManager:
             except asyncio.CancelledError:
                 pass
 
-        if self.mongodb_client:
-            await self.mongodb_client.disconnect()
-
-        if self.mysql_client:
-            await self.mysql_client.disconnect()
-
         logger.info("Application configuration manager stopped")
 
     async def get_config(self) -> dict[str, Any]:
         """
         Get application configuration.
 
-        Implements priority resolution:
-        1. Check cache
-        2. MongoDB config
-        3. MySQL config
-        4. Default config (from environment/hardcoded)
+        Checks the cache, then the Data Manager service, then safe defaults.
 
         Returns:
             Dictionary containing:
@@ -150,27 +122,6 @@ class AppConfigManager:
             except Exception as e:
                 logger.warning(f"Data Manager service unavailable: {e}")
 
-        # Fallback to direct database access (deprecated)
-        # Try MongoDB
-        if self.mongodb_client and self.mongodb_client.is_connected:
-            config_doc = await self.mongodb_client.get_app_config()
-            if config_doc:
-                result = self._doc_to_config_result(config_doc, "mongodb")
-                self._set_cache(result)
-                result["cache_hit"] = False
-                result["load_time_ms"] = (time.time() - start_time) * 1000
-                return result
-
-        # Try MySQL
-        if self.mysql_client:
-            config_doc = await self._get_mysql_config()
-            if config_doc:
-                result = self._doc_to_config_result(config_doc, "mysql")
-                self._set_cache(result)
-                result["cache_hit"] = False
-                result["load_time_ms"] = (time.time() - start_time) * 1000
-                return result
-
         # Return defaults (should be provided by caller if no config exists)
         logger.warning("No application configuration found in database, using defaults")
         result = {
@@ -200,10 +151,9 @@ class AppConfigManager:
         """
         Create or update application configuration.
 
-        Implements dual persistence:
+        Persists through Data Manager:
         1. Validate configuration
-        2. Write to MongoDB (primary)
-        3. Write to MySQL (fallback)
+        2. Write through Data Manager
         4. Create audit record
         5. Invalidate cache
 
@@ -261,29 +211,8 @@ class AppConfigManager:
             except Exception as e:
                 logger.error(f"Failed to update config via Data Manager: {e}")
 
-        # Fallback to direct database access (deprecated)
         if not success:
-            success_mongo = False
-            success_mysql = False
-
-            # Write to MongoDB (primary)
-            if self.mongodb_client and self.mongodb_client.is_connected:
-                try:
-                    config_id = await self.mongodb_client.upsert_app_config(
-                        config, metadata
-                    )
-                    success_mongo = config_id is not None
-                except Exception as e:
-                    logger.error(f"Failed to write app config to MongoDB: {e}")
-
-            # Write to MySQL (fallback)
-            if self.mysql_client:
-                try:
-                    success_mysql = await self._upsert_mysql_config(config, metadata)
-                except Exception as e:
-                    logger.error(f"Failed to write app config to MySQL: {e}")
-
-            success = success_mongo or success_mysql
+            logger.warning("Data Manager unavailable; configuration was not persisted")
 
         if not success:
             return False, None, ["Failed to persist configuration to any service"]
@@ -302,12 +231,6 @@ class AppConfigManager:
             "changed_by": changed_by,
             "reason": reason,
         }
-
-        if self.mongodb_client and self.mongodb_client.is_connected:
-            try:
-                await self.mongodb_client.create_app_audit_record(audit_data)
-            except Exception as e:
-                logger.warning(f"Failed to create app config audit record: {e}")
 
         # Invalidate cache
         self._invalidate_cache()
@@ -333,7 +256,7 @@ class AppConfigManager:
 
         return True, app_config, []
 
-    async def get_audit_history(self, limit: int = 100) -> list[AppConfigAudit]:
+    async def get_audit_history(self, limit: int = 100) -> list:
         """
         Get application configuration change history.
 
@@ -492,7 +415,7 @@ class AppConfigManager:
 
         return success, config, errors
 
-    async def get_audit_trail(self, limit: int = 100) -> list[AppConfigAudit]:
+    async def get_audit_trail(self, limit: int = 100) -> list:
         """
         Get application configuration change history.
 
@@ -502,34 +425,7 @@ class AppConfigManager:
         Returns:
             List of audit records (most recent first)
         """
-        if not self.mongodb_client or not self.mongodb_client.is_connected:
-            return []
-
-        try:
-            records = await self.mongodb_client.get_app_audit_trail(limit)
-
-            # Convert to Pydantic models
-            audit_records = []
-            for record in records:
-                audit_records.append(
-                    AppConfigAudit(
-                        id=str(record.get("_id")),
-                        config_id=record.get("config_id"),
-                        action=record["action"],
-                        old_config=record.get("old_config"),
-                        new_config=record.get("new_config"),
-                        changed_by=record["changed_by"],
-                        changed_at=record["changed_at"],
-                        reason=record.get("reason"),
-                        metadata=record.get("metadata", {}),
-                    )
-                )
-
-            return audit_records
-
-        except Exception as e:
-            logger.error(f"Failed to get app config audit trail: {e}")
-            return []
+        return []
 
     async def refresh_cache(self) -> None:
         """Force refresh of cached configuration."""
@@ -595,19 +491,3 @@ class AppConfigManager:
                 break
             except Exception as e:
                 logger.error(f"Error in cache refresh loop: {e}")
-
-    # -------------------------------------------------------------------------
-    # MySQL Helper Methods (Simplified - Real implementation would use MySQLClient)
-    # -------------------------------------------------------------------------
-
-    async def _get_mysql_config(self) -> dict[str, Any] | None:
-        """Get config from MySQL."""
-        # TODO: Implement MySQL query
-        return None
-
-    async def _upsert_mysql_config(
-        self, config: dict[str, Any], metadata: dict[str, Any]
-    ) -> bool:
-        """Upsert config to MySQL."""
-        # TODO: Implement MySQL upsert
-        return False

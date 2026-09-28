@@ -203,8 +203,8 @@ class ConfigResponse(BaseModel):
     source: str = Field(
         ...,
         description=(
-            "Source of this configuration: 'mongodb' (primary DB), 'mysql' (fallback DB), "
-            "or 'default' (hardcoded defaults, auto-persisted on first use)"
+            "Source of this configuration: 'data_manager' or 'default' "
+            "(hardcoded defaults, auto-persisted on first use)"
         ),
     )
     is_override: bool = Field(
@@ -234,7 +234,7 @@ class ConfigResponse(BaseModel):
                     "base_confidence": 0.65,
                 },
                 "version": 3,
-                "source": "mongodb",
+                "source": "data_manager",
                 "is_override": True,
                 "created_at": "2025-10-17T10:30:00Z",
                 "updated_at": "2025-10-17T14:45:00Z",
@@ -479,8 +479,7 @@ class AppConfigResponse(BaseModel):
     source: str = Field(
         ...,
         description=(
-            "Source of this configuration: 'mongodb' (primary DB), 'mysql' (fallback DB), "
-            "or 'default' (startup defaults)"
+            "Source of this configuration: 'data_manager' or 'default' (startup defaults)"
         ),
     )
     created_at: str = Field(
@@ -505,7 +504,7 @@ class AppConfigResponse(BaseModel):
                 "max_positions": 10,
                 "position_sizes": [100, 200, 500, 1000],
                 "version": 3,
-                "source": "mongodb",
+                "source": "data_manager",
                 "created_at": "2025-10-17T10:30:00Z",
                 "updated_at": "2025-10-21T14:45:00Z",
             }
