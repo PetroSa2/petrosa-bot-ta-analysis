@@ -21,7 +21,9 @@ async def test_startup_rate_limiter_uses_data_manager_gateway():
     import ta_bot.main as main
 
     limiter = object()
-    with patch.object(main, "DataManagerConfigRateLimiter", return_value=limiter) as factory:
+    with patch.object(
+        main, "DataManagerConfigRateLimiter", return_value=limiter
+    ) as factory:
         with patch.object(main, "set_rate_limiter") as set_limiter:
             rate_limiter = main.DataManagerConfigRateLimiter(
                 base_url="http://data-manager",

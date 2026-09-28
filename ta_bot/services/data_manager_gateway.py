@@ -20,7 +20,9 @@ class DataManagerGateway:
     async def disconnect(self):
         await self.data_manager_client.disconnect()
 
-    async def fetch_candles(self, symbol: str, period: str, limit: int = 250) -> pd.DataFrame:
+    async def fetch_candles(
+        self, symbol: str, period: str, limit: int = 250
+    ) -> pd.DataFrame:
         return await self.data_manager_client.fetch_candles(symbol, period, limit)
 
     async def persist_signal(self, signal_data: dict[str, Any]) -> bool:
