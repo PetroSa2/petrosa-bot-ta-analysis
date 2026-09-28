@@ -116,7 +116,7 @@ class DataManagerConfigClient:
                 timeout=aiohttp.ClientTimeout(total=self.timeout),
             ) as response:
                 if response.status == 200:
-                    return await response.json()
+                    return self._unwrap_envelope(await response.json())
                 else:
                     logger.warning(
                         f"Failed to fetch application config: {response.status}"
@@ -196,7 +196,7 @@ class DataManagerConfigClient:
                 url, timeout=aiohttp.ClientTimeout(total=self.timeout)
             ) as response:
                 if response.status == 200:
-                    return await response.json()
+                    return self._unwrap_envelope(await response.json())
                 else:
                     logger.debug(
                         f"No specific config found for {strategy_id} ({symbol or 'global'})"
@@ -231,8 +231,7 @@ class DataManagerConfigClient:
                     return None
                 if response.status != 200:
                     return None
-                payload = await response.json()
-                return payload.get("data", payload)
+                return self._unwrap_envelope(await response.json())
         except Exception as e:
             logger.error(f"Error fetching strategy config record: {e}")
             return None
@@ -403,6 +402,20 @@ class DataManagerConfigClient:
         except Exception as e:
             logger.error(f"Error deleting strategy config for {strategy_id}: {e}")
             return False
+
+    @staticmethod
+    def _unwrap_envelope(payload: Any) -> Any:
+        """Return the record inside a data-manager ``{"success", "data"}`` envelope.
+
+        Data-manager config endpoints respond with
+        ``{"success": true, "data": {...}}``. Callers expect the inner record
+        (e.g. ``version``, ``enabled_strategies``); reading those keys from the
+        envelope silently yields defaults (#335). Bare records are returned
+        unchanged for backward compatibility.
+        """
+        if isinstance(payload, dict) and "data" in payload:
+            return payload["data"]
+        return payload
 
     def _get_default_config(self) -> dict[str, Any]:
         """Return a safe default application configuration."""
