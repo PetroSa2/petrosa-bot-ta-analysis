@@ -123,6 +123,42 @@ class TestSignalPublisher:
             call_args = mock_nats.publish.call_args
             assert call_args[0][0] == "cio.intent.trading.momentum_pulse"
 
+    async def test_publish_signals_skips_hold_and_increments_metric(
+        self, publisher, mock_signal
+    ):
+        """Non-trading alerts must not reach the trading intent stream."""
+        hold_signal = mock_signal.model_copy(update={"action": "hold"})
+        with patch("nats.connect", new_callable=AsyncMock) as mock_connect:
+            mock_nats = AsyncMock()
+            mock_connect.return_value = mock_nats
+            await publisher.start()
+
+            await publisher.publish_signals([hold_signal])
+
+            mock_nats.publish.assert_not_called()
+            from ta_bot.services.publisher import NON_ACTIONABLE_SIGNALS
+
+            assert (
+                NON_ACTIONABLE_SIGNALS.labels(
+                    strategy_id="momentum_pulse", action="hold"
+                )._value.get()
+                >= 1
+            )
+
+    async def test_publish_signals_allows_close(self, publisher, mock_signal):
+        """Close remains a valid trading action."""
+        close_signal = mock_signal.model_copy(update={"action": "close"})
+        with patch("nats.connect", new_callable=AsyncMock) as mock_connect:
+            mock_nats = AsyncMock()
+            mock_connect.return_value = mock_nats
+            await publisher.start()
+
+            await publisher.publish_signals([close_signal])
+
+            assert mock_nats.publish.call_args[0][0] == (
+                "cio.intent.trading.momentum_pulse"
+            )
+
     async def test_publish_signals_nats_not_connected(self, publisher, mock_signal):
         """Test publishing signals when NATS is not connected."""
         publisher.nats_client = None
@@ -232,6 +268,7 @@ class TestSignalPublisher:
 
     async def test_publish_signals_with_numpy_types(self, publisher, mock_signal):
         """Regression test for JSON serialization errors with non-native types (NumPy)."""
+
         # Mock a type that looks like a numpy bool (has .item() method)
         class MockNumpyBool:
             def item(self):
