@@ -139,6 +139,10 @@ class AppConfigManager:
             "cache_hit": False,
             "load_time_ms": (time.time() - start_time) * 1000,
         }
+        # Cache the fallback as well as successful database reads.  During an
+        # upstream outage this prevents every analysis cycle from issuing the
+        # same configuration request and hitting the rate limiter again.
+        self._set_cache(result)
         return result
 
     async def set_config(
