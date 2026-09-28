@@ -357,12 +357,6 @@ class TestPerformanceRegression:
             "rsi_2": pd.Series([20] * 200),
         }
 
-        start = time.time()
-        for _ in range(10):
-            _signal = strategy.analyze(df, metadata_no_config)  # noqa: F841
-        time_no_config = time.time() - start
-
-        # With config
         config = {
             "parameters": {
                 "oversold_threshold": 25,
@@ -380,10 +374,19 @@ class TestPerformanceRegression:
             "rsi_2": pd.Series([20] * 200),
         }
 
-        start = time.time()
-        for _ in range(10):
+        strategy.analyze(df, metadata_no_config)
+        strategy.analyze(df, metadata_with_config)
+        iterations = 100
+
+        start = time.perf_counter()
+        for _ in range(iterations):
+            _signal = strategy.analyze(df, metadata_no_config)  # noqa: F841
+        time_no_config = time.perf_counter() - start
+
+        start = time.perf_counter()
+        for _ in range(iterations):
             _signal = strategy.analyze(df, metadata_with_config)  # noqa: F841
-        time_with_config = time.time() - start
+        time_with_config = time.perf_counter() - start
 
         # With config should not be more than 300% slower (threshold is generous to account for
         # timing variance on slow/self-hosted runners while still catching pathological regressions)
