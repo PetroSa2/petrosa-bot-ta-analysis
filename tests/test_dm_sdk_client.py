@@ -64,6 +64,22 @@ class TestDataManagerClientRequest:
         )
         assert result == {"inserted_count": 1}
 
+    async def test_rate_limited_request_is_retried(self):
+        attempts = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                return httpx.Response(429, json={"detail": "rate limited"})
+            return httpx.Response(200, json={"ready": True})
+
+        client = _client_with_transport(handler)
+        result = await client.health()
+
+        assert result == {"ready": True}
+        assert attempts == 2
+
     async def test_successful_get_candles_request_with_start_end(self):
         from datetime import UTC, datetime
 

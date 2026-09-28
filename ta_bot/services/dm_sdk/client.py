@@ -22,6 +22,7 @@ from urllib.parse import urljoin
 import httpx
 from tenacity import (
     retry,
+    retry_if_exception,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
@@ -34,6 +35,11 @@ from .exceptions import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _retryable_request_error(error: BaseException) -> bool:
+    """Retry transient transport failures and upstream rate limiting."""
+    return isinstance(error, APIError) and error.status_code == 429
 
 
 class DataManagerClient:
@@ -168,7 +174,8 @@ class DataManagerClient:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
-        retry=retry_if_exception_type((httpx.ConnectError, httpx.TimeoutException)),
+        retry=retry_if_exception_type((httpx.ConnectError, httpx.TimeoutException))
+        | retry_if_exception(_retryable_request_error),
     )
     async def _request(
         self,
