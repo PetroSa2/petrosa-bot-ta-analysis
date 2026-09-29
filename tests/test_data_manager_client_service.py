@@ -304,6 +304,39 @@ class TestDataManagerClient:
         assert "expected_count=2" in record.message
         assert repr(response) in record.message
 
+    async def test_persist_signals_batch_falls_back_to_individual_inserts(
+        self, data_manager_client, mock_base_client
+    ):
+        signals = [{"symbol": "BTCUSDT"}, {"symbol": "ETHUSDT"}]
+        mock_base_client.insert.side_effect = [
+            {"inserted_count": 0, "duplicates": 0, "failed": 0},
+            {"inserted_count": 1},
+            {"inserted_count": 1},
+        ]
+
+        result = await data_manager_client.persist_signals_batch(signals)
+
+        assert result is True
+        assert mock_base_client.insert.call_count == 3
+        assert mock_base_client.insert.call_args_list[0].kwargs["data"] == signals
+        assert mock_base_client.insert.call_args_list[1].kwargs["data"] == signals[0]
+        assert mock_base_client.insert.call_args_list[2].kwargs["data"] == signals[1]
+
+    async def test_persist_signals_batch_does_not_fallback_for_duplicates(
+        self, data_manager_client, mock_base_client
+    ):
+        signals = [{"symbol": "BTCUSDT"}, {"symbol": "ETHUSDT"}]
+        mock_base_client.insert.return_value = {
+            "inserted_count": 0,
+            "duplicates": 2,
+            "failed": 0,
+        }
+
+        result = await data_manager_client.persist_signals_batch(signals)
+
+        assert result is False
+        assert mock_base_client.insert.call_count == 1
+
     async def test_persist_signals_batch_missing_inserted_count(
         self, data_manager_client, mock_base_client, caplog
     ):

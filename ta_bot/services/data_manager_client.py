@@ -319,15 +319,41 @@ class DataManagerClient:
             if inserted_count == len(signals):
                 self._logger.info(f"Successfully persisted all {len(signals)} signals")
                 return True
-            else:
-                self._logger.error(
-                    "Signal batch persistence incomplete: "
-                    f"inserted_count={inserted_count!r} "
-                    f"inserted_count_present={inserted_count_present} "
-                    f"expected_count={len(signals)} database=mongodb "
-                    f"collection=signals response={result!r}"
+
+            # Older data-manager deployments can acknowledge a batch with a
+            # zero count without reporting duplicates or failures.  Retry the
+            # records individually so a broken batch path cannot drop every
+            # signal from an analysis cycle.  Do not do this for an explicit
+            # duplicate/failed response: that is a real outcome, not a batch
+            # transport fallback.
+            if (
+                inserted_count == 0
+                and result.get("duplicates", 0) == 0
+                and result.get("failed", 0) == 0
+            ):
+                self._logger.warning(
+                    "Data Manager acknowledged signal batch with zero inserts; "
+                    "retrying %d signals individually",
+                    len(signals),
                 )
-                return False
+                individual_results = [
+                    await self.persist_signal(signal) for signal in signals
+                ]
+                if all(individual_results):
+                    self._logger.info(
+                        "Successfully persisted all %d signals via individual fallback",
+                        len(signals),
+                    )
+                    return True
+
+            self._logger.error(
+                "Signal batch persistence incomplete: "
+                f"inserted_count={inserted_count!r} "
+                f"inserted_count_present={inserted_count_present} "
+                f"expected_count={len(signals)} database=mongodb "
+                f"collection=signals response={result!r}"
+            )
+            return False
 
         except Exception as e:
             self._logger.exception(
