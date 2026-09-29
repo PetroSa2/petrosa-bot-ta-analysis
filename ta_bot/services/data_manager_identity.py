@@ -13,7 +13,9 @@ def data_manager_headers() -> dict[str, str]:
     service_name = os.getenv("DM_SERVICE_NAME", "petrosa-bot-ta-analysis")
     token = os.getenv("DM_SERVICE_TOKEN")
     if not token and not _missing_token_warning_emitted:
-        logger.warning("DM_SERVICE_TOKEN is unset; data-manager calls use service identity only")
+        logger.warning(
+            "DM_SERVICE_TOKEN is unset; data-manager calls use service identity only"
+        )
         _missing_token_warning_emitted = True
 
     headers = {"X-Petrosa-Service": service_name}
