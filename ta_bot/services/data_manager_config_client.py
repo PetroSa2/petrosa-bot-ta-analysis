@@ -11,6 +11,8 @@ from typing import Any
 import aiohttp
 from aiohttp import ClientSession, ClientTimeout
 
+from .data_manager_identity import data_manager_headers
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,6 +63,7 @@ class DataManagerConfigClient:
         self.timeout = timeout
         self.max_retries = max_retries
         self._session: aiohttp.ClientSession | None = None
+        self._headers = data_manager_headers()
 
         logger.info(
             f"Initialized Data Manager config client: {self.base_url} (timeout={self.timeout}s)"
@@ -71,7 +74,8 @@ class DataManagerConfigClient:
         try:
             if not self._session:
                 self._session = aiohttp.ClientSession(
-                    timeout=aiohttp.ClientTimeout(total=self.timeout)
+                    timeout=aiohttp.ClientTimeout(total=self.timeout),
+                    headers=self._headers,
                 )
 
             # Simple health check to verify connectivity
