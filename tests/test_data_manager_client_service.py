@@ -70,6 +70,19 @@ class TestDataManagerClient:
             assert client.timeout == 30
             assert client.max_retries == 3
 
+    async def test_initialization_reads_data_manager_identity_headers(self):
+        with patch.dict(
+            "os.environ",
+            {"DM_SERVICE_NAME": "test-service", "DM_SERVICE_TOKEN": "test-token"},
+            clear=False,
+        ):
+            client = DataManagerClient()
+
+        assert client._client._identity_headers == {
+            "X-Petrosa-Service": "test-service",
+            "Authorization": "Bearer test-token",
+        }
+
     async def test_connect_success(self, data_manager_client, mock_base_client):
         """Test successful connection to Data Manager.
 

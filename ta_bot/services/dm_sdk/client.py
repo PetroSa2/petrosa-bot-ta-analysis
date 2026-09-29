@@ -28,6 +28,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from ..data_manager_identity import data_manager_headers
 from .exceptions import (
     APIError,
     ConnectionError as ClientConnectionError,
@@ -84,6 +85,7 @@ class DataManagerClient:
         self.timeout = timeout
         self.max_retries = max_retries
         self.api_key = api_key
+        self._identity_headers = data_manager_headers()
 
         # Create HTTP client with connection pooling
         limits = httpx.Limits(
@@ -204,7 +206,7 @@ class DataManagerClient:
         self._check_circuit_breaker()
 
         url = urljoin(self.base_url, endpoint)
-        headers = {}
+        headers = dict(self._identity_headers)
 
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"

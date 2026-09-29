@@ -71,8 +71,30 @@ class TestDataManagerConfigClient:
                 timeout=ClientTimeout(total=client.timeout),
             )
             mock_session_class.assert_called_once_with(
-                timeout=ClientTimeout(total=client.timeout)
+                timeout=ClientTimeout(total=client.timeout),
+                headers=client._headers,
             )
+
+    def test_identity_headers_use_name_only_without_token(self, caplog):
+        with patch.dict(os.environ, {"DM_SERVICE_NAME": "test-service"}, clear=True):
+            client = DataManagerConfigClient()
+
+        assert client._headers == {"X-Petrosa-Service": "test-service"}
+        assert "DM_SERVICE_TOKEN" not in caplog.text
+
+    def test_identity_headers_include_token_without_logging_it(self, caplog):
+        with patch.dict(
+            os.environ,
+            {"DM_SERVICE_NAME": "test-service", "DM_SERVICE_TOKEN": "secret-token"},
+            clear=True,
+        ):
+            client = DataManagerConfigClient()
+
+        assert client._headers == {
+            "X-Petrosa-Service": "test-service",
+            "Authorization": "Bearer secret-token",
+        }
+        assert "secret-token" not in caplog.text
 
     @pytest.mark.asyncio
     async def test_connect_failure(self):
