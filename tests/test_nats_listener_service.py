@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -76,3 +76,22 @@ async def test_successful_candle_fetch_persists_and_publishes_signals():
         [{"id": "signal-1"}]
     )
     listener.publisher.publish_signals.assert_awaited_once_with([signal])
+
+
+@pytest.mark.asyncio
+async def test_candle_message_logs_debug_without_writing_stdout(capsys):
+    listener = NATSListener(
+        nats_url="nats://localhost",
+        signal_engine=MagicMock(),
+        publisher=MagicMock(),
+    )
+    message = MagicMock(subject="binance.extraction.production.klines.BTCUSDT.5m")
+    message.data = b"{}"
+
+    with patch("ta_bot.services.nats_listener.logger") as mock_logger:
+        await listener._handle_candle_message(message)
+
+    assert capsys.readouterr().out == ""
+    mock_logger.debug.assert_called_once_with(
+        "NATS message received on %s", message.subject
+    )

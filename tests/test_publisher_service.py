@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from ta_bot.models.signal import Signal
-from ta_bot.services.publisher import SignalPublisher
+from ta_bot.services.publisher import NON_ACTIONABLE_SIGNALS, SignalPublisher
 
 
 @pytest.fixture
@@ -136,14 +136,25 @@ class TestSignalPublisher:
             await publisher.publish_signals([hold_signal])
 
             mock_nats.publish.assert_not_called()
-            from ta_bot.services.publisher import NON_ACTIONABLE_SIGNALS
-
             assert (
                 NON_ACTIONABLE_SIGNALS.labels(
                     strategy_id="momentum_pulse", action="hold"
                 )._value.get()
                 >= 1
             )
+
+    async def test_publish_signals_skips_hold_at_debug_level(
+        self, publisher, mock_signal
+    ):
+        hold_signal = mock_signal.model_copy(update={"action": "hold"})
+        with patch("ta_bot.services.publisher.logger") as mock_logger:
+            assert SignalPublisher._filter_actionable_signals([hold_signal]) == []
+
+        mock_logger.debug.assert_called_once_with(
+            "Skipping non-actionable signal for trading intent stream",
+            strategy_id="momentum_pulse",
+            action="hold",
+        )
 
     async def test_publish_signals_allows_close(self, publisher, mock_signal):
         """Close remains a valid trading action."""
