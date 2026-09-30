@@ -97,6 +97,7 @@ class SignalEngine:
         }
         self.indicators = Indicators()
         self._cycle_outcomes: Counter[str] = Counter()
+        self._signals_by_strategy_outcome: Counter[tuple[str, str]] = Counter()
         self._cycle_latencies_seconds: list[float] = []
 
         # Initialize OpenTelemetry metrics
@@ -305,6 +306,13 @@ class SignalEngine:
             )
 
         return {
+            "signals_by_strategy_outcome": {
+                f"{strategy}:{outcome}": count
+                for (
+                    strategy,
+                    outcome,
+                ), count in self._signals_by_strategy_outcome.items()
+            },
             "signals_by_outcome": dict(self._cycle_outcomes),
             "cycles": len(values),
             "latency_seconds": {"p50": percentile(0.5), "p95": percentile(0.95)},

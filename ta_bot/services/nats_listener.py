@@ -442,6 +442,7 @@ class NATSListener:
                 )
         except Exception as e:
             logger.error(f"Error processing symbol {symbol} {period}: {e}")
+            self._emit_summary_if_due(force=True)
 
     def _emit_summary_if_due(self, *, force: bool = False) -> None:
         """Emit one bounded INFO summary every five minutes or on shutdown."""

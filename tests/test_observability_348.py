@@ -10,7 +10,6 @@ def test_signal_metrics_use_catalog_names_and_bounded_labels():
     engine = SignalEngine()
     assert engine.signal_counter._name == "petrosa_ta_signals_total"
     assert engine.signal_latency._name == "petrosa_ta_cycle_duration_seconds"
-    assert engine.signal_latency._name == "petrosa_ta_cycle_duration_seconds"
 
 
 def test_summary_shape_has_300_second_window_and_no_unbounded_fields(caplog):
@@ -28,6 +27,7 @@ def test_summary_shape_has_300_second_window_and_no_unbounded_fields(caplog):
         "event",
         "window_seconds",
         "service",
+        "signals_by_strategy_outcome",
         "signals_by_outcome",
         "cycles",
         "latency_seconds",
