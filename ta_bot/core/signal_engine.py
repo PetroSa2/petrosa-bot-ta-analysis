@@ -5,6 +5,7 @@ Signal engine that coordinates all trading strategies.
 import logging
 import math
 import time
+from collections import Counter
 from typing import Any, Optional
 
 import pandas as pd
@@ -95,28 +96,31 @@ class SignalEngine:
             "bear_trap_sell": BearTrapSellStrategy(),
         }
         self.indicators = Indicators()
+        self._cycle_outcomes: Counter[str] = Counter()
+        self._signals_by_strategy_outcome: Counter[tuple[str, str]] = Counter()
+        self._cycle_latencies_seconds: list[float] = []
 
         # Initialize OpenTelemetry metrics
         meter = get_meter("ta_bot.core.signal_engine")
 
-        # Counter for signals generated (by symbol, strategy, timeframe, action)
+        # TA signal metrics use only bounded catalog labels.
         self.signal_counter = meter.create_counter(
-            name="ta_bot.signals.generated",
+            name="petrosa_ta_signals_total",
             description="Number of trading signals generated",
             unit="1",
         )
 
         # Histogram for signal processing latency
         self.signal_latency = meter.create_histogram(
-            name="ta_bot.signal.processing_duration",
+            name="petrosa_ta_cycle_duration_seconds",
             description="Signal processing duration",
-            unit="ms",
+            unit="s",
         )
 
         # Counter for strategies run per analysis cycle
         self.strategies_run_counter = meter.create_counter(
-            name="ta_bot.strategies.run",
-            description="Number of strategies run per analysis cycle",
+            name="petrosa_ta_cycles_total",
+            description="Number of TA analysis cycles",
             unit="1",
         )
 
@@ -178,20 +182,23 @@ class SignalEngine:
             start_time = time.time()
 
             if df is None or len(df) == 0:
-                logger.warning("No candle data provided for analysis")
+                logger.debug("No candle data provided for analysis")
+                self._cycle_outcomes["no_data"] += 1
                 span.set_attribute("result", "no_data")
                 return []
 
-            logger.info(f"=== Starting signal analysis for {symbol} {period} ===")
-            logger.info(f"Dataframe shape: {df.shape}")
+            logger.debug("Starting signal analysis")
+            logger.debug("Candle data received", extra={"candle_count": len(df)})
 
             # Calculate all technical indicators
             indicators = self._calculate_indicators(df)
-            logger.info(f"Calculated {len(indicators)} technical indicators")
+            logger.debug(
+                "Calculated technical indicators", extra={"count": len(indicators)}
+            )
 
             # Get current price from the latest candle
             current_price = float(df["close"].iloc[-1])
-            logger.info(f"Current price: {current_price}")
+            logger.debug("Current price available")
             span.set_attribute("current_price", current_price)
 
             # Determine which strategies to run
@@ -207,20 +214,20 @@ class SignalEngine:
                     f"Running {len(strategies_to_run)} enabled strategies (out of {len(self.strategies)} total)"
                 )
             else:
-                logger.info(f"Running all {len(strategies_to_run)} strategies")
+                logger.debug(
+                    "Running all strategies", extra={"count": len(strategies_to_run)}
+                )
 
             span.set_attribute("strategies_count", len(strategies_to_run))
 
             # Record strategies run count for this analysis cycle
-            self.strategies_run_counter.add(
-                len(strategies_to_run), {"symbol": symbol, "timeframe": period}
-            )
+            self.strategies_run_counter.add(1, {"strategy": "all"})
 
             signals = []
 
             # Run each strategy
             for strategy_name, strategy in strategies_to_run.items():
-                logger.info(f"--- Running {strategy_name} strategy ---")
+                logger.debug("Running strategy", extra={"strategy": strategy_name})
                 signal = self._run_strategy(
                     strategy,
                     strategy_name,
@@ -237,17 +244,13 @@ class SignalEngine:
                         min_confidence is not None
                         and signal.confidence < min_confidence
                     ):
-                        logger.info(
-                            f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} < min {min_confidence:.2f})"
-                        )
+                        logger.debug("Signal filtered by minimum confidence")
                         continue
                     if (
                         max_confidence is not None
                         and signal.confidence > max_confidence
                     ):
-                        logger.info(
-                            f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} > max {max_confidence:.2f})"
-                        )
+                        logger.debug("Signal filtered by maximum confidence")
                         continue
 
                     signals.append(signal)
@@ -259,22 +262,21 @@ class SignalEngine:
                     self.signal_counter.add(
                         1,
                         {
-                            "symbol": symbol,
-                            "timeframe": period,
                             "strategy": strategy_name,
-                            "action": signal.action,
+                            "outcome": "generated",
+                            "reason": "strategy_signal",
                         },
                     )
                 else:
-                    logger.info(f"❌ {strategy_name}: No signal - conditions not met")
+                    logger.debug("No signal; strategy conditions not met")
 
             # Calculate processing duration
             duration_ms = (time.time() - start_time) * 1000
 
             # Record processing latency metric
             self.signal_latency.record(
-                duration_ms,
-                {"symbol": symbol, "timeframe": period},
+                duration_ms / 1000,
+                {"strategy": "all"},
             )
 
             # Add final span attributes
@@ -282,9 +284,35 @@ class SignalEngine:
             span.set_attribute("processing_duration_ms", duration_ms)
 
             logger.info(
-                f"=== Strategy analysis complete: {len(signals)} signals generated in {duration_ms:.2f}ms ==="
+                "TA analysis cycle complete", extra={"signal_count": len(signals)}
             )
+            self._cycle_latencies_seconds.append(duration_ms / 1000)
+            self._cycle_outcomes["generated" if signals else "no_signal"] += 1
             return signals
+
+    def metrics_summary(self) -> dict[str, Any]:
+        """Return bounded fields for the periodic SUMMARY record."""
+        values = sorted(self._cycle_latencies_seconds)
+
+        def percentile(ratio: float) -> float:
+            if not values:
+                return 0.0
+            return round(
+                values[min(len(values) - 1, int((len(values) - 1) * ratio))], 6
+            )
+
+        return {
+            "signals_by_strategy_outcome": {
+                f"{strategy}:{outcome}": count
+                for (
+                    strategy,
+                    outcome,
+                ), count in self._signals_by_strategy_outcome.items()
+            },
+            "signals_by_outcome": dict(self._cycle_outcomes),
+            "cycles": len(values),
+            "latency_seconds": {"p50": percentile(0.5), "p95": percentile(0.95)},
+        }
 
     def _calculate_indicators(self, df: pd.DataFrame) -> dict[str, Any]:
         """Calculate all technical indicators for the dataframe."""
@@ -371,21 +399,23 @@ class SignalEngine:
                     1,
                     {
                         "strategy": strategy_name,
-                        "symbol": symbol,
-                        "timeframe": period,
-                        "status": "success",
-                        "signal_generated": "yes" if signal else "no",
+                        "outcome": "generated" if signal else "no_signal",
+                        "reason": "execution",
                     },
                 )
 
                 if not signal:
-                    logger.info(f"  {strategy_name}: No signal returned by strategy")
+                    logger.debug(
+                        "Strategy returned no signal", extra={"strategy": strategy_name}
+                    )
                     return None
 
                 # Log strategy-specific details
-                logger.info(f"  {strategy_name}: Signal type: {signal.action}")
+                logger.debug(
+                    "Strategy returned signal", extra={"strategy": strategy_name}
+                )
                 if signal.metadata:
-                    logger.info(f"  {strategy_name}: Metadata: {signal.metadata}")
+                    logger.debug("Strategy metadata available")
 
                 # CRITICAL FIX: Ensure all signals have stop_loss and take_profit
                 # If strategy didn't set them, calculate using risk management
@@ -437,7 +467,7 @@ class SignalEngine:
                     )
                     return None
 
-                logger.info(f"  {strategy_name}: Signal validated successfully")
+                logger.debug("Signal validated", extra={"strategy": strategy_name})
                 return signal
 
             except Exception as e:
@@ -449,10 +479,8 @@ class SignalEngine:
                     1,
                     {
                         "strategy": strategy_name,
-                        "symbol": symbol,
-                        "timeframe": period,
-                        "status": "error",
-                        "signal_generated": "no",
+                        "outcome": "error",
+                        "reason": "exception",
                     },
                 )
                 return None

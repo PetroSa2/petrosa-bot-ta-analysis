@@ -88,6 +88,7 @@ class NATSListener:
         self.messages_received = 0
         self._started_at: float | None = None
         self._last_message_at: float | None = None
+        self._last_summary_at = 0.0
 
     async def start(self):
         """Start the NATS listener."""
@@ -325,25 +326,18 @@ class NATSListener:
             else:
                 active_timeframes = self.supported_timeframes
 
-            # Check if symbol and timeframe are supported.
-            # Logged at WARNING (not DEBUG, per #265): a config-drift mismatch
-            # between the extractor's published symbols/timeframes and this
-            # bot's active_symbols/active_timeframes would otherwise silently
-            # drop every inbound message with zero visible trace at default
-            # log levels.
+            # Expected symbol/timeframe skips are DEBUG to avoid per-event noise.
             if symbol not in active_symbols:
-                logger.warning(
-                    f"Skipping unsupported symbol: {symbol} (active: {active_symbols})"
-                )
+                logger.debug("Skipping unsupported symbol", extra={"symbol": symbol})
                 return
 
             if period not in active_timeframes:
-                logger.warning(
-                    f"Skipping unsupported timeframe: {period} (active: {active_timeframes})"
+                logger.debug(
+                    "Skipping unsupported timeframe", extra={"timeframe": period}
                 )
                 return
 
-            logger.info(f"Processing extraction completion for {symbol} {period}")
+            logger.debug("Processing extraction completion")
 
             # Fetch candle data through Data Manager (see MIN_WARMUP_CANDLES: sized for the
             # hungriest strategy, not just EMA200)
@@ -360,10 +354,10 @@ class NATSListener:
                 return
 
             if df is None or len(df) == 0:
-                logger.warning(f"No candle data available for {symbol} {period}")
+                logger.debug("No candle data available")
                 return
 
-            logger.info(f"Fetched {len(df)} candles for {symbol} {period}")
+            logger.debug("Fetched candle data", extra={"candle_count": len(df)})
 
             # Extract runtime configuration parameters
             enabled_strategies = None
@@ -403,6 +397,7 @@ class NATSListener:
             self._recent_analysis_latencies.append(
                 time.perf_counter() - _analysis_start
             )
+            self._emit_summary_if_due()
 
             if signals:
                 logger.info(f"Generated {len(signals)} signals for {symbol} {period}")
@@ -442,6 +437,26 @@ class NATSListener:
                 )
         except Exception as e:
             logger.error(f"Error processing symbol {symbol} {period}: {e}")
+            self._emit_summary_if_due(force=True)
+
+    def _emit_summary_if_due(self, *, force: bool = False) -> None:
+        """Emit one bounded INFO summary every five minutes or on shutdown."""
+        now = time.monotonic()
+        if not force and now - self._last_summary_at < 300:
+            return
+        summary = self.signal_engine.metrics_summary()
+        logger.info(
+            json.dumps(
+                {
+                    "event": "SUMMARY",
+                    "window_seconds": 300,
+                    "service": "petrosa-bot-ta-analysis",
+                    **summary,
+                },
+                sort_keys=True,
+            )
+        )
+        self._last_summary_at = now
 
     def get_health_metrics(self) -> dict[str, Any]:
         """Expose readable health signals for BotTaAnalysisHealthEvaluator (#248, #265)."""
@@ -486,6 +501,7 @@ class NATSListener:
 
             await self.data_manager_gateway.disconnect()
 
+            self._emit_summary_if_due(force=True)
             logger.info("NATS listener cleaned up")
 
         except Exception as e:
