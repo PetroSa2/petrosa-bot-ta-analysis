@@ -1,42 +1,44 @@
-# Petrosa Agent Guidelines (AGENTS.md)
+# Agent instructions: petrosa-bot-ta-analysis
 
-This document provides critical operational guidelines for LLM agents and developers working across the Petrosa ecosystem.
+The TA bot consumes candle data from the data-manager `/data/candles` API and publishes technical-analysis signals.
 
-## 1. Tool Preferences (MANDATORY)
+Ecosystem rules (data pillars, commit and PR process, wording, memory) are in the umbrella [AGENTS.md](https://github.com/PetroSa2/petrosa/blob/main/AGENTS.md); this file covers this repository only. Only statements that can be checked against the repository are listed as facts.
 
-To maximize efficiency and avoid unnecessary browser-based interactions, all agents MUST prefer the matching MCP tool:
+## Commands (from the Makefile)
 
-- **GitHub Operations**: Use the official `github` MCP server for repository,
-  issue, pull request, review, release, and GitHub Actions operations when exposed.
-  Use `github-projects` MCP for Projects v2 operations.
-- **GitHub CLI fallback**: Use `gh` for non-MCP clients, deterministic scripts,
-  GitHub Actions runners, unsupported operations, or unavailable MCP tools.
-  Use only the configured file-backed token or environment; never document credentials.
-- **Kubernetes Operations**: Use `kubectl` with the provided kubeconfig. Due to TLS certificate issues, always add `--insecure-skip-tls-verify=true`.
-- **Code Quality**: Use `make` targets which wrap `ruff`, `pytest`, etc.
+| Command | Purpose |
+|---|---|
+| `make setup` | Complete environment setup |
+| `make lint` | Run all linters (ruff) |
+| `make format` | Format code with black and ruff |
+| `make type-check` | Run static type checking with mypy |
+| `make test` | Run unit tests |
+| `make security` | Run security scans (gitleaks, bandit, trivy) |
+| `make pipeline` | Run complete CI pipeline locally |
+| `make test-quality` | Run test quality check (assertions check) |
 
-## 2. Project Structure & Context
+Run the local pipeline or at least lint and tests before opening a pull request.
 
-The Petrosa ecosystem consists of multiple services coordinated through `petrosa_k8s`.
+## Facts
 
-- **Primary Reference**: Always read `petrosa_k8s/_bmad-output/project-context.md` at the start of a session.
-- **Service Repos**: `petrosa-binance-data-extractor`, `petrosa-tradeengine`, `petrosa-bot-ta-analysis`, `petrosa_k8s`, `petrosa-socket-client`, `petrosa-realtime-strategies`, `petrosa-data-manager`, `petrosa-cio`.
+- Python: `.python-version` is `3.11.9`.
+- Lint and format: ruff (config in `ruff.toml`).
+- Type checking: mypy (config in `mypy.ini`).
+- Tests: pytest, in `tests/`; the coverage floor is 18%.
+- `make test-quality` checks that tests contain assertions.
+- Container image: built from `Dockerfile`.
+- Instrumentation uses the internal `petrosa-otel` package.
+- CI workflows: `.github/workflows/ci-checks.yml`, `.github/workflows/deploy.yml`, `.github/workflows/manual-deploy.yml`.
 
-## 3. BMAD Workflow System
+## Layout
 
-This project uses the BMAD (Business-Model-Agent-Development) framework located in `petrosa_k8s/_bmad/`.
+Python packages at the top level: `backtest/`, `ta_bot/`. Also `tests/`, `docs/` and `scripts/` where they exist.
 
-## 4. Coding & Testing Standards
+## Rules (policy)
 
-- **Language**: Python 3.11+
-- **Linter/Formatter**: `ruff` (mandatory).
-- **Testing**: `pytest`. Every test MUST have at least one assertion.
-- **Coverage**: Maintain a minimum of 40-50% coverage as enforced by CI.
-- **OpenTelemetry**: Use the internal `petrosa-otel` package for all instrumentation.
-
-## 5. Commit & PR Process
-
-- **Branching**: `{type}/{issue-number}-{description}`.
-- **Messages**: Conventional Commits style.
-- **PRs**: Use the `github` MCP pull-request operation when available; otherwise use
-  `gh pr create` with a clear description linking to the relevant issue.
+- Do not add database drivers or connections to this service. Read and write data through the data-manager API.
+- Candles come from the data-manager `/data/candles` API; configuration changes also go through data-manager.
+- This service holds no database connection. Treat "Data-manager unreachable" as the storage connectivity failure.
+- Commits use Conventional Commits; branches are `{type}/{issue-number}-{slug}`; a PR body contains `Closes #N`; never merge with `--admin`.
+- Text that leaves the repository (PR titles and bodies, commit messages, code comments) uses generic roles such as Agentic Developer and never names the upstream workflow engine or its personas.
+- Do not commit logs, drafts, scratch files or generated working notes. GitHub and the memory server are the record.

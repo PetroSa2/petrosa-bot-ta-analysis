@@ -1,7 +1,0 @@
-# TA bot repository rules
-
-- Candles come from data-manager `/data/candles`.
-- Configuration goes through data-manager.
-- ta-bot holds no database connection and must not add database drivers.
-- Treat "Data-manager unreachable" as the storage connectivity failure.
-- Use `make pipeline` before opening a pull request.
