@@ -244,17 +244,13 @@ class SignalEngine:
                         min_confidence is not None
                         and signal.confidence < min_confidence
                     ):
-                        logger.info(
-                            f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} < min {min_confidence:.2f})"
-                        )
+                        logger.debug("Signal filtered by minimum confidence")
                         continue
                     if (
                         max_confidence is not None
                         and signal.confidence > max_confidence
                     ):
-                        logger.info(
-                            f"❌ {strategy_name}: Signal filtered (confidence {signal.confidence:.2f} > max {max_confidence:.2f})"
-                        )
+                        logger.debug("Signal filtered by maximum confidence")
                         continue
 
                     signals.append(signal)

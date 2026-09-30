@@ -326,12 +326,7 @@ class NATSListener:
             else:
                 active_timeframes = self.supported_timeframes
 
-            # Check if symbol and timeframe are supported.
-            # Logged at WARNING (not DEBUG, per #265): a config-drift mismatch
-            # between the extractor's published symbols/timeframes and this
-            # bot's active_symbols/active_timeframes would otherwise silently
-            # drop every inbound message with zero visible trace at default
-            # log levels.
+            # Expected symbol/timeframe skips are DEBUG to avoid per-event noise.
             if symbol not in active_symbols:
                 logger.debug("Skipping unsupported symbol", extra={"symbol": symbol})
                 return
