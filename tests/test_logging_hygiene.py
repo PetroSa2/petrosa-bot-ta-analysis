@@ -9,9 +9,18 @@ def test_logger_messages_do_not_end_with_newline():
     for source_path in TA_BOT_ROOT.rglob("*.py"):
         tree = ast.parse(source_path.read_text(), filename=str(source_path))
         for node in ast.walk(tree):
-            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            if not isinstance(node, ast.Call) or not isinstance(
+                node.func, ast.Attribute
+            ):
                 continue
-            if node.func.attr not in {"debug", "info", "warning", "error", "exception", "critical"}:
+            if node.func.attr not in {
+                "debug",
+                "info",
+                "warning",
+                "error",
+                "exception",
+                "critical",
+            }:
                 continue
             if not node.args or not isinstance(node.args[0], ast.Constant):
                 continue
