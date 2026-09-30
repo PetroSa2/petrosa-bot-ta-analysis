@@ -335,6 +335,31 @@ class TestDataManagerClient:
         assert mock_base_client.insert.call_args_list[1].kwargs["data"] == signals[0]
         assert mock_base_client.insert.call_args_list[2].kwargs["data"] == signals[1]
 
+    async def test_signal_fallback_uses_exponential_backoff_and_jitter(
+        self, data_manager_client, mock_base_client, _no_real_sleep
+    ):
+        signals = [
+            {"symbol": "BTCUSDT"},
+            {"symbol": "ETHUSDT"},
+            {"symbol": "BNBUSDT"},
+        ]
+        mock_base_client.insert.side_effect = [
+            {"inserted_count": 0, "duplicates": 0, "failed": 0},
+            {"inserted_count": 1},
+            {"inserted_count": 1},
+            {"inserted_count": 1},
+        ]
+
+        with patch(
+            "ta_bot.services.data_manager_client.random.uniform",
+            side_effect=[0.1, 0.2],
+        ):
+            result = await data_manager_client.persist_signals_batch(signals)
+
+        assert result is True
+        assert _no_real_sleep.await_args_list[0].args == (0.6,)
+        assert _no_real_sleep.await_args_list[1].args == (1.2,)
+
     async def test_persist_signals_batch_does_not_fallback_for_duplicates(
         self, data_manager_client, mock_base_client
     ):
