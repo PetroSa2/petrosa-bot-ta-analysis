@@ -7,6 +7,7 @@ for fetching candle data and persisting signals.
 
 import asyncio  # noqa: I001
 import os
+import random
 from typing import Any
 
 import pandas as pd
@@ -57,6 +58,7 @@ class DataManagerClient:
         timeout: int = 30,
         max_retries: int = 3,
         retry_backoff_base: float = 0.5,
+        signal_retry_backoff_base: float = 0.5,
     ):
         """
         Initialize the Data Manager client.
@@ -68,6 +70,8 @@ class DataManagerClient:
             retry_backoff_base: Base seconds for the exponential backoff used
                 by connect() between "not ready yet" retries
                 (petrosa-bot-ta-analysis#269)
+            signal_retry_backoff_base: Base seconds for the exponential
+                backoff and jitter between individual signal fallbacks.
         """
         self.base_url = base_url or os.getenv(
             "DATA_MANAGER_URL", "http://petrosa-data-manager:80"
@@ -75,6 +79,7 @@ class DataManagerClient:
         self.timeout = timeout
         self.max_retries = max_retries
         self._retry_backoff_base = retry_backoff_base
+        self._signal_retry_backoff_base = signal_retry_backoff_base
 
         # Initialize the base client
         self._client = BaseDataManagerClient(
@@ -287,6 +292,19 @@ class DataManagerClient:
             )
             return False
 
+    async def _persist_signal_with_backoff(
+        self, signal_data: dict[str, Any], attempt: int
+    ) -> bool:
+        """Persist a fallback signal without hammering a rate-limited gateway."""
+        if attempt:
+            delay = self._signal_retry_backoff_base * (2 ** (attempt - 1))
+            delay += random.uniform(0, self._signal_retry_backoff_base)
+            self._logger.info(
+                "Backing off %.2fs before signal fallback %d", delay, attempt + 1
+            )
+            await asyncio.sleep(delay)
+        return await self.persist_signal(signal_data)
+
     async def persist_signals_batch(self, signals: list[dict[str, Any]]) -> bool:
         """
         Persist multiple signals to Data Manager in a batch.
@@ -336,9 +354,11 @@ class DataManagerClient:
                     "retrying %d signals individually",
                     len(signals),
                 )
-                individual_results = [
-                    await self.persist_signal(signal) for signal in signals
-                ]
+                individual_results = []
+                for attempt, signal in enumerate(signals):
+                    individual_results.append(
+                        await self._persist_signal_with_backoff(signal, attempt)
+                    )
                 if all(individual_results):
                     self._logger.info(
                         "Successfully persisted all %d signals via individual fallback",
