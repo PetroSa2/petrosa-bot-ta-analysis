@@ -333,9 +333,7 @@ class NATSListener:
             # drop every inbound message with zero visible trace at default
             # log levels.
             if symbol not in active_symbols:
-                logger.debug(
-                    "Skipping unsupported symbol", extra={"symbol": symbol}
-                )
+                logger.debug("Skipping unsupported symbol", extra={"symbol": symbol})
                 return
 
             if period not in active_timeframes:
@@ -451,8 +449,17 @@ class NATSListener:
         if not force and now - self._last_summary_at < 300:
             return
         summary = self.signal_engine.metrics_summary()
-        logger.info(json.dumps({"event": "SUMMARY", "window_seconds": 300,
-                                "service": "petrosa-bot-ta-analysis", **summary}, sort_keys=True))
+        logger.info(
+            json.dumps(
+                {
+                    "event": "SUMMARY",
+                    "window_seconds": 300,
+                    "service": "petrosa-bot-ta-analysis",
+                    **summary,
+                },
+                sort_keys=True,
+            )
+        )
         self._last_summary_at = now
 
     def get_health_metrics(self) -> dict[str, Any]:

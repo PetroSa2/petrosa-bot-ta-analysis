@@ -191,7 +191,9 @@ class SignalEngine:
 
             # Calculate all technical indicators
             indicators = self._calculate_indicators(df)
-            logger.debug("Calculated technical indicators", extra={"count": len(indicators)})
+            logger.debug(
+                "Calculated technical indicators", extra={"count": len(indicators)}
+            )
 
             # Get current price from the latest candle
             current_price = float(df["close"].iloc[-1])
@@ -211,7 +213,9 @@ class SignalEngine:
                     f"Running {len(strategies_to_run)} enabled strategies (out of {len(self.strategies)} total)"
                 )
             else:
-                logger.debug("Running all strategies", extra={"count": len(strategies_to_run)})
+                logger.debug(
+                    "Running all strategies", extra={"count": len(strategies_to_run)}
+                )
 
             span.set_attribute("strategies_count", len(strategies_to_run))
 
@@ -282,7 +286,9 @@ class SignalEngine:
             span.set_attribute("signals_generated", len(signals))
             span.set_attribute("processing_duration_ms", duration_ms)
 
-            logger.info("TA analysis cycle complete", extra={"signal_count": len(signals)})
+            logger.info(
+                "TA analysis cycle complete", extra={"signal_count": len(signals)}
+            )
             self._cycle_latencies_seconds.append(duration_ms / 1000)
             self._cycle_outcomes["generated" if signals else "no_signal"] += 1
             return signals
@@ -290,10 +296,14 @@ class SignalEngine:
     def metrics_summary(self) -> dict[str, Any]:
         """Return bounded fields for the periodic SUMMARY record."""
         values = sorted(self._cycle_latencies_seconds)
+
         def percentile(ratio: float) -> float:
             if not values:
                 return 0.0
-            return round(values[min(len(values) - 1, int((len(values) - 1) * ratio))], 6)
+            return round(
+                values[min(len(values) - 1, int((len(values) - 1) * ratio))], 6
+            )
+
         return {
             "signals_by_outcome": dict(self._cycle_outcomes),
             "cycles": len(values),
@@ -391,11 +401,15 @@ class SignalEngine:
                 )
 
                 if not signal:
-                    logger.debug("Strategy returned no signal", extra={"strategy": strategy_name})
+                    logger.debug(
+                        "Strategy returned no signal", extra={"strategy": strategy_name}
+                    )
                     return None
 
                 # Log strategy-specific details
-                logger.debug("Strategy returned signal", extra={"strategy": strategy_name})
+                logger.debug(
+                    "Strategy returned signal", extra={"strategy": strategy_name}
+                )
                 if signal.metadata:
                     logger.debug("Strategy metadata available")
 

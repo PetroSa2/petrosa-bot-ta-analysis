@@ -25,8 +25,12 @@ def test_summary_shape_has_300_second_window_and_no_unbounded_fields(caplog):
     encoded = json.dumps(record)
     assert record["window_seconds"] == 300
     assert set(record) == {
-        "event", "window_seconds", "service", "signals_by_outcome",
-        "cycles", "latency_seconds",
+        "event",
+        "window_seconds",
+        "service",
+        "signals_by_outcome",
+        "cycles",
+        "latency_seconds",
     }
     assert "symbol" not in encoded
     assert "request_id" not in encoded
@@ -37,7 +41,15 @@ def test_summary_shape_has_300_second_window_and_no_unbounded_fields(caplog):
 def test_summary_is_info_level(caplog):
     logger = logging.getLogger("ta_bot.services.nats_listener")
     with caplog.at_level(logging.INFO, logger=logger.name):
-        logger.info(json.dumps({"event": "SUMMARY", "window_seconds": 300, "service": "petrosa-bot-ta-analysis"}))
+        logger.info(
+            json.dumps(
+                {
+                    "event": "SUMMARY",
+                    "window_seconds": 300,
+                    "service": "petrosa-bot-ta-analysis",
+                }
+            )
+        )
     payload = json.loads(caplog.records[-1].message)
     assert payload["event"] == "SUMMARY"
     assert payload["window_seconds"] == 300
