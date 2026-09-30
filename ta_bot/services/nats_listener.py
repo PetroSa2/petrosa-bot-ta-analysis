@@ -189,11 +189,7 @@ class NATSListener:
 
     async def _handle_candle_message(self, msg):
         """Handle incoming candle message."""
-        # RAW PRINT FOR DEBUGGING - BYPASSING ALL LOGGERS
-        import sys
-
-        sys.stdout.write(f"\n[RAW] !!! NATS MESSAGE RECEIVED ON {msg.subject} !!!\n")
-        sys.stdout.flush()
+        logger.debug("NATS message received on %s", msg.subject)
 
         self.messages_received += 1
         self._last_message_at = time.monotonic()

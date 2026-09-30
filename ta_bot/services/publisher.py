@@ -256,7 +256,7 @@ class SignalPublisher:
             NON_ACTIONABLE_SIGNALS.labels(
                 strategy_id=signal.strategy_id, action=signal.action
             ).inc()
-            logger.warning(
+            logger.debug(
                 "Skipping non-actionable signal for trading intent stream",
                 strategy_id=signal.strategy_id,
                 action=signal.action,
