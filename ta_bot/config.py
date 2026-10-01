@@ -142,9 +142,7 @@ class Config:
     # which still clears the `>=` comparison in `SignalEngine.analyze_candles`).
     min_confidence: float = 0.70
     max_confidence: float = 0.95
-    signal_dedupe_cache_size: int = int(
-        os.getenv("SIGNAL_DEDUPE_CACHE_SIZE", "10000")
-    )
+    signal_dedupe_cache_size: int = int(os.getenv("SIGNAL_DEDUPE_CACHE_SIZE", "10000"))
 
     # Risk management
     max_positions: int = 10
