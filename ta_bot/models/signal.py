@@ -146,6 +146,19 @@ class Signal(BaseModel):
     take_profit_pct: float | None = Field(None, ge=0, le=1)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    # Point-in-time replay contract.  These are optional for consumers that
+    # still construct legacy signals, but every signal emitted by SignalEngine
+    # populates them.
+    bar_open_time: datetime | None = Field(
+        None, description="UTC open time of the closed candle used for analysis"
+    )
+    bar_close_time: datetime | None = Field(
+        None, description="UTC close time of the closed candle used for analysis"
+    )
+    signal_key: str | None = Field(
+        None, description="Deterministic idempotency key for this strategy/bar"
+    )
+
     # FR52 / P1.5-AC1 (#251) — content-addressable max-leverage opinion
     # carried from the producer to CIO. `None` (not 0) means "no
     # recommendation — CIO picks from strategy/portfolio defaults".
@@ -182,6 +195,25 @@ class Signal(BaseModel):
             return datetime.fromtimestamp(v, UTC)
         return v or datetime.now(UTC)
 
+    @field_validator("bar_open_time", "bar_close_time", mode="before")
+    @classmethod
+    def validate_bar_time(cls, v: Any) -> datetime | None:
+        """Accept epoch milliseconds or aware ISO datetimes, never naive times."""
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return datetime.fromtimestamp(v / 1000, UTC)
+        if isinstance(v, str):
+            try:
+                v = datetime.fromisoformat(v.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError(
+                    "bar times must be UTC epoch milliseconds or ISO strings"
+                ) from exc
+        if not isinstance(v, datetime) or v.tzinfo is None or v.utcoffset() is None:
+            raise ValueError("bar times must be timezone-aware")
+        return v.astimezone(UTC)
+
     def to_dict(self) -> dict[str, Any]:
         """Convert signal to dictionary for backward compatibility."""
         # Use model_dump for Pydantic V2
@@ -190,6 +222,15 @@ class Signal(BaseModel):
         # Convert datetime to ISO string
         if isinstance(data.get("timestamp"), datetime):
             data["timestamp"] = data["timestamp"].isoformat()
+        for field_name in ("bar_open_time", "bar_close_time"):
+            if isinstance(data.get(field_name), datetime):
+                data[field_name] = data[field_name].isoformat()
+        # Keep legacy manually-created signals compatible with strict consumers;
+        # emitted, anchored signals always retain all three contract fields.
+        if self.bar_open_time is None:
+            data.pop("bar_open_time", None)
+            data.pop("bar_close_time", None)
+            data.pop("signal_key", None)
 
         # Ensure strategy is set if empty
         if not data.get("strategy"):

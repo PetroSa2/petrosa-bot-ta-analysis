@@ -90,7 +90,7 @@ async def main():
 
         # Initialize components
         config = Config()
-        signal_engine = SignalEngine()
+        signal_engine = SignalEngine(dedupe_cache_size=config.signal_dedupe_cache_size)
 
         # Initialize Data Manager client for configuration (preferred)
         from ta_bot.services.data_manager_config_client import DataManagerConfigClient
