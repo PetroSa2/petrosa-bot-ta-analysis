@@ -4,12 +4,17 @@ Signal engine that coordinates all trading strategies.
 
 import logging
 import math
+import hashlib
+import json
+import os
 import time
-from collections import Counter
+from collections import Counter, OrderedDict
+from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 
 import pandas as pd
 from petrosa_otel import get_meter, get_tracer
+from prometheus_client import Counter as PrometheusCounter
 
 from ta_bot.core.indicators import Indicators
 from ta_bot.models.signal import Signal, SignalStrength, SignalType
@@ -53,6 +58,12 @@ from ta_bot.strategies.volume_surge_breakout import VolumeSurgeBreakoutStrategy
 
 logger = logging.getLogger(__name__)
 
+SIGNALS_SUPPRESSED = PrometheusCounter(
+    "ta_signals_suppressed",
+    "Signals suppressed by the in-memory idempotency guard",
+    ["reason"],
+)
+
 # Get tracer for manual spans
 tracer = get_tracer("ta_bot.core.signal_engine")
 
@@ -60,7 +71,7 @@ tracer = get_tracer("ta_bot.core.signal_engine")
 class SignalEngine:
     """Main signal engine that coordinates all trading strategies."""
 
-    def __init__(self):
+    def __init__(self, dedupe_cache_size: int | None = None):
         """Initialize the signal engine with all strategies."""
         self.strategies = {
             # Original Petrosa strategies
@@ -99,6 +110,13 @@ class SignalEngine:
         self._cycle_outcomes: Counter[str] = Counter()
         self._signals_by_strategy_outcome: Counter[tuple[str, str]] = Counter()
         self._cycle_latencies_seconds: list[float] = []
+        self._dedupe_cache_size = max(
+            1,
+            dedupe_cache_size
+            if dedupe_cache_size is not None
+            else int(os.getenv("SIGNAL_DEDUPE_CACHE_SIZE", "10000")),
+        )
+        self._seen_signal_keys: OrderedDict[str, None] = OrderedDict()
 
         # Initialize OpenTelemetry metrics
         meter = get_meter("ta_bot.core.signal_engine")
@@ -239,6 +257,17 @@ class SignalEngine:
                     strategy_configs,
                 )
                 if signal:
+                    signal = self._anchor_signal(
+                        signal,
+                        df,
+                        symbol,
+                        period,
+                        strategy_configs.get(strategy_name)
+                        if strategy_configs
+                        else None,
+                    )
+                    if signal is None:
+                        continue
                     # Apply confidence filtering if specified
                     if (
                         min_confidence is not None
@@ -313,6 +342,88 @@ class SignalEngine:
             "cycles": len(values),
             "latency_seconds": {"p50": percentile(0.5), "p95": percentile(0.95)},
         }
+
+    def _anchor_signal(
+        self,
+        signal: Signal,
+        df: pd.DataFrame,
+        symbol: str,
+        period: str,
+        strategy_config: dict[str, Any] | None,
+    ) -> Signal | None:
+        """Attach the closed-bar contract and suppress duplicate evaluations."""
+        bar_open = self._last_bar_open(df)
+        interval = self._timeframe_delta(period)
+        if bar_open is None or interval is None:
+            logger.warning("Skipping signal without a timestamped supported candle")
+            return None
+        bar_close = bar_open + interval
+        if bar_close > datetime.now(UTC):
+            logger.info("Skipping signal from still-forming candle at %s", bar_open)
+            return None
+
+        params = (strategy_config or {}).get("parameters", {})
+        params_json = json.dumps(
+            params, sort_keys=True, separators=(",", ":"), default=str
+        )
+        params_hash = hashlib.sha1(params_json.encode(), usedforsecurity=False).hexdigest()
+        bar_open_ms = int(bar_open.timestamp() * 1000)
+        key_material = "|".join(
+            (
+                signal.strategy_id,
+                symbol,
+                period,
+                signal.action,
+                str(bar_open_ms),
+                params_hash,
+            )
+        )
+        signal_key = hashlib.sha1(key_material.encode(), usedforsecurity=False).hexdigest()
+        if signal_key in self._seen_signal_keys:
+            self._seen_signal_keys.move_to_end(signal_key)
+            SIGNALS_SUPPRESSED.labels(reason="duplicate_bar").inc()
+            return None
+        self._seen_signal_keys[signal_key] = None
+        self._seen_signal_keys.move_to_end(signal_key)
+        while len(self._seen_signal_keys) > self._dedupe_cache_size:
+            self._seen_signal_keys.popitem(last=False)
+
+        signal.bar_open_time = bar_open
+        signal.bar_close_time = bar_close
+        signal.signal_key = signal_key
+        close_price = float(df["close"].iloc[-1])
+        if signal.metadata is None:
+            signal.metadata = {}
+        if "entry_price" in signal.metadata:
+            signal.metadata["reference_price"] = signal.metadata.pop("entry_price")
+        signal.metadata["entry_price"] = close_price
+        return signal
+
+    @staticmethod
+    def _last_bar_open(df: pd.DataFrame) -> datetime | None:
+        """Read the latest candle open from either an index or timestamp column."""
+        try:
+            value = (
+                df.index[-1]
+                if isinstance(df.index, pd.DatetimeIndex)
+                else df["timestamp"].iloc[-1]
+            )
+        except (KeyError, IndexError):
+            return None
+        timestamp = pd.Timestamp(value)
+        if timestamp.tzinfo is None:
+            return None
+        return timestamp.to_pydatetime().astimezone(UTC)
+
+    @staticmethod
+    def _timeframe_delta(period: str) -> timedelta | None:
+        units = {"m": 60, "h": 3600, "d": 86400}
+        if not period or period[-1] not in units:
+            return None
+        try:
+            return timedelta(seconds=int(period[:-1]) * units[period[-1]])
+        except ValueError:
+            return None
 
     def _calculate_indicators(self, df: pd.DataFrame) -> dict[str, Any]:
         """Calculate all technical indicators for the dataframe."""
