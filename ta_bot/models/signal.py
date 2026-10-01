@@ -207,7 +207,9 @@ class Signal(BaseModel):
             try:
                 v = datetime.fromisoformat(v.replace("Z", "+00:00"))
             except ValueError as exc:
-                raise ValueError("bar times must be UTC epoch milliseconds or ISO strings") from exc
+                raise ValueError(
+                    "bar times must be UTC epoch milliseconds or ISO strings"
+                ) from exc
         if not isinstance(v, datetime) or v.tzinfo is None or v.utcoffset() is None:
             raise ValueError("bar times must be timezone-aware")
         return v.astimezone(UTC)

@@ -2,10 +2,10 @@
 Signal engine that coordinates all trading strategies.
 """
 
-import logging
-import math
 import hashlib
 import json
+import logging
+import math
 import os
 import time
 from collections import Counter, OrderedDict
@@ -257,17 +257,6 @@ class SignalEngine:
                     strategy_configs,
                 )
                 if signal:
-                    signal = self._anchor_signal(
-                        signal,
-                        df,
-                        symbol,
-                        period,
-                        strategy_configs.get(strategy_name)
-                        if strategy_configs
-                        else None,
-                    )
-                    if signal is None:
-                        continue
                     # Apply confidence filtering if specified
                     if (
                         min_confidence is not None
@@ -280,6 +269,18 @@ class SignalEngine:
                         and signal.confidence > max_confidence
                     ):
                         logger.debug("Signal filtered by maximum confidence")
+                        continue
+
+                    signal = self._anchor_signal(
+                        signal,
+                        df,
+                        symbol,
+                        period,
+                        strategy_configs.get(strategy_name)
+                        if strategy_configs
+                        else None,
+                    )
+                    if signal is None:
                         continue
 
                     signals.append(signal)
@@ -366,7 +367,9 @@ class SignalEngine:
         params_json = json.dumps(
             params, sort_keys=True, separators=(",", ":"), default=str
         )
-        params_hash = hashlib.sha1(params_json.encode(), usedforsecurity=False).hexdigest()
+        params_hash = hashlib.sha1(
+            params_json.encode(), usedforsecurity=False
+        ).hexdigest()
         bar_open_ms = int(bar_open.timestamp() * 1000)
         key_material = "|".join(
             (
@@ -378,7 +381,9 @@ class SignalEngine:
                 params_hash,
             )
         )
-        signal_key = hashlib.sha1(key_material.encode(), usedforsecurity=False).hexdigest()
+        signal_key = hashlib.sha1(
+            key_material.encode(), usedforsecurity=False
+        ).hexdigest()
         if signal_key in self._seen_signal_keys:
             self._seen_signal_keys.move_to_end(signal_key)
             SIGNALS_SUPPRESSED.labels(reason="duplicate_bar").inc()
