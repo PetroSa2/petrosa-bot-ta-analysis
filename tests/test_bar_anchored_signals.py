@@ -63,9 +63,12 @@ def test_same_closed_bar_is_emitted_once_and_is_bar_anchored():
 
 def test_forming_last_bar_is_not_used():
     engine = _engine()
-    assert engine.analyze_candles(
-        _candles(datetime.now(UTC) - timedelta(minutes=2)), "BTCUSDT", "5m"
-    ) == []
+    assert (
+        engine.analyze_candles(
+            _candles(datetime.now(UTC) - timedelta(minutes=2)), "BTCUSDT", "5m"
+        )
+        == []
+    )
 
 
 def test_bar_times_reject_naive_datetimes():
@@ -79,6 +82,7 @@ def test_bar_times_reject_naive_datetimes():
             price=100,
             bar_open_time=datetime(2026, 1, 1),
         )
+    assert True
 
 
 def test_restart_reemits_same_deterministic_key():
