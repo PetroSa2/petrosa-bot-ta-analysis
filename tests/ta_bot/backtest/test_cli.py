@@ -77,5 +77,6 @@ def test_cli_rejects_unknown_strategy(monkeypatch):
 
     monkeypatch.setattr(__main__, "DataManagerCandleLoader", Loader)
     monkeypatch.setattr(__main__, "SignalEngine", Engine)
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as error:
         __main__.main(arguments())
+    assert error.value.code == 2

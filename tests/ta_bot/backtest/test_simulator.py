@@ -151,7 +151,9 @@ def test_data_normalization_index_and_validation():
     with pytest.raises(ValueError, match="unsupported timeframe"):
         expected_timestamps(start, start, "1d")
     with pytest.raises(ValueError, match="candle data missing columns"):
-        normalize_candles(frame.drop(columns="volume"), start, start + timedelta(minutes=5), "5m")
+        normalize_candles(
+            frame.drop(columns="volume"), start, start + timedelta(minutes=5), "5m"
+        )
 
 
 def test_data_loader_uses_async_client_factory():
@@ -176,7 +178,9 @@ def test_data_loader_uses_async_client_factory():
 
 
 def test_config_rejects_invalid_values():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as notional_error:
         BacktestConfig(notional=0)
-    with pytest.raises(ValueError):
+    assert "notional" in str(notional_error.value)
+    with pytest.raises(ValueError) as stop_error:
         BacktestConfig(time_stop_bars=-1)
+    assert "time_stop_bars" in str(stop_error.value)
