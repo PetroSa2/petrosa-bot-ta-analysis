@@ -2,9 +2,15 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pandas as pd
+import pytest
 
 from ta_bot.backtest.config import BacktestConfig
-from ta_bot.backtest.data import MissingBarsError, normalize_candles
+from ta_bot.backtest.data import (
+    DataManagerCandleLoader,
+    MissingBarsError,
+    expected_timestamps,
+    normalize_candles,
+)
 from ta_bot.backtest.simulator import simulate
 
 
@@ -117,3 +123,60 @@ def test_backtest_package_has_no_database_driver_imports():
 
     source = "".join(path.read_text() for path in Path("ta_bot/backtest").rglob("*.py"))
     assert "mysql" not in source.lower()
+
+
+def test_sell_strategy_and_time_stop():
+    frame = candles([100, 100, 100, 100]).set_index("timestamp")
+
+    def strategy(_window):
+        return {"action": "sell", "stop_loss": 105, "take_profit": 95}
+
+    result = simulate(frame, strategy, BacktestConfig(time_stop_bars=1))
+    assert result.trades[0].exit_reason == "time_stop"
+    assert Decimal(result.trades[0].net_pnl) < 0
+
+
+def test_result_serialization_covers_empty_and_cost_metrics():
+    payload = simulate(candles([100, 100]), lambda _window: None).to_dict()
+    assert payload["n_trades"] == 0
+    assert payload["fee_share"] == "0"
+
+
+def test_data_normalization_index_and_validation():
+    start = datetime(2026, 1, 1, tzinfo=UTC)
+    frame = candles([100, 101]).set_index("timestamp")
+    normalized = normalize_candles(frame, start, start + timedelta(minutes=5), "5m")
+    assert list(normalized.columns) == ["open", "high", "low", "close", "volume"]
+    assert len(expected_timestamps(start, start, "5m")) == 1
+    with pytest.raises(ValueError, match="unsupported timeframe"):
+        expected_timestamps(start, start, "1d")
+    with pytest.raises(ValueError, match="candle data missing columns"):
+        normalize_candles(frame.drop(columns="volume"), start, start + timedelta(minutes=5), "5m")
+
+
+def test_data_loader_uses_async_client_factory():
+    class Client:
+        def __init__(self):
+            self.connected = False
+
+        async def connect(self):
+            self.connected = True
+
+        async def fetch_candles(self, **_kwargs):
+            return candles([100, 101])
+
+        async def disconnect(self):
+            self.connected = False
+
+    start = datetime(2026, 1, 1, tzinfo=UTC)
+    result = DataManagerCandleLoader(Client).load(
+        "BTCUSDT", "5m", start, start + timedelta(minutes=5)
+    )
+    assert len(result) == 2
+
+
+def test_config_rejects_invalid_values():
+    with pytest.raises(ValueError):
+        BacktestConfig(notional=0)
+    with pytest.raises(ValueError):
+        BacktestConfig(time_stop_bars=-1)
