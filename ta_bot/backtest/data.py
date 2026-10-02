@@ -17,7 +17,9 @@ class MissingBarsError(ValueError):
         super().__init__(f"missing candle bars: {', '.join(gaps)}")
 
 
-def expected_timestamps(start: datetime, end: datetime, timeframe: str) -> pd.DatetimeIndex:
+def expected_timestamps(
+    start: datetime, end: datetime, timeframe: str
+) -> pd.DatetimeIndex:
     if timeframe.endswith("m"):
         frequency = f"{int(timeframe[:-1])}min"
     elif timeframe.endswith("h"):
@@ -27,7 +29,9 @@ def expected_timestamps(start: datetime, end: datetime, timeframe: str) -> pd.Da
     return pd.date_range(start=start, end=end, freq=frequency, tz="UTC")
 
 
-def normalize_candles(records: Any, start: datetime, end: datetime, timeframe: str) -> pd.DataFrame:
+def normalize_candles(
+    records: Any, start: datetime, end: datetime, timeframe: str
+) -> pd.DataFrame:
     frame = records if isinstance(records, pd.DataFrame) else pd.DataFrame(records)
     if frame.empty:
         raise MissingBarsError([start.isoformat()])
@@ -61,7 +65,9 @@ class DataManagerCandleLoader:
         self.client_factory = client_factory
         self.limit = limit
 
-    def load(self, symbol: str, timeframe: str, start: datetime, end: datetime) -> pd.DataFrame:
+    def load(
+        self, symbol: str, timeframe: str, start: datetime, end: datetime
+    ) -> pd.DataFrame:
         from ta_bot.services.data_manager_client import DataManagerClient
 
         client = (self.client_factory or DataManagerClient)()
@@ -69,7 +75,9 @@ class DataManagerCandleLoader:
         async def fetch():
             await client.connect()
             try:
-                return await client.fetch_candles(symbol=symbol, period=timeframe, limit=self.limit)
+                return await client.fetch_candles(
+                    symbol=symbol, period=timeframe, limit=self.limit
+                )
             finally:
                 await client.disconnect()
 

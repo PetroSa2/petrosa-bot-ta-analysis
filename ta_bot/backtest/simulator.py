@@ -61,17 +61,29 @@ class BacktestResult:
             "slippage": str(slippage),
             "funding": str(funding),
             "net_pnl": str(net),
-            "win_rate": str(Decimal(winners) / len(self.trades) if self.trades else Decimal(0)),
-            "payoff": str(
-                (sum(value for value in remainder if value > 0) / sum(-value for value in remainder if value < 0))
-                if any(value < 0 for value in remainder) else Decimal(0)
+            "win_rate": str(
+                Decimal(winners) / len(self.trades) if self.trades else Decimal(0)
             ),
-            "expectancy_net": str(net / len(self.trades) if self.trades else Decimal(0)),
+            "payoff": str(
+                (
+                    sum(value for value in remainder if value > 0)
+                    / sum(-value for value in remainder if value < 0)
+                )
+                if any(value < 0 for value in remainder)
+                else Decimal(0)
+            ),
+            "expectancy_net": str(
+                net / len(self.trades) if self.trades else Decimal(0)
+            ),
             "expectancy_net_r": str(expectancy_r),
-            "expectancy_ex_top1": str(sum(remainder, Decimal(0)) / len(remainder) if remainder else Decimal(0)),
+            "expectancy_ex_top1": str(
+                sum(remainder, Decimal(0)) / len(remainder) if remainder else Decimal(0)
+            ),
             "max_drawdown": str(_max_drawdown(self.trades)),
             "fee_share": str(fees / gross if gross else Decimal(0)),
-            "cost_share": str((fees + slippage + funding) / gross if gross else Decimal(0)),
+            "cost_share": str(
+                (fees + slippage + funding) / gross if gross else Decimal(0)
+            ),
             "parameters": self.parameters,
             "gaps": self.gaps,
         }
@@ -103,15 +115,30 @@ def simulate(
     for index in range(max(0, len(frame) - 1)):
         bar = frame.iloc[index]
         if position is not None:
-            if _exit_position(position, frame.iloc[index + 1], frame.index[index + 1], config, trades):
+            if _exit_position(
+                position, frame.iloc[index + 1], frame.index[index + 1], config, trades
+            ):
                 position = None
-            elif config.time_stop_bars and index + 1 - position["entry_index"] >= config.time_stop_bars:
-                _close(position, Decimal(str(frame.iloc[index + 1].close)), frame.index[index + 1],
-                       "time_stop", config, trades)
+            elif (
+                config.time_stop_bars
+                and index + 1 - position["entry_index"] >= config.time_stop_bars
+            ):
+                _close(
+                    position,
+                    Decimal(str(frame.iloc[index + 1].close)),
+                    frame.index[index + 1],
+                    "time_stop",
+                    config,
+                    trades,
+                )
                 position = None
         if position is None:
             signal = strategy(frame.iloc[: index + 1].copy())
-            action = signal.get("action") if isinstance(signal, dict) else getattr(signal, "action", None)
+            action = (
+                signal.get("action")
+                if isinstance(signal, dict)
+                else getattr(signal, "action", None)
+            )
             if action not in ("buy", "sell"):
                 continue
             entry = frame.iloc[index + 1]
@@ -121,12 +148,32 @@ def simulate(
                 "entry_index": index + 1,
                 "entry_time": frame.index[index + 1].isoformat(),
                 "entry": Decimal(str(entry.open)),
-                "stop": Decimal(str(signal.get("stop_loss") if isinstance(signal, dict) else signal.stop_loss)),
-                "target": Decimal(str(signal.get("take_profit") if isinstance(signal, dict) else signal.take_profit)),
+                "stop": Decimal(
+                    str(
+                        signal.get("stop_loss")
+                        if isinstance(signal, dict)
+                        else signal.stop_loss
+                    )
+                ),
+                "target": Decimal(
+                    str(
+                        signal.get("take_profit")
+                        if isinstance(signal, dict)
+                        else signal.take_profit
+                    )
+                ),
             }
     if position is not None:
         last = frame.iloc[-1]
-        _close(position, Decimal(str(last.close)), frame.index[-1], "mark_to_market", config, trades, open_at_end=True)
+        _close(
+            position,
+            Decimal(str(last.close)),
+            frame.index[-1],
+            "mark_to_market",
+            config,
+            trades,
+            open_at_end=True,
+        )
     return BacktestResult(trades, config.as_dict(), [])
 
 
@@ -137,19 +184,25 @@ def _exit_position(position, bar, timestamp, config, trades) -> bool:
             _close(position, position["stop"], timestamp, "stop_loss", config, trades)
             return True
         if high >= position["target"]:
-            _close(position, position["target"], timestamp, "take_profit", config, trades)
+            _close(
+                position, position["target"], timestamp, "take_profit", config, trades
+            )
             return True
     else:
         if high >= position["stop"]:
             _close(position, position["stop"], timestamp, "stop_loss", config, trades)
             return True
         if low <= position["target"]:
-            _close(position, position["target"], timestamp, "take_profit", config, trades)
+            _close(
+                position, position["target"], timestamp, "take_profit", config, trades
+            )
             return True
     return False
 
 
-def _close(position, exit_price, timestamp, reason, config, trades, open_at_end=False) -> None:
+def _close(
+    position, exit_price, timestamp, reason, config, trades, open_at_end=False
+) -> None:
     entry, exit_price = position["entry"], Decimal(exit_price)
     direction = Decimal(1) if position["side"] == "buy" else Decimal(-1)
     gross = (exit_price - entry) * direction * config.notional / entry
@@ -160,9 +213,24 @@ def _close(position, exit_price, timestamp, reason, config, trades, open_at_end=
     marks = _funding_marks(position["entry_time"], timestamp)
     funding = config.notional * config.funding_bp / BP * len(marks)
     initial_risk = abs(entry - position["stop"]) * config.notional / entry
-    trades.append(Trade(position["side"], position["signal_time"], position["entry_time"], str(entry),
-                        timestamp.isoformat(), str(exit_price), str(gross), str(fees), str(slippage),
-                        str(funding), str(gross - fees - slippage - funding), str(initial_risk), reason, open_at_end))
+    trades.append(
+        Trade(
+            position["side"],
+            position["signal_time"],
+            position["entry_time"],
+            str(entry),
+            timestamp.isoformat(),
+            str(exit_price),
+            str(gross),
+            str(fees),
+            str(slippage),
+            str(funding),
+            str(gross - fees - slippage - funding),
+            str(initial_risk),
+            reason,
+            open_at_end,
+        )
+    )
 
 
 def _funding_marks(entry: str, exit_time: datetime) -> list[datetime]:

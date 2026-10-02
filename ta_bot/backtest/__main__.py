@@ -31,7 +31,9 @@ def main(argv=None) -> int:
     start = start.replace(tzinfo=UTC) if start.tzinfo is None else start.astimezone(UTC)
     end = end.replace(tzinfo=UTC) if end.tzinfo is None else end.astimezone(UTC)
     try:
-        candles = DataManagerCandleLoader().load(args.symbol, args.timeframe, start, end)
+        candles = DataManagerCandleLoader().load(
+            args.symbol, args.timeframe, start, end
+        )
     except MissingBarsError as error:
         print(json.dumps({"gaps": error.gaps, "error": str(error)}))
         return 2
@@ -40,11 +42,22 @@ def main(argv=None) -> int:
         parser.error(f"unknown strategy: {args.strategy}")
 
     def strategy(window):
-        signals = engine.analyze_candles(window, args.symbol, args.timeframe, [args.strategy])
+        signals = engine.analyze_candles(
+            window, args.symbol, args.timeframe, [args.strategy]
+        )
         return signals[0] if signals else None
 
-    result = simulate(candles, strategy, BacktestConfig(args.fee_bp_per_side, args.slippage_bp,
-                                                        args.funding_bp, args.notional, args.time_stop_bars))
+    result = simulate(
+        candles,
+        strategy,
+        BacktestConfig(
+            args.fee_bp_per_side,
+            args.slippage_bp,
+            args.funding_bp,
+            args.notional,
+            args.time_stop_bars,
+        ),
+    )
     print(result.to_json())
     return 0
 
