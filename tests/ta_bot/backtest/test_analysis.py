@@ -16,9 +16,13 @@ def trade(day: int, pnl: str, symbol: str = "BTCUSDT") -> dict[str, str]:
 def test_bootstrap_is_seeded_and_reports_sample_status() -> None:
     trades = [trade(1, "1"), trade(1, "3"), trade(2, "-1")]
     first = block_bootstrap_expectancy_ci(trades, seed=4, n_boot=20, min_trades=4)
-    assert first == block_bootstrap_expectancy_ci(trades, seed=4, n_boot=20, min_trades=4)
+    assert first == block_bootstrap_expectancy_ci(
+        trades, seed=4, n_boot=20, min_trades=4
+    )
     assert first["sample_ok"] is False
-    assert first != block_bootstrap_expectancy_ci(trades, seed=5, n_boot=20, min_trades=4)
+    assert first != block_bootstrap_expectancy_ci(
+        trades, seed=5, n_boot=20, min_trades=4
+    )
 
 
 def test_block_bootstrap_is_available_as_a_clustered_comparison() -> None:
@@ -31,7 +35,12 @@ def test_block_bootstrap_is_available_as_a_clustered_comparison() -> None:
 
 
 def test_correlation_zero_pads_gaps() -> None:
-    trades = [trade(1, "1", "A"), trade(1, "2", "B"), trade(3, "1", "A"), trade(3, "2", "B")]
+    trades = [
+        trade(1, "1", "A"),
+        trade(1, "2", "B"),
+        trade(3, "1", "A"),
+        trade(3, "2", "B"),
+    ]
     result = daily_pnl_correlation(trades)
     assert result["n_days"] == 3
     assert result["correlations"]["A|B"] == 1.0

@@ -18,7 +18,9 @@ def _field(trade: Any, name: str) -> str:
 def _date(trade: Any) -> datetime.date:
     value = _field(trade, "exit_time")
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    return (parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)).astimezone(UTC).date()
+    return (
+        (parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)).astimezone(UTC).date()
+    )
 
 
 def _pnl(trade: Any) -> Decimal:
@@ -44,7 +46,9 @@ def daily_pnl_correlation(
     trades: Iterable[Any], *, group_by: str = "symbol"
 ) -> dict[str, Any]:
     """Aggregate net P&L by UTC day and return pairwise correlations."""
-    grouped: dict[str, dict[object, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
+    grouped: dict[str, dict[object, Decimal]] = defaultdict(
+        lambda: defaultdict(Decimal)
+    )
     for trade in trades:
         grouped[_field(trade, group_by)][_date(trade)] += _pnl(trade)
     if not grouped:
@@ -57,9 +61,15 @@ def daily_pnl_correlation(
         calendar.append(day)
         day += timedelta(days=1)
     names = sorted(grouped)
-    series = {name: [str(grouped[name].get(day, Decimal(0))) for day in calendar] for name in names}
+    series = {
+        name: [str(grouped[name].get(day, Decimal(0))) for day in calendar]
+        for name in names
+    }
     correlations: dict[str, float] = {}
-    matrix = {name: {other: (1.0 if name == other else 0.0) for other in names} for name in names}
+    matrix = {
+        name: {other: (1.0 if name == other else 0.0) for other in names}
+        for name in names
+    }
     for index, left_name in enumerate(names):
         for right_name in names[index + 1 :]:
             left = [Decimal(value) for value in series[left_name]]

@@ -54,7 +54,11 @@ def block_bootstrap_expectancy_ci(
     for trade in items:
         by_day[_time(trade).date()].append(_value(trade))
     days = list(by_day.values())
-    point = sum((_value(trade) for trade in items), Decimal(0)) / len(items) if items else Decimal(0)
+    point = (
+        sum((_value(trade) for trade in items), Decimal(0)) / len(items)
+        if items
+        else Decimal(0)
+    )
     samples: list[Decimal] = []
     rng = random.Random(seed)
     for _ in range(n_boot):
@@ -103,7 +107,9 @@ def independent_bootstrap_expectancy_ci(
     ]
     alpha = (1.0 - confidence) / 2.0
     return {
-        "expectancy_net": str(sum(values, Decimal(0)) / len(values) if values else Decimal(0)),
+        "expectancy_net": str(
+            sum(values, Decimal(0)) / len(values) if values else Decimal(0)
+        ),
         "ci": [str(_quantile(samples, alpha)), str(_quantile(samples, 1.0 - alpha))],
         "confidence": confidence,
         "seed": seed,
