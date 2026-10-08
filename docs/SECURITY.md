@@ -747,14 +747,12 @@ groups:
 
 ## 🔗 Related Documentation
 
-- **Deployment Guide**: See [Deployment Guide](./DEPLOYMENT.md) for secure deployment
-- **Kubernetes Configuration**: Check [Kubernetes Configuration](./KUBERNETES.md) for K8s security
-- **Monitoring Guide**: Review [Monitoring Guide](./MONITORING.md) for security monitoring
-- **Configuration**: Read [Configuration](./CONFIGURATION.md) for security settings
+- **Runbook**: See [Runbook](./RUNBOOK.md) for service operations and troubleshooting
+- **Backtest**: See [Backtest](./BACKTEST.md) for the research workflow
+- **Repository policy**: See [AGENTS.md](../AGENTS.md) for development and CI commands
 
 ---
 
 **Next Steps**:
-- Read [Deployment Guide](./DEPLOYMENT.md) for secure deployment
-- Check [Kubernetes Configuration](./KUBERNETES.md) for K8s security
-- Review [Monitoring Guide](./MONITORING.md) for security monitoring
+- Read the [Runbook](./RUNBOOK.md) before operating the service
+- Run `make pipeline` after code changes
