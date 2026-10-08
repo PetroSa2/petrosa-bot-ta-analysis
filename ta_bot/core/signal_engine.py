@@ -356,8 +356,22 @@ class SignalEngine:
         bar_open = self._last_bar_open(df)
         interval = self._timeframe_delta(period)
         if bar_open is None or interval is None:
-            logger.warning("Skipping signal without a timestamped supported candle")
-            return None
+            # Never drop a signal because the anchor cannot be computed (petrosa-bot-ta-analysis#364): publish it
+            # without the closed-bar contract (no bar times, no signal key, so no per-bar dedupe) and say why.
+            logger.warning(
+                "Publishing signal without a bar anchor: strategy=%s symbol=%s period=%r bar_open=%s "
+                "interval=%s index_type=%s index_tz=%s columns=%s last_timestamp=%r",
+                signal.strategy_id,
+                symbol,
+                period,
+                bar_open,
+                interval,
+                type(df.index).__name__,
+                getattr(df.index, "tz", None),
+                list(df.columns)[:10],
+                self._last_timestamp_repr(df),
+            )
+            return signal
         bar_close = bar_open + interval
         if bar_close > datetime.now(UTC):
             logger.info("Skipping signal from still-forming candle at %s", bar_open)
@@ -405,19 +419,38 @@ class SignalEngine:
         return signal
 
     @staticmethod
+    def _last_timestamp_repr(df: pd.DataFrame) -> Any:
+        """The last candle timestamp as the frame holds it, for the warning (never raises)."""
+        try:
+            return (
+                df.index[-1]
+                if isinstance(df.index, pd.DatetimeIndex)
+                else df["timestamp"].iloc[-1]
+            )
+        except Exception:
+            return None
+
+    @staticmethod
     def _last_bar_open(df: pd.DataFrame) -> datetime | None:
-        """Read the latest candle open from either an index or timestamp column."""
+        """Read the latest candle open from either an index or timestamp column, as an aware UTC datetime.
+
+        data-manager serves candle timestamps as ISO strings **without** a timezone (``2026-10-08T00:30:00``),
+        which are UTC; ``data_manager_client`` turns them into a naive DatetimeIndex. A naive timestamp is
+        therefore UTC (treating it as unknown dropped every signal, petrosa-bot-ta-analysis#364).
+        """
         try:
             value = (
                 df.index[-1]
                 if isinstance(df.index, pd.DatetimeIndex)
                 else df["timestamp"].iloc[-1]
             )
-        except (KeyError, IndexError):
+            timestamp = pd.Timestamp(value)
+        except (KeyError, IndexError, ValueError, TypeError):
             return None
-        timestamp = pd.Timestamp(value)
+        if pd.isna(timestamp):
+            return None
         if timestamp.tzinfo is None:
-            return None
+            timestamp = timestamp.tz_localize("UTC")
         return timestamp.to_pydatetime().astimezone(UTC)
 
     @staticmethod
