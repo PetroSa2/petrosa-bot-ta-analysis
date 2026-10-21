@@ -12,6 +12,7 @@ from typing import Any
 from nats.aio.client import Client as NATS
 
 from ta_bot.core.signal_engine import SignalEngine
+from ta_bot.health import NATS_MESSAGES_PROCESSED
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
 from ta_bot.services.data_manager_client import MIN_WARMUP_CANDLES
@@ -193,6 +194,7 @@ class NATSListener:
         logger.debug("NATS message received on %s", msg.subject)
 
         self.messages_received += 1
+        NATS_MESSAGES_PROCESSED.inc()
         self._last_message_at = time.monotonic()
 
         try:

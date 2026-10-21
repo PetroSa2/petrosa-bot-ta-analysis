@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 
+from ta_bot.health import NATS_MESSAGES_PROCESSED
 from ta_bot.services.nats_listener import NATSListener
 
 
@@ -89,9 +90,11 @@ async def test_candle_message_logs_debug_without_writing_stdout(capsys):
     message.data = b"{}"
 
     with patch("ta_bot.services.nats_listener.logger") as mock_logger:
+        before = NATS_MESSAGES_PROCESSED._value.get()
         await listener._handle_candle_message(message)
 
     assert capsys.readouterr().out == ""
+    assert NATS_MESSAGES_PROCESSED._value.get() == before + 1
     mock_logger.debug.assert_called_once_with(
         "NATS message received on %s", message.subject
     )
