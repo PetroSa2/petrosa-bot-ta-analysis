@@ -69,7 +69,7 @@ def test_signal_generation():
         logger.info(f"  Timeframe: {signal.timeframe}")
         logger.info("  ---")
 
-    assert len(signals) >= 0  # Should generate at least 0 signals
+    assert len(signals) > 0
     # Store signals for use by other tests
     test_signal_generation.signals = signals
 
