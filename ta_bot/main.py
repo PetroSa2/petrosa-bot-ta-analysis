@@ -182,9 +182,7 @@ async def main():
             else:
                 logger.warning(f"Failed to persist startup configuration: {errors}")
 
-        missing_strategies = missing_actionable_strategies(
-            enabled_strategies
-        )
+        missing_strategies = missing_actionable_strategies(enabled_strategies)
         if missing_strategies:
             logger.error(
                 "Runtime strategy allowlist is missing actionable strategies: %s",
