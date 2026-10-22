@@ -21,6 +21,7 @@ except ImportError:
     UTC = timezone.utc  # noqa: UP017
 from typing import Any
 
+from ta_bot.config import missing_actionable_strategies
 from ta_bot.models.app_config import AppConfig
 from ta_bot.services.app_config_validator import validate_app_config
 from ta_bot.services.data_manager_config_client import DataManagerConfigClient
@@ -115,6 +116,14 @@ class AppConfigManager:
                 config_doc = await self.data_manager_client.get_app_config()
                 if config_doc and config_doc.get("version", 0) > 0:
                     result = self._doc_to_config_result(config_doc, "data_manager")
+                    missing_strategies = missing_actionable_strategies(
+                        result["enabled_strategies"]
+                    )
+                    if missing_strategies:
+                        logger.error(
+                            "Runtime strategy allowlist is missing actionable strategies: %s",
+                            sorted(missing_strategies),
+                        )
                     self._set_cache(result)
                     result["cache_hit"] = False
                     result["load_time_ms"] = (time.time() - start_time) * 1000
