@@ -19,6 +19,25 @@ Startup configuration (this file) is used when:
 import os
 from dataclasses import dataclass, field
 
+ACTIONABLE_STRATEGIES = frozenset(
+    {
+        "rsi_extreme_reversal",
+        "mean_reversion_scalper",
+        "hammer_reversal_pattern",
+        "inside_bar_breakout",
+        "band_fade_reversal",
+        "doji_reversal",
+        "volume_surge_breakout",
+        "ema_slope_reversal_sell",
+        "range_break_pop",
+        "minervini_trend_template",
+    }
+)
+
+
+def missing_actionable_strategies(enabled_strategies: list[str]) -> set[str]:
+    return ACTIONABLE_STRATEGIES.difference(enabled_strategies)
+
 
 @dataclass
 class Config:

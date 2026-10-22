@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover — petrosa_otel is always installed in 
     DataManagerConfigRateLimiter = None
 
 from ta_bot.api import config_routes
-from ta_bot.config import Config
+from ta_bot.config import Config, missing_actionable_strategies
 from ta_bot.core.signal_engine import SignalEngine
 from ta_bot.health import set_rate_limiter, start_health_server
 from ta_bot.services.app_config_manager import AppConfigManager
@@ -154,11 +154,13 @@ async def main():
             supported_timeframes = runtime_config.get(
                 "candle_periods", [t.strip() for t in config.candle_periods]
             )
+            enabled_strategies = runtime_config.get("enabled_strategies", [])
         else:
             logger.info("No runtime configuration found, using startup defaults")
             # Use startup config
             supported_symbols = [s.strip() for s in config.symbols]
             supported_timeframes = [t.strip() for t in config.candle_periods]
+            enabled_strategies = config.enabled_strategies
 
             # Optionally persist startup config as initial runtime config
             initial_config = {
@@ -179,6 +181,15 @@ async def main():
                 logger.info("Persisted startup configuration to database")
             else:
                 logger.warning(f"Failed to persist startup configuration: {errors}")
+
+        missing_strategies = missing_actionable_strategies(
+            enabled_strategies
+        )
+        if missing_strategies:
+            logger.error(
+                "Runtime strategy allowlist is missing actionable strategies: %s",
+                sorted(missing_strategies),
+            )
 
         # Initialize publisher with both REST API and NATS capabilities
         publisher = SignalPublisher(
