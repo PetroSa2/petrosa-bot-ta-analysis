@@ -90,6 +90,7 @@ class TestHealthEndpoints:
         # Check for some expected metrics
         content = response.text
         assert "service_uptime_seconds" in content
+        assert "ta_analysis_targeted_errors_total" in content
 
     def test_root_endpoint(self, client):
         """Test root endpoint."""

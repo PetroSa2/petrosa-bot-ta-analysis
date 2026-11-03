@@ -41,10 +41,34 @@ TA_SIGNALS_GENERATED = Counter(
     "Total trading signals generated",
     ["symbol", "signal_type"],
 )
+TA_ANALYSIS_TARGETED_ERRORS = Counter(
+    "ta_analysis_targeted_errors_total",
+    "Targeted TA analysis errors retained for read-only production evidence",
+    ["error_type"],
+)
 NATS_MESSAGES_PROCESSED = Counter(
     "nats_messages_processed_total", "Total NATS messages processed"
 )
 SERVICE_UPTIME = Gauge("service_uptime_seconds", "Service uptime in seconds")
+
+TARGETED_RUNTIME_WARNING = "runtime_warning_invalid_scalar_divide"
+TARGETED_ZERO_DIVISION = "zero_division"
+TARGETED_RUNTIME_WARNING_MESSAGE = "invalid value encountered in scalar divide"
+
+
+def record_targeted_runtime_warning(warning: Warning) -> None:
+    """Record only the exact scalar-divide warning in retained metrics."""
+    if (
+        issubclass(warning.__class__, RuntimeWarning)
+        and str(warning) == TARGETED_RUNTIME_WARNING_MESSAGE
+    ):
+        TA_ANALYSIS_TARGETED_ERRORS.labels(error_type=TARGETED_RUNTIME_WARNING).inc()
+
+
+def record_targeted_exception(error: BaseException) -> None:
+    """Record targeted analysis exceptions without changing error handling."""
+    if isinstance(error, ZeroDivisionError):
+        TA_ANALYSIS_TARGETED_ERRORS.labels(error_type=TARGETED_ZERO_DIVISION).inc()
 
 # Global variables for health status
 start_time = time.time()
