@@ -70,6 +70,7 @@ def record_targeted_exception(error: BaseException) -> None:
     if isinstance(error, ZeroDivisionError):
         TA_ANALYSIS_TARGETED_ERRORS.labels(error_type=TARGETED_ZERO_DIVISION).inc()
 
+
 # Global variables for health status
 start_time = time.time()
 app = FastAPI(title="TA Bot Health API", version="1.0.0")

@@ -9,16 +9,23 @@ from ta_bot.health import (
 
 
 def _value(error_type: str) -> float:
-    return REGISTRY.get_sample_value(
-        "ta_analysis_targeted_errors_total", {"error_type": error_type}
-    ) or 0.0
+    return (
+        REGISTRY.get_sample_value(
+            "ta_analysis_targeted_errors_total", {"error_type": error_type}
+        )
+        or 0.0
+    )
 
 
 def test_records_only_exact_scalar_divide_warning():
     before = _value(TARGETED_RUNTIME_WARNING)
 
-    record_targeted_runtime_warning(RuntimeWarning("invalid value encountered in scalar divide"))
-    record_targeted_runtime_warning(RuntimeWarning("invalid value encountered in divide"))
+    record_targeted_runtime_warning(
+        RuntimeWarning("invalid value encountered in scalar divide")
+    )
+    record_targeted_runtime_warning(
+        RuntimeWarning("invalid value encountered in divide")
+    )
 
     assert _value(TARGETED_RUNTIME_WARNING) == before + 1
 
