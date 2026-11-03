@@ -6,13 +6,18 @@ import asyncio
 import json
 import logging
 import time
+import warnings
 from collections import deque
 from typing import Any
 
 from nats.aio.client import Client as NATS
 
 from ta_bot.core.signal_engine import SignalEngine
-from ta_bot.health import NATS_MESSAGES_PROCESSED
+from ta_bot.health import (
+    NATS_MESSAGES_PROCESSED,
+    record_targeted_exception,
+    record_targeted_runtime_warning,
+)
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.config_manager import StrategyConfigManager
 from ta_bot.services.data_manager_client import MIN_WARMUP_CANDLES
@@ -384,18 +389,27 @@ class NATSListener:
             # blocking the asyncio event loop and causing readiness probe timeouts.
             loop = asyncio.get_running_loop()
             _analysis_start = time.perf_counter()
-            signals = await loop.run_in_executor(
-                None,
-                lambda: self.signal_engine.analyze_candles(
-                    df=df,
-                    symbol=symbol,
-                    period=period,
-                    enabled_strategies=enabled_strategies,
-                    min_confidence=min_confidence,
-                    max_confidence=max_confidence,
-                    strategy_configs=strategy_configs,
-                ),
-            )
+            with warnings.catch_warnings(record=True) as analysis_warnings:
+                warnings.simplefilter("always", RuntimeWarning)
+                try:
+                    signals = await loop.run_in_executor(
+                        None,
+                        lambda: self.signal_engine.analyze_candles(
+                            df=df,
+                            symbol=symbol,
+                            period=period,
+                            enabled_strategies=enabled_strategies,
+                            min_confidence=min_confidence,
+                            max_confidence=max_confidence,
+                            strategy_configs=strategy_configs,
+                        ),
+                    )
+                except ZeroDivisionError as analysis_error:
+                    record_targeted_exception(analysis_error)
+                    raise
+                finally:
+                    for analysis_warning in analysis_warnings:
+                        record_targeted_runtime_warning(analysis_warning.message)
             self._recent_analysis_latencies.append(
                 time.perf_counter() - _analysis_start
             )

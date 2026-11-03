@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 
-from ta_bot.health import NATS_MESSAGES_PROCESSED
+from ta_bot.health import (
+    NATS_MESSAGES_PROCESSED,
+    TA_ANALYSIS_TARGETED_ERRORS,
+    TARGETED_RUNTIME_WARNING,
+    TARGETED_ZERO_DIVISION,
+)
 from ta_bot.services.nats_listener import NATSListener
 
 
@@ -77,6 +82,63 @@ async def test_successful_candle_fetch_persists_and_publishes_signals():
         [{"id": "signal-1"}]
     )
     listener.publisher.publish_signals.assert_awaited_once_with([signal])
+
+
+@pytest.mark.asyncio
+async def test_analysis_warning_is_recorded_as_targeted_evidence():
+    listener = NATSListener(
+        nats_url="nats://localhost",
+        signal_engine=MagicMock(),
+        publisher=MagicMock(),
+    )
+    listener.data_manager_gateway.fetch_candles = AsyncMock(
+        return_value=pd.DataFrame({"close": [100.0]})
+    )
+
+    def analyze_with_warning(**_kwargs):
+        import warnings
+
+        warnings.warn(
+            "invalid value encountered in scalar divide", RuntimeWarning, stacklevel=2
+        )
+        return []
+
+    listener.signal_engine.analyze_candles.side_effect = analyze_with_warning
+    before = TA_ANALYSIS_TARGETED_ERRORS.labels(
+        error_type=TARGETED_RUNTIME_WARNING
+    )._value.get()
+
+    await listener._process_symbol_extraction("BTCUSDT", "15m")
+
+    after = TA_ANALYSIS_TARGETED_ERRORS.labels(
+        error_type=TARGETED_RUNTIME_WARNING
+    )._value.get()
+    assert after == before + 1
+
+
+@pytest.mark.asyncio
+async def test_analysis_zero_division_is_recorded_and_handled():
+    listener = NATSListener(
+        nats_url="nats://localhost",
+        signal_engine=MagicMock(),
+        publisher=MagicMock(),
+    )
+    listener.data_manager_gateway.fetch_candles = AsyncMock(
+        return_value=pd.DataFrame({"close": [100.0]})
+    )
+    listener.signal_engine.analyze_candles.side_effect = ZeroDivisionError(
+        "division by zero"
+    )
+    before = TA_ANALYSIS_TARGETED_ERRORS.labels(
+        error_type=TARGETED_ZERO_DIVISION
+    )._value.get()
+
+    await listener._process_symbol_extraction("BTCUSDT", "15m")
+
+    after = TA_ANALYSIS_TARGETED_ERRORS.labels(
+        error_type=TARGETED_ZERO_DIVISION
+    )._value.get()
+    assert after == before + 1
 
 
 @pytest.mark.asyncio
