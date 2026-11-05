@@ -21,9 +21,17 @@ SEEDS = range(150)
 BARS = 260
 WINDOW_ENDS = range(210, BARS, 5)
 
-# Strategies whose stop could cross the entry, fixed one by one under #375.
-NOT_FIXED_YET = {
+# Strategies whose stop could cross the entry before #375 (found by this test).
+HAD_WRONG_SIDE_STOPS = {
+    "mean_reversion_scalper",
     "ichimoku_cloud_momentum",
+    "golden_trend_sync",
+    "bollinger_breakout_signals",
+    "liquidity_grab_reversal",
+    "order_flow_imbalance",
+}
+# Fixed one by one under #375.
+NOT_FIXED_YET = {
     "golden_trend_sync",
     "bollinger_breakout_signals",
     "liquidity_grab_reversal",
@@ -110,6 +118,6 @@ def test_the_property_is_not_vacuous(outcomes):
     emitted, _ = outcomes
 
     # Every strategy that ever had a wrong-side stop is exercised here.
-    for name in NOT_FIXED_YET | {"mean_reversion_scalper"}:
+    for name in HAD_WRONG_SIDE_STOPS:
         assert emitted[name] > 0, name
     assert sum(emitted.values()) > 1000

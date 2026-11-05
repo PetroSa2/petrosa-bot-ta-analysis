@@ -90,19 +90,21 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
                 confidence += 0.05
 
         # Calculate stop loss and take profit
+        # Stop at kijun_sen while it is on the protective side of the close; when the
+        # close has crossed it (#375), a volatility distance from the close instead.
+        stop_loss, stop_source = self._protective_stop(
+            action, current_ichimoku["kijun_sen"], current["close"], current
+        )
+        if stop_loss is None:
+            return None
+        risk = abs(current["close"] - stop_loss)
         if bullish_signal:
-            # For bullish: stop loss at kijun_sen, take profit at 2:1 risk-reward
-            stop_loss = current_ichimoku["kijun_sen"]
-            risk = abs(current["close"] - stop_loss)
+            # For bullish: take profit at 2:1 risk-reward
             take_profit = current["close"] + (risk * 2.0)
         else:
-            # For bearish: stop loss at kijun_sen, take profit at 2:1 risk-reward
-            stop_loss = current_ichimoku["kijun_sen"]
-            risk = abs(current["close"] - stop_loss)
+            # For bearish: take profit at 2:1 risk-reward
             take_profit = current["close"] - (risk * 2.0)
 
-        if not math.isfinite(stop_loss) or stop_loss <= 0:
-            return None
         if not math.isfinite(take_profit) or take_profit <= 0:
             return None
 
@@ -118,6 +120,7 @@ class IchimokuCloudMomentumStrategy(BaseStrategy):
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "risk_reward_ratio": 2.0,
+            "stop_source": stop_source,
         }
 
         # Create and return Signal object
