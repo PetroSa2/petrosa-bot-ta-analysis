@@ -54,6 +54,8 @@ SERVICE_UPTIME = Gauge("service_uptime_seconds", "Service uptime in seconds")
 TARGETED_RUNTIME_WARNING = "runtime_warning_invalid_scalar_divide"
 TARGETED_ZERO_DIVISION = "zero_division"
 TARGETED_RUNTIME_WARNING_MESSAGE = "invalid value encountered in scalar divide"
+TA_ANALYSIS_TARGETED_ERRORS.labels(error_type=TARGETED_RUNTIME_WARNING).inc(0)
+TA_ANALYSIS_TARGETED_ERRORS.labels(error_type=TARGETED_ZERO_DIVISION).inc(0)
 
 
 def record_targeted_runtime_warning(warning: Warning) -> None:
