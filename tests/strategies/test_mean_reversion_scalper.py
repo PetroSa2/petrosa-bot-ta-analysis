@@ -135,3 +135,74 @@ class TestMeanReversionScalperStrategy:
         signal = strategy.analyze(df, metadata)
 
         assert signal is None
+
+
+def _deep_band_case(action):
+    """A close more than 1.5% beyond its band (#375): the old band stop was on the wrong side."""
+    n = 30
+    if action == "buy":
+        closes = [100.0] * (n - 3) + [97.0, 96.0, 95.0]
+        bb_lower, bb_upper, rsi = 97.0, 104.0, 20.0  # 97 * 0.985 = 95.545 > 95
+    else:
+        closes = [100.0] * (n - 3) + [103.0, 104.0, 105.0]
+        bb_lower, bb_upper, rsi = 96.0, 103.0, 80.0  # 103 * 1.015 = 104.545 < 105
+    df = pd.DataFrame(
+        {
+            "open": closes,
+            "high": [c + 0.5 for c in closes],
+            "low": [c - 0.5 for c in closes],
+            "close": closes,
+            "volume": [1000.0] * n,
+        }
+    )
+    metadata = {
+        "symbol": "ADAUSDT",
+        "timeframe": "15m",
+        "ema21": pd.Series([100.0] * n),
+        "rsi": pd.Series([rsi] * n),
+        "bb_lower": pd.Series([bb_lower] * n),
+        "bb_upper": pd.Series([bb_upper] * n),
+        "atr": pd.Series([0.8] * n),
+    }
+    return df, metadata
+
+
+def test_deep_oversold_buy_stop_is_below_the_close():
+    df, metadata = _deep_band_case("buy")
+
+    signal = MeanReversionScalperStrategy().analyze(df, metadata)
+
+    assert signal is not None and signal.action == "buy"
+    assert signal.stop_loss < signal.current_price
+    assert signal.stop_loss == pytest.approx(95.0 - 2 * 0.8)
+    assert signal.metadata["stop_source"] == "volatility"
+
+
+def test_deep_overbought_sell_stop_is_above_the_close():
+    df, metadata = _deep_band_case("sell")
+
+    signal = MeanReversionScalperStrategy().analyze(df, metadata)
+
+    assert signal is not None and signal.action == "sell"
+    assert signal.stop_loss > signal.current_price
+    assert signal.stop_loss == pytest.approx(105.0 + 2 * 0.8)
+    assert signal.metadata["stop_source"] == "volatility"
+
+
+def test_a_band_stop_on_the_protective_side_is_unchanged():
+    df, metadata = _deep_band_case("buy")
+    metadata["bb_lower"] = pd.Series([95.5] * len(df))  # 95.5 * 0.985 = 94.07 < 95
+
+    signal = MeanReversionScalperStrategy().analyze(df, metadata)
+
+    assert signal is not None
+    assert signal.stop_loss == pytest.approx(95.5 * 0.985)
+    assert signal.metadata["stop_source"] == "level"
+
+
+def test_no_signal_without_a_protective_stop():
+    df, metadata = _deep_band_case("buy")
+    del metadata["atr"]
+    metadata["bb_upper"] = metadata["bb_lower"]  # no measurable volatility either
+
+    assert MeanReversionScalperStrategy().analyze(df, metadata) is None

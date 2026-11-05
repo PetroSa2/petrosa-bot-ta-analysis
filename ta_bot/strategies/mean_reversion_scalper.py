@@ -106,12 +106,19 @@ class MeanReversionScalperStrategy(BaseStrategy):
         # Calculate stop loss and take profit (mean reversion/scalping strategy)
         if action == "buy":
             # Buy oversold - mean revert to EMA21
-            stop_loss = bb_lower * 0.985  # 1.5% below lower band
+            band_stop = bb_lower * 0.985  # 1.5% below lower band
             take_profit = ema21  # Target EMA21 (mean reversion)
         else:
             # Sell overbought - mean revert to EMA21
-            stop_loss = bb_upper * 1.015  # 1.5% above upper band
+            band_stop = bb_upper * 1.015  # 1.5% above upper band
             take_profit = ema21  # Target EMA21 (mean reversion)
+        # When the close is already beyond the band stop (#375), the stop moves to a
+        # volatility distance from the close; without one, no signal.
+        stop_loss, stop_source = self._protective_stop(
+            action, band_stop, close, current
+        )
+        if stop_loss is None:
+            return None
 
         # Prepare metadata for signal
         signal_metadata = {
@@ -125,6 +132,7 @@ class MeanReversionScalperStrategy(BaseStrategy):
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "target": "ema21",
+            "stop_source": stop_source,
         }
 
         # Create and return Signal object
