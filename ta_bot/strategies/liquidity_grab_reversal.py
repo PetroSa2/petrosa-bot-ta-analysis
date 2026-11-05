@@ -77,14 +77,22 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
         if action == "buy":
             # For bullish liquidity grab - SL below the grabbed level
             support_level = df["low"].iloc[-20:-5].min()
-            stop_loss = support_level * 0.995  # 0.5% below support
-            risk = abs(current["close"] - stop_loss)
-            take_profit = current["close"] + (risk * 2.0)  # 2:1 R:R
+            level_stop = support_level * 0.995  # 0.5% below support
         else:
             # For bearish liquidity grab - SL above the grabbed level
             resistance_level = df["high"].iloc[-20:-5].max()
-            stop_loss = resistance_level * 1.005  # 0.5% above resistance
-            risk = abs(current["close"] - stop_loss)
+            level_stop = resistance_level * 1.005  # 0.5% above resistance
+        # A close already beyond the grabbed level's stop (#375) gets a
+        # volatility-distance stop instead; without one, no signal.
+        stop_loss, stop_source = self._protective_stop(
+            action, level_stop, current["close"], current
+        )
+        if stop_loss is None:
+            return None
+        risk = abs(current["close"] - stop_loss)
+        if action == "buy":
+            take_profit = current["close"] + (risk * 2.0)  # 2:1 R:R
+        else:
             take_profit = current["close"] - (risk * 2.0)  # 2:1 R:R
 
         # Prepare metadata for signal
@@ -97,6 +105,7 @@ class LiquidityGrabReversalStrategy(BaseStrategy):
             "rsi_divergence": rsi_divergence,
             "stop_loss": stop_loss,
             "take_profit": take_profit,
+            "stop_source": stop_source,
             "risk_reward_ratio": 2.0,
         }
 

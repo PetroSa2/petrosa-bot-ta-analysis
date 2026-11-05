@@ -32,7 +32,6 @@ HAD_WRONG_SIDE_STOPS = {
 }
 # Fixed one by one under #375.
 NOT_FIXED_YET = {
-    "liquidity_grab_reversal",
     "order_flow_imbalance",
 }
 
