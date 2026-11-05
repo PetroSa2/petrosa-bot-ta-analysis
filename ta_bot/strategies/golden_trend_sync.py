@@ -80,8 +80,13 @@ class GoldenTrendSyncStrategy(BaseStrategy):
 
         if golden_cross and pullback_to_ema21 and bullish_candle:
             # Calculate stop loss and take profit
-            # Stop loss at EMA50 (as per strategy documentation)
-            stop_loss = current_ema50
+            # Stop loss at EMA50 (as per strategy documentation) while it is below the
+            # close; when the close is under EMA50 (#375), a volatility distance instead.
+            stop_loss, stop_source = self._protective_stop(
+                "buy", current_ema50, close, current_values
+            )
+            if stop_loss is None:
+                return None
             # Take profit at 2:1 risk-reward ratio
             risk = abs(close - stop_loss)
             take_profit = close + (risk * 2.0)
@@ -104,6 +109,7 @@ class GoldenTrendSyncStrategy(BaseStrategy):
                     "stop_loss": stop_loss,
                     "take_profit": take_profit,
                     "risk_reward_ratio": 2.0,
+                    "stop_source": stop_source,
                 },
             )
 
