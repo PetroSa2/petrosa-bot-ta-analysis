@@ -117,12 +117,18 @@ class BollingerBreakoutSignalsStrategy(BaseStrategy):
         # Calculate stop loss and take profit (mean reversion strategy)
         if signal_action == "buy":
             # Buy at lower band - mean revert to middle
-            stop_loss = lower_band * 0.98  # 2% below lower band
+            band_stop = lower_band * 0.98  # 2% below lower band
             take_profit = middle_band  # Target middle band (mean reversion)
         else:
             # Sell at upper band - mean revert to middle
-            stop_loss = upper_band * 1.02  # 2% above upper band
+            band_stop = upper_band * 1.02  # 2% above upper band
             take_profit = middle_band  # Target middle band (mean reversion)
+        # A close already beyond the band stop (#375) gets a volatility-distance stop.
+        stop_loss, stop_source = self._protective_stop(
+            signal_action, band_stop, close, current
+        )
+        if stop_loss is None:
+            return None
 
         # Prepare metadata for signal
         signal_metadata = {
@@ -140,6 +146,7 @@ class BollingerBreakoutSignalsStrategy(BaseStrategy):
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "target": "middle_band",
+            "stop_source": stop_source,
         }
 
         return Signal(
