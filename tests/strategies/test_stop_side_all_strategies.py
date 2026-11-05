@@ -54,6 +54,45 @@ def _series(seed: int) -> pd.DataFrame:
     )
 
 
+def _last(indicators: dict, key: str) -> float:
+    value = indicators[key]
+    return float(value.iloc[-1]) if hasattr(value, "iloc") else float(value)
+
+
+def _legacy_level_stop(name, signal, df, indicators):
+    """The stop each strategy emitted before #375 (its own level), recomputed here."""
+    buy = signal.action == "buy"
+    if name == "mean_reversion_scalper":
+        return (
+            _last(indicators, "bb_lower") * 0.985
+            if buy
+            else _last(indicators, "bb_upper") * 1.015
+        )
+    if name == "bollinger_breakout_signals":
+        return (
+            _last(indicators, "bb_lower") * 0.98
+            if buy
+            else _last(indicators, "bb_upper") * 1.02
+        )
+    if name == "ichimoku_cloud_momentum":
+        return signal.metadata["kijun_sen"]
+    if name == "golden_trend_sync":
+        return signal.metadata["ema50"]
+    if name == "liquidity_grab_reversal":
+        return (
+            df["low"].iloc[-20:-5].min() * 0.995
+            if buy
+            else df["high"].iloc[-20:-5].max() * 1.005
+        )
+    if name == "order_flow_imbalance":
+        return (
+            df["low"].iloc[-20:-10].min() * 0.99
+            if buy
+            else df["high"].iloc[-20:-10].max() * 1.01
+        )
+    return None
+
+
 @pytest.fixture(scope="module")
 def outcomes():
     """Per strategy: how many signals it emitted and how many had a wrong-side stop."""
@@ -62,6 +101,7 @@ def outcomes():
         engine = SignalEngine()
         emitted: collections.Counter[str] = collections.Counter()
         wrong: dict[str, list[tuple]] = collections.defaultdict(list)
+        kept: dict[str, list[tuple]] = collections.defaultdict(list)
         for seed in SEEDS:
             full = _series(seed)
             for end in WINDOW_ENDS:
@@ -76,6 +116,11 @@ def outcomes():
                         continue
                     emitted[name] += 1
                     entry = signal.current_price
+                    legacy = _legacy_level_stop(name, signal, df, indicators)
+                    if legacy is not None and (
+                        legacy < entry if signal.action == "buy" else legacy > entry
+                    ):
+                        kept[name].append((legacy, signal.stop_loss))
                     protective = (
                         signal.stop_loss < entry
                         if signal.action == "buy"
@@ -85,7 +130,7 @@ def outcomes():
                         wrong[name].append(
                             (seed, end, signal.action, entry, signal.stop_loss)
                         )
-        return emitted, wrong
+        return emitted, wrong, kept
     finally:
         logging.disable(logging.NOTSET)
 
@@ -104,15 +149,24 @@ def _strategy_names() -> list:
 
 @pytest.mark.parametrize("name", _strategy_names())
 def test_no_stop_on_the_wrong_side_of_the_entry(outcomes, name):
-    _, wrong = outcomes
+    _, wrong, _ = outcomes
 
     assert wrong.get(name, [])[:3] == []
 
 
 def test_the_property_is_not_vacuous(outcomes):
-    emitted, _ = outcomes
+    emitted, _, _ = outcomes
 
     # Every strategy that ever had a wrong-side stop is exercised here.
     for name in HAD_WRONG_SIDE_STOPS:
         assert emitted[name] > 0, name
     assert sum(emitted.values()) > 1000
+
+
+@pytest.mark.parametrize("name", sorted(HAD_WRONG_SIDE_STOPS))
+def test_stops_that_were_already_protective_are_unchanged(outcomes, name):
+    """Only the wrong-side case changes: a protective level stop is emitted as before."""
+    _, _, kept = outcomes
+
+    assert kept[name], name  # exercised
+    assert [pair for pair in kept[name] if pair[0] != pair[1]][:3] == []
