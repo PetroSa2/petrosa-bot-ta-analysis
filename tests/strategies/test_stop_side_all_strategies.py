@@ -31,9 +31,7 @@ HAD_WRONG_SIDE_STOPS = {
     "order_flow_imbalance",
 }
 # Fixed one by one under #375.
-NOT_FIXED_YET = {
-    "order_flow_imbalance",
-}
+NOT_FIXED_YET: set[str] = set()
 
 
 def _series(seed: int) -> pd.DataFrame:

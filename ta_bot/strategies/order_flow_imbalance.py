@@ -88,21 +88,25 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             support_level = self._safe_level(df["low"].iloc[-20:-10], "min")
             if support_level is None:
                 return None
-            stop_loss = support_level * 0.99  # 1% below support
-            risk = abs(current["close"] - stop_loss)
-            take_profit = current["close"] + (
-                risk * 2.5
-            )  # 2.5:1 R:R for institutional moves
+            level_stop = support_level * 0.99  # 1% below support
         else:
             # For distribution - SL above recent resistance
             resistance_level = self._safe_level(df["high"].iloc[-20:-10], "max")
             if resistance_level is None:
                 return None
-            stop_loss = resistance_level * 1.01  # 1% above resistance
-            risk = abs(current["close"] - stop_loss)
-            take_profit = current["close"] - (
-                risk * 2.5
-            )  # 2.5:1 R:R for institutional moves
+            level_stop = resistance_level * 1.01  # 1% above resistance
+        # A close already beyond the level's stop (#375) gets a volatility-distance
+        # stop instead; without one, no signal.
+        stop_loss, stop_source = self._protective_stop(
+            action, level_stop, current["close"], current
+        )
+        if stop_loss is None:
+            return None
+        risk = abs(current["close"] - stop_loss)
+        if action == "buy":
+            take_profit = current["close"] + (risk * 2.5)  # 2.5:1 R:R
+        else:
+            take_profit = current["close"] - (risk * 2.5)  # 2.5:1 R:R
 
         # Defensive final guard: never emit a non-positive stop_loss
         if stop_loss is None or pd.isna(stop_loss) or stop_loss <= 0:
@@ -117,6 +121,7 @@ class OrderFlowImbalanceStrategy(BaseStrategy):
             "rsi_confirmed": rsi_confirmed,
             "stop_loss": stop_loss,
             "take_profit": take_profit,
+            "stop_source": stop_source,
             "risk_reward_ratio": 2.5,
         }
 
