@@ -18,8 +18,19 @@ def _value(error_type: str) -> float:
 
 
 def test_exports_both_targeted_error_labels_before_events():
-    assert _value(TARGETED_RUNTIME_WARNING) == 0
-    assert _value(TARGETED_ZERO_DIVISION) == 0
+    assert (
+        REGISTRY.get_sample_value(
+            "ta_analysis_targeted_errors_total",
+            {"error_type": TARGETED_RUNTIME_WARNING},
+        )
+        is not None
+    )
+    assert (
+        REGISTRY.get_sample_value(
+            "ta_analysis_targeted_errors_total", {"error_type": TARGETED_ZERO_DIVISION}
+        )
+        is not None
+    )
 
 
 def test_records_only_exact_scalar_divide_warning():
