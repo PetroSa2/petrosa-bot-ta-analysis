@@ -3,6 +3,7 @@ Base strategy class for technical analysis strategies.
 """
 
 import logging
+import math
 from typing import Any, Optional
 
 import pandas as pd
@@ -10,6 +11,11 @@ import pandas as pd
 from ta_bot.models.signal import Signal
 
 logger = logging.getLogger(__name__)
+
+# A stop that cannot sit at the strategy's own level is placed this many ATRs from
+# the entry: the same 2 x ATR distance SignalEngine._calculate_risk_management uses
+# for signals without a stop (petrosa-bot-ta-analysis#375).
+ATR_STOP_MULTIPLE = 2.0
 
 
 class BaseStrategy:
@@ -139,6 +145,55 @@ class BaseStrategy:
                 logger.debug(f"Failed to get current price data: {e}")
 
         return current_values
+
+    @staticmethod
+    def _volatility_stop_distance(current: dict[str, float]) -> float | None:
+        """The measured-volatility distance for a stop: ATR_STOP_MULTIPLE x ATR.
+
+        Without a usable ATR, half the Bollinger band width (about two standard
+        deviations of the close) is the measured fallback. None when neither exists.
+        """
+        atr = current.get("atr")
+        if atr is not None and math.isfinite(atr) and atr > 0:
+            return ATR_STOP_MULTIPLE * atr
+        upper, lower = current.get("bb_upper"), current.get("bb_lower")
+        if upper is not None and lower is not None:
+            half_width = (upper - lower) / 2
+            if math.isfinite(half_width) and half_width > 0:
+                return half_width
+        return None
+
+    @classmethod
+    def _protective_stop(
+        cls,
+        action: str,
+        level_stop: float | None,
+        entry: float,
+        current: dict[str, float],
+    ) -> tuple[float | None, str]:
+        """The stop to emit, always on the protective side of ``entry`` (#375).
+
+        ``level_stop`` (the strategy's own band, level or average) is kept unchanged
+        whenever it is below the entry for a buy or above it for a sell. Otherwise the
+        entry has already crossed that level, and the stop is placed a measured
+        volatility distance from the entry instead. Returns ``(stop, source)``, where
+        source is "level" or "volatility", or ``(None, "none")`` when no valid stop
+        exists, in which case the strategy emits no signal.
+        """
+        if not math.isfinite(entry) or entry <= 0:
+            return None, "none"
+        if level_stop is not None and math.isfinite(level_stop) and level_stop > 0:
+            if (action == "buy" and level_stop < entry) or (
+                action == "sell" and level_stop > entry
+            ):
+                return level_stop, "level"
+        distance = cls._volatility_stop_distance(current)
+        if distance is None:
+            return None, "none"
+        stop = entry - distance if action == "buy" else entry + distance
+        if not math.isfinite(stop) or stop <= 0:
+            return None, "none"
+        return stop, "volatility"
 
     def _get_previous_values(
         self, indicators: dict[str, Any], df: pd.DataFrame
