@@ -165,7 +165,12 @@ class AppConfigManager:
                 entry = await self.data_manager_client.get_cio_pause_entry(strategy_id)
             except Exception:
                 entry = None
-            if entry and not entry.get("resumed_at") and not entry.get("gave_up_at"):
+            if (
+                entry
+                and entry.get("status")
+                and not entry.get("resumed_at")
+                and not entry.get("gave_up_at")
+            ):
                 reason = (
                     entry.get("pause_reason")
                     or entry.get("reason")

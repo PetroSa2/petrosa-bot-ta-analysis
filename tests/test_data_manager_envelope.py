@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock
 import pytest
 from aiohttp import ClientSession
 
+from ta_bot.config import ACTIONABLE_STRATEGIES
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.data_manager_config_client import DataManagerConfigClient
 
@@ -123,7 +124,7 @@ class TestAppConfigManagerWithEnvelope:
         await manager.get_config()
         second = await manager.get_config()
         assert second["cache_hit"] is True
-        assert client._session.get.call_count == 1
+        assert client._session.get.call_count == 1 + len(ACTIONABLE_STRATEGIES)
 
     @pytest.mark.asyncio
     async def test_unseeded_config_still_falls_back_to_defaults(self, caplog):
