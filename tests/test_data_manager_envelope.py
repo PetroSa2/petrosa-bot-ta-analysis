@@ -97,6 +97,24 @@ class TestClientEnvelope:
         result = await client.get_strategy_config_record("bollinger_squeeze_alert")
         assert result == STRATEGY_ENVELOPE["data"]
 
+    @pytest.mark.asyncio
+    async def test_get_cio_pause_entry_unwraps_envelope(self):
+        payload = {
+            "success": True,
+            "data": {"status": "paused", "pause_reason": "health"},
+        }
+        client = _client_returning(payload)
+
+        result = await client.get_cio_pause_entry("rsi_extreme_reversal")
+
+        assert result == payload["data"]
+
+    @pytest.mark.asyncio
+    async def test_get_cio_pause_entry_returns_none_for_missing_entry(self):
+        client = _client_returning({}, status=404)
+
+        assert await client.get_cio_pause_entry("rsi_extreme_reversal") is None
+
 
 class TestAppConfigManagerWithEnvelope:
     @pytest.mark.asyncio
