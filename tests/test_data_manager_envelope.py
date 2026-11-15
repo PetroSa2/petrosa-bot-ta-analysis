@@ -115,6 +115,19 @@ class TestClientEnvelope:
 
         assert await client.get_cio_pause_entry("rsi_extreme_reversal") is None
 
+    @pytest.mark.asyncio
+    async def test_get_cio_pause_entry_returns_none_for_server_error(self):
+        client = _client_returning({}, status=503)
+
+        assert await client.get_cio_pause_entry("rsi_extreme_reversal") is None
+
+    @pytest.mark.asyncio
+    async def test_get_cio_pause_entry_returns_none_on_lookup_error(self):
+        client = _client_returning({})
+        client._session.get.side_effect = RuntimeError("timeout")
+
+        assert await client.get_cio_pause_entry("rsi_extreme_reversal") is None
+
 
 class TestAppConfigManagerWithEnvelope:
     @pytest.mark.asyncio
