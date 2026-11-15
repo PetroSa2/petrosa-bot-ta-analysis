@@ -21,7 +21,9 @@ def test_runtime_config_logs_missing_actionable_strategy(caplog):
     client.get_app_config = AsyncMock(
         return_value={
             "version": 225,
-            "enabled_strategies": list(ACTIONABLE_STRATEGIES - {"rsi_extreme_reversal"}),
+            "enabled_strategies": list(
+                ACTIONABLE_STRATEGIES - {"rsi_extreme_reversal"}
+            ),
         }
     )
     client.get_cio_pause_entry = AsyncMock(return_value=None)
@@ -40,7 +42,9 @@ def test_runtime_config_logs_cio_pause_reason_once(caplog):
     client.get_app_config = AsyncMock(
         return_value={
             "version": 225,
-            "enabled_strategies": list(ACTIONABLE_STRATEGIES - {"rsi_extreme_reversal"}),
+            "enabled_strategies": list(
+                ACTIONABLE_STRATEGIES - {"rsi_extreme_reversal"}
+            ),
         }
     )
     client.get_cio_pause_entry = AsyncMock(
@@ -63,7 +67,9 @@ def test_runtime_config_logs_again_when_pause_classification_changes(caplog):
     client.get_app_config = AsyncMock(
         return_value={
             "version": 225,
-            "enabled_strategies": list(ACTIONABLE_STRATEGIES - {"rsi_extreme_reversal"}),
+            "enabled_strategies": list(
+                ACTIONABLE_STRATEGIES - {"rsi_extreme_reversal"}
+            ),
         }
     )
     client.get_cio_pause_entry = AsyncMock(
@@ -85,7 +91,9 @@ def test_runtime_config_treats_pause_lookup_failure_as_unexplained(caplog):
     client.get_app_config = AsyncMock(
         return_value={
             "version": 225,
-            "enabled_strategies": list(ACTIONABLE_STRATEGIES - {"rsi_extreme_reversal"}),
+            "enabled_strategies": list(
+                ACTIONABLE_STRATEGIES - {"rsi_extreme_reversal"}
+            ),
         }
     )
     client.get_cio_pause_entry = AsyncMock(side_effect=RuntimeError("timeout"))
