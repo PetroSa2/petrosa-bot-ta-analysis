@@ -59,6 +59,7 @@ class AppConfigManager:
         # Background tasks
         self._cache_refresh_task: asyncio.Task | None = None
         self._running = False
+        self._last_allowlist_report: tuple[tuple[str, str, str], ...] | None = None
 
     async def start(self) -> None:
         """Start the configuration manager and background tasks."""
@@ -116,14 +117,9 @@ class AppConfigManager:
                 config_doc = await self.data_manager_client.get_app_config()
                 if config_doc and config_doc.get("version", 0) > 0:
                     result = self._doc_to_config_result(config_doc, "data_manager")
-                    missing_strategies = missing_actionable_strategies(
+                    await self._report_missing_actionable_strategies(
                         result["enabled_strategies"]
                     )
-                    if missing_strategies:
-                        logger.error(
-                            "Runtime strategy allowlist is missing actionable strategies: %s",
-                            sorted(missing_strategies),
-                        )
                     self._set_cache(result)
                     result["cache_hit"] = False
                     result["load_time_ms"] = (time.time() - start_time) * 1000
@@ -153,6 +149,50 @@ class AppConfigManager:
         # same configuration request and hitting the rate limiter again.
         self._set_cache(result)
         return result
+
+    async def _report_missing_actionable_strategies(
+        self, enabled_strategies: list[str]
+    ) -> None:
+        """Report actionable strategies absent from the runtime allowlist once per change."""
+        missing_strategies = missing_actionable_strategies(enabled_strategies)
+        if not missing_strategies:
+            self._last_allowlist_report = None
+            return
+
+        classifications: list[tuple[str, str, str]] = []
+        for strategy_id in sorted(missing_strategies):
+            try:
+                entry = await self.data_manager_client.get_cio_pause_entry(strategy_id)
+            except Exception:
+                entry = None
+            if entry and not entry.get("resumed_at") and not entry.get("gave_up_at"):
+                reason = (
+                    entry.get("pause_reason")
+                    or entry.get("reason")
+                    or entry.get("gave_up_reason")
+                    or "CIO auto-resume pause"
+                )
+                classifications.append((strategy_id, "paused", str(reason)))
+            else:
+                classifications.append((strategy_id, "unexplained", ""))
+
+        snapshot = tuple(classifications)
+        if snapshot == self._last_allowlist_report:
+            return
+        self._last_allowlist_report = snapshot
+
+        for strategy_id, classification, reason in classifications:
+            if classification == "paused":
+                logger.warning(
+                    "Runtime strategy allowlist excludes CIO-paused strategy %s: %s",
+                    strategy_id,
+                    reason,
+                )
+            else:
+                logger.error(
+                    "Runtime strategy allowlist is missing unexplained actionable strategy: %s",
+                    strategy_id,
+                )
 
     async def set_config(
         self,
