@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock
 import pytest
 from aiohttp import ClientSession
 
+from ta_bot.config import ACTIONABLE_STRATEGIES
 from ta_bot.services.app_config_manager import AppConfigManager
 from ta_bot.services.data_manager_config_client import DataManagerConfigClient
 
@@ -96,6 +97,37 @@ class TestClientEnvelope:
         result = await client.get_strategy_config_record("bollinger_squeeze_alert")
         assert result == STRATEGY_ENVELOPE["data"]
 
+    @pytest.mark.asyncio
+    async def test_get_cio_pause_entry_unwraps_envelope(self):
+        payload = {
+            "success": True,
+            "data": {"status": "paused", "pause_reason": "health"},
+        }
+        client = _client_returning(payload)
+
+        result = await client.get_cio_pause_entry("rsi_extreme_reversal")
+
+        assert result == payload["data"]
+
+    @pytest.mark.asyncio
+    async def test_get_cio_pause_entry_returns_none_for_missing_entry(self):
+        client = _client_returning({}, status=404)
+
+        assert await client.get_cio_pause_entry("rsi_extreme_reversal") is None
+
+    @pytest.mark.asyncio
+    async def test_get_cio_pause_entry_returns_none_for_server_error(self):
+        client = _client_returning({}, status=503)
+
+        assert await client.get_cio_pause_entry("rsi_extreme_reversal") is None
+
+    @pytest.mark.asyncio
+    async def test_get_cio_pause_entry_returns_none_on_lookup_error(self):
+        client = _client_returning({})
+        client._session.get.side_effect = RuntimeError("timeout")
+
+        assert await client.get_cio_pause_entry("rsi_extreme_reversal") is None
+
 
 class TestAppConfigManagerWithEnvelope:
     @pytest.mark.asyncio
@@ -123,7 +155,7 @@ class TestAppConfigManagerWithEnvelope:
         await manager.get_config()
         second = await manager.get_config()
         assert second["cache_hit"] is True
-        assert client._session.get.call_count == 1
+        assert client._session.get.call_count == 1 + len(ACTIONABLE_STRATEGIES)
 
     @pytest.mark.asyncio
     async def test_unseeded_config_still_falls_back_to_defaults(self, caplog):

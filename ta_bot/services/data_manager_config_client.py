@@ -131,6 +131,31 @@ class DataManagerConfigClient:
             logger.error(f"Error fetching application config: {e}")
             return self._get_default_config()
 
+    async def get_cio_pause_entry(self, strategy_id: str) -> dict[str, Any] | None:
+        """Return the read-only CIO auto-resume entry for a strategy."""
+        if not self._session:
+            await self.connect()
+
+        try:
+            async with self._session.get(
+                f"{self.base_url}/api/v1/cio/auto-resume/entries/{strategy_id}",
+                timeout=aiohttp.ClientTimeout(total=self.timeout),
+            ) as response:
+                if response.status == 404:
+                    return None
+                if response.status != 200:
+                    logger.warning(
+                        "Failed to fetch CIO pause entry for %s: %s",
+                        strategy_id,
+                        response.status,
+                    )
+                    return None
+                payload = self._unwrap_envelope(await response.json())
+                return payload if isinstance(payload, dict) else None
+        except Exception as e:
+            logger.warning("Error fetching CIO pause entry for %s: %s", strategy_id, e)
+            return None
+
     async def set_app_config(
         self, config_data: dict[str, Any], changed_by: str, reason: str | None = None
     ) -> bool:
